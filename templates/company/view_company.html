@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+{% load static %}
+   {% block title %} View Company | TTSPL IMS - Trisnota Technical Services Pvt. Ltd.{% endblock %}
+   
+   {% block content %}
+   <div class="row">
+    <div class="col-12">
+        <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
+            <h4 class="mb-sm-0">View Company</h4>
+
+            <div class="page-title-right">
+                <ol class="breadcrumb m-0">
+                    <li class="breadcrumb-item"><a href="#">Dashboards</a></li>
+                    <li class="breadcrumb-item active">Company Details</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header align-items-center d-flex">
+                <h4 class="card-title mb-0 flex-grow-1">View Company Details</h4>
+                <div class="flex-shrink-0">
+                    <a class="btn btn-secondary" href="/company_list_page">< Back</a>
+                </div>
+            </div><!-- end card header -->
+            <div class="card-body">
+                <div class="live-preview">
+                    <form>
+                        <div class="row gy-4">
+                            <!-- Company ID -->
+                            <div class="col-xxl-3 col-md-3">
+                                <div>
+                                    <label for="companyId" class="form-label">Company ID</label>
+                                    <input type="text" class="form-control" id="companyId" value="{{ company.id }}" readonly>
+                                </div>
+                            </div>
+                            <!-- Company Name -->
+                            <div class="col-xxl-3 col-md-5">
+                                <div>
+                                    <label for="companyName" class="form-label">Company Name</label>
+                                    <input type="text" class="form-control" id="companyName" value="{{ company.name }}" readonly>
+                                </div>
+                            </div>
+                            <!-- CIN Number -->
+                            <div class="col-xxl-3 col-md-4">
+                                <div>
+                                    <label for="cinInput" class="form-label">CIN Number</label>
+                                    <input type="text" class="form-control" id="cinInput" value="{{ company.cin }}" readonly>
+                                </div>
+                            </div>
+                            <!-- GST Number -->
+                            <div class="col-xxl-6 col-md-12">
+                                <div>
+                                    <label for="gstInput" class="form-label">GST Number</label>
+                                    <input type="text" class="form-control" id="gstInput" value="{{ company.gst }}" readonly>
+                                </div>
+                            </div>
+                            <!-- Location -->
+                            <div class="col-xxl-3 col-md-3">
+                                <div>
+                                    <label for="locationInput" class="form-label">Location</label>
+                                    <input type="text" class="form-control" id="locationInput" value="{{ company.location }}" readonly>
+                                </div>
+                            </div>
+                            <!-- Address -->
+                            <div class="col-xxl-6 col-md-12">
+                                <div>
+                                    <label for="addressInput" class="form-label">Address</label>
+                                    <textarea class="form-control" id="addressInput" rows="3" readonly>{{ company.address }}</textarea>
+                                </div>
+                            </div>
+                            <!-- Email -->
+                            <div class="col-xxl-3 col-md-3">
+                                <div>
+                                    <label for="emailInput" class="form-label">Email</label>
+                                    <input type="text" class="form-control" id="emailInput" value="{{ company.email }}" readonly>
+                                </div>
+                            </div>
+                            <!-- Phone Number -->
+                            <div class="col-xxl-3 col-md-3">
+                                <div>
+                                    <label for="phoneInput" class="form-label">Phone Number</label>
+                                    <input type="text" class="form-control" id="phoneInput" value="{{ company.phone_number }}" readonly>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!--end col-->
+</div>
+
+
+
+  <!-- end page title -->
+   {% endblock %}
+
+   {% block custom_script %}
+   {% endblock %}

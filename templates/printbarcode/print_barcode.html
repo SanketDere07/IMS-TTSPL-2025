@@ -1,0 +1,449 @@
+{% extends 'base.html' %}
+{% block title %} Print Barcode | TTSPL IMS - Trisnota Technical Services Pvt. Ltd.{% endblock %}
+{% block content %}
+<style>
+    /* Ensure select2 elements have uniform height */
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    color: #444;
+    line-height: 34px;
+}
+
+.select2-container--default .select2-selection--single {
+    background-color: #fff;
+    border: 1px solid #aaa;
+    border-radius: 4px;
+    height: 38px; /* Match input height */
+}
+
+/* Style for quantity input and buttons */
+.input-group .btn {
+    height: 38px !important; /* Ensure buttons match select2 height */
+    line-height: auto;
+}
+
+.input-group input[type="number"] {
+    height: 38px !important; /* Match select2 height */
+}
+
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 34px !important;
+    position: absolute;
+    top: 1px;
+    right: 1px;
+    width: 20px;
+}
+</style>
+
+<div class="row">
+    <div class="col-12">
+       <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
+          <h4 class="mb-sm-0">Barcode</h4>
+          <div class="page-title-right">
+             <ol class="breadcrumb m-0">
+                <li class="breadcrumb-item"><a href="#">Dashboards</a></li>
+                <li class="breadcrumb-item active">Print Barcode</li>
+             </ol>
+          </div>
+       </div>
+    </div>
+ </div>
+<div class="row">
+    <div class="col-lg-12">
+       <div class="card">
+          <div class="card-header d-flex align-items-center">
+             <h5 class="card-title mb-0 flex-grow-1">Print Barcode</h5>
+             <div>
+                <a class="btn btn-primary" href="stock_entry_page">+ Stock Entry</a>
+             </div>
+          </div>
+          <div class="card-body">
+            <div class="accordion accordion-primary mb-3" id="filterAccordion"> 
+                <div class="accordion-item material-shadow">
+                    <h2 class="accordion-header" id="flush-headingFilters">
+                        <button class="accordion-button collapsed d-flex align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseFilters" aria-expanded="false" aria-controls="flush-collapseFilters">
+                            <i class="ri-filter-3-line me-2"></i> Filters
+                        </button>
+                    </h2>
+                    <div id="flush-collapseFilters" class="accordion-collapse collapse" aria-labelledby="flush-headingFilters" data-bs-parent="#filterAccordion">
+                        <div class="accordion-body">
+            
+                            <!-- First Row: Filters -->
+                            <div class="row mb-3"> 
+                                <div class="col-md-3">
+                                    <label class="form-label">Category</label>
+                                    <select class="form-control select2" id="category-filter">
+                                        <option value="">Select Category</option>
+                                        {% for category in categories %}
+                                        <option value="{{ category.id }}">{{ category.category_name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            
+                                <div class="col-md-3">
+                                    <label class="form-label">Subcategory</label>
+                                    <select class="form-control select2" id="subcategory-filter" disabled>
+                                        <option value="">Select Subcategory</option>
+                                    </select>
+                                </div>
+                            
+                                <div class="col-md-3">
+                                    <label class="form-label">Product Name</label>
+                                    <select class="form-control select2" id="product-filter" disabled>
+                                        <option value="">Select Product</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="col-md-3">
+                                    <label class="form-label">Location</label>
+                                    <select class="form-control select2" id="location-filter">
+                                        <option value="">Select Location</option>
+                                    </select>
+                                </div>
+                            </div>
+            
+                            <!-- Second Row: Date Selection + Submit & Reset Buttons -->
+                            <div class="row mb-3"> 
+                                <div class="col-md-3">
+                                    <label for="from_date" class="form-label">From Date</label>
+                                    <input type="date" class="form-control" id="from_date">
+                                </div>
+            
+                                <div class="col-md-3">
+                                    <label for="to_date" class="form-label">To Date</label>
+                                    <input type="date" class="form-control" id="to_date">
+                                </div>
+            
+                                <!-- Submit & Reset Buttons -->
+                                <div class="col-md-6 d-flex align-items-end">
+                                    <button class="btn btn-primary me-2" id="apply-filters">Submit</button>
+                                    <button class="btn btn-secondary" id="reset-filters">Reset</button>
+                                </div>
+                            </div>
+            
+                            <!-- Third Row: Page Size, Grid Selection, and Barcode Buttons -->
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <label class="form-label">Paper Size</label>
+                                    <select class="form-control" id="page-size-selection">
+                                        <option value="A4">A4 (210mm × 297mm)</option>
+                                        <option value="A3">A3 (297mm × 420mm)</option>
+                                        <option value="A5">A5 (148mm × 210mm)</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="col-md-3">
+                                    <label class="form-label">Grid Selection</label>
+                                    <select class="form-control" id="grid-selection">
+                                        <!-- This will be populated dynamically based on page size -->
+                                    </select>
+                                </div> 
+            
+                                <!-- Barcode Buttons -->
+                                <div class="col-md-6 d-flex align-items-end">
+                                    <button class="btn btn-success me-2" id="generate-pdf">Print Barcode</button>
+                                    <button class="btn btn-info" id="generate-barcode-details-pdf">Barcode Details</button>
+                                </div>
+                            </div>
+            
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <table id="stock_list" class="table table-bordered table-responsive align-middle" style="width:100%">
+                <thead>
+                    <tr>
+                        <th>Stock ID</th>
+                        <th>Barcode</th>
+                        <th>Barcode Label</th>
+                        <th>Product Name</th>
+                        <th>Category</th>
+                        <th>Subcategory</th>
+                        <th>Location</th>
+                        <th>Created On</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+        
+       </div>
+    </div>
+ </div>
+ 
+<!-- Delete Stock Confirmation Modal -->
+<div id="deleteStockConfirmationModal" class="modal fade zoomIn" aria-labelledby="deleteStockConfirmationModalLabel" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+       <div class="modal-content">
+          <div class="modal-header">
+             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+             <div class="mt-2 text-center">
+                <div id="delete_stock_alert_message" class="alert alert-danger" style="display: none;">
+                   <span class="alert-message"></span>
+                </div>
+                <lord-icon src="https://cdn.lordicon.com/gsqxdxog.json" trigger="loop" colors="primary:#f7b84b,secondary:#f06548" style="width:100px;height:100px"></lord-icon>
+                <div class="mt-4 pt-2 fs-15 mx-4 mx-sm-5">
+                   <p>Are you sure you want to delete the stock entry with ID: <span id="stockIdDisplay" class="text-danger"></span>?</p>
+                </div>
+                <div class="d-flex gap-2 justify-content-center mt-4 mb-2">
+                   <button type="button" class="btn w-sm btn-light" data-bs-dismiss="modal">Close</button>
+                   <button type="button" class="btn w-sm btn-danger" id="confirmDeleteStockButton">Yes, Delete It!</button>
+                </div>
+             </div>
+          </div>
+       </div>
+    </div>
+</div>
+
+
+<script>
+$(document).ready(function () {
+
+    $('.select2').select2();
+
+    function loadCategories() {
+        $.getJSON("/get-categories/", function(data) {
+            $('#category-filter').append(data.categories.map(cat => 
+                `<option value="${cat.category_id}">${cat.category_name}</option>`
+            ));
+        });
+    }
+
+    $('#category-filter').change(function() {
+        let category_id = $(this).val();
+        $('#subcategory-filter').html('<option value="">Select SubCategory</option>').prop('disabled', true);
+        $('#product-filter').html('<option value="">Select Product</option>').prop('disabled', true);
+
+        if (category_id) {
+            $.getJSON(`/get-subcategories/${category_id}/`, function(data) {
+                $('#subcategory-filter').prop('disabled', false).append(data.subcategories.map(sub => 
+                    `<option value="${sub.subcategory_id}">${sub.subcategory_name}</option>`
+                ));
+            });
+        }
+    });
+
+    $('#subcategory-filter').change(function() {
+        let subcategory_id = $(this).val();
+        $('#product-filter').html('<option value="">Select Product</option>').prop('disabled', true);
+
+        if (subcategory_id) {
+            $.getJSON(`/get-products-stock/${subcategory_id}/`, function(data) {
+                $('#product-filter').prop('disabled', false).append(data.products.map(prod => 
+                    `<option value="${prod.product_id}">${prod.product_name}</option>`
+                ));
+            });
+        }
+    });
+
+    function loadLocations() {
+        $.getJSON("{% url 'get_locations' %}", function (data) {
+            $.each(data.locations, function (index, item) {
+                $('#location-filter').append(`<option value="${item.id}">${item.name}</option>`);
+            });
+        });
+    }
+
+    var stock_datatable = $('#stock_list').DataTable({
+        pagingType: "full_numbers",
+        hover: true,
+        ordering: true,
+        searching: true,
+        scrollX: true,
+        order: [[0, 'asc']], // Order by Stock ID
+        lengthMenu: [[5, 10, 25, 50, -1], [5, 10, 25, 50, "All"]],
+        pageLength: 10,
+        ajax: {
+            url: "/fetch-stock-list/",
+            dataSrc: "stocks"
+        },
+        columns: [
+            { data: 'stock_id' },
+            {
+                data: 'barcode_image',
+                render: function (data) {
+                    return data ? `<img src="${data}" alt="Barcode" width="100">` : "No Image";
+                }
+            },
+            { data: 'barcode_text' },
+            { data: 'product_name' },
+            { data: 'category_name' },
+            { data: 'subcategory_name' },
+            { data: 'location' },
+            { data: 'created_on' },
+        ]
+    });
+
+    function load_stock_data() {
+        let category = $('#category-filter').val();
+        let subcategory = $('#subcategory-filter').val();
+        let product = $('#product-filter').val();
+        let location = $('#location-filter').val();
+        let from_date = $('#from_date').val();
+        let to_date = $('#to_date').val();
+
+        stock_datatable.ajax.url(`/fetch-stock-list/?category=${category}&subcategory=${subcategory}&product=${product}&location=${location}&from_date=${from_date}&to_date=${to_date}`).load();
+    }
+
+    $('#apply-filters').click(function () {
+        load_stock_data();
+    });
+
+    $('#reset-filters').click(function () {
+        $('#category-filter, #subcategory-filter, #product-filter, #location-filter').val('').trigger('change');
+        $('#from_date, #to_date').val(''); // Clear date fields
+        load_stock_data();
+    });
+
+    loadCategories();
+    loadLocations();
+    load_stock_data();
+
+});
+
+    const gridOptions = {
+        "A4": {
+            "3x8": "3×8 Grid (Medium barcodes)",
+            "4x10": "4×10 Grid (Smaller, high density)",
+            "5x12": "5×12 Grid (Tiny barcodes)"
+        },
+        "A3": {
+            "4x10": "4×10 Grid (Standard barcode size, more space)",
+            "5x12": "5×12 Grid (Smaller, high density)",
+            "6x15": "6×15 Grid (Very small barcodes)"
+        },
+        "A5": {
+            "2x5": "2×5 Grid (Larger barcodes, wider spacing)",
+            "3x7": "3×7 Grid (More compact layout)"
+        }
+    };
+
+    function updateGridOptions() {
+        let pageSize = $('#page-size-selection').val();
+        let gridSelect = $('#grid-selection');
+        gridSelect.empty(); // Clear previous options
+        
+        $.each(gridOptions[pageSize], function(value, text) {
+            gridSelect.append(`<option value="${value}">${text}</option>`);
+        });
+    }
+
+    // Populate grid selection when page loads
+    $(document).ready(updateGridOptions);
+
+    // Update grid selection when page size changes
+    $('#page-size-selection').change(updateGridOptions);
+
+    $("#generate-pdf").click(function() {
+        var category = $("#category-filter").val();
+        var subcategory = $("#subcategory-filter").val();
+        var product = $("#product-filter").val();
+        var location = $("#location-filter").val();
+        var from_date = $("#from_date").val();
+        var to_date = $("#to_date").val();
+        var page_size = $("#page-size-selection").val();
+        var grid = $("#grid-selection").val();
+    
+        var queryParams = [];
+        if (category) queryParams.push(`category=${category}`);
+        if (subcategory) queryParams.push(`subcategory=${subcategory}`);
+        if (product) queryParams.push(`product=${product}`);
+        if (location) queryParams.push(`location=${location}`);
+        if (from_date) queryParams.push(`from_date=${from_date}`);
+        if (to_date) queryParams.push(`to_date=${to_date}`);
+        if (page_size) queryParams.push(`page_size=${page_size}`);
+        if (grid) queryParams.push(`grid=${grid}`);
+    
+        var queryString = queryParams.length ? `?${queryParams.join("&")}` : "";
+        window.location.href = "/generate-barcode-pdf/" + queryString;
+    });
+
+
+    $("#generate-barcode-details-pdf").click(function() {
+        var queryParams = new URLSearchParams({
+            category: $("#category-filter").val(),
+            subcategory: $("#subcategory-filter").val(),
+            product: $("#product-filter").val(),
+            location: $("#location-filter").val(),
+            from_date: $("#from_date").val(),
+            to_date: $("#to_date").val(),
+            page_size: $("#page-size-selection").val(),
+            grid: $("#grid-selection").val()
+        });
+    
+        window.location.href = "/generate-barcode-details-pdf/?" + queryParams.toString();
+    });
+    
+    
+
+    let stockIdToDelete = null;
+
+    function showDeleteStockModal(stockId) {
+        stockIdToDelete = stockId;
+        $('#stockIdDisplay').text(stockId);
+        $('#deleteStockConfirmationModal').modal('show');
+    }
+
+    // Handle the delete confirmation
+    $('#confirmDeleteStockButton').one('click', function () {
+        if (stockIdToDelete !== null) {
+            $.ajax({
+                url: `/delete-stock/${stockIdToDelete}/`,
+                method: 'DELETE',
+                headers: {
+                    'X-CSRFToken': $('input[name=csrfmiddlewaretoken]').val()
+                },
+                success: function (response) {
+                    const alertDiv = $('#delete_stock_alert_message');
+                    const alertMessageDiv = alertDiv.find('.alert-message');
+
+                    if (response.status === "success") {
+                        alertMessageDiv.text("Stock entry deleted successfully.");
+                        alertDiv.removeClass('alert-danger').addClass('alert-success').show();
+
+                        var deletedRow = $('#stockTable').find(`tr[data-id="${stockIdToDelete}"]`);
+
+                        setTimeout(function () {
+                            deletedRow.fadeOut(400, function () {
+                                $(this).remove();
+                            });
+
+                            $('#deleteStockConfirmationModal').modal('hide');
+
+                            setTimeout(function () {
+                                window.location.reload();
+                            }, 400);
+                        }, 1500);
+                    } else {
+                        alertMessageDiv.text(response.message || "Failed to delete stock entry.");
+                        alertDiv.removeClass('alert-success').addClass('alert-danger').show();
+
+                        setTimeout(() => {
+                            alertDiv.hide();
+                        }, 2000);
+                    }
+                },
+                error: function (xhr, textStatus, errorThrown) {
+                    console.error("Error deleting stock:", textStatus, errorThrown);
+
+                    const alertDiv = $('#delete_stock_alert_message');
+                    const alertMessageDiv = alertDiv.find('.alert-message');
+
+                    alertMessageDiv.text("An error occurred while deleting the stock entry.");
+                    alertDiv.removeClass('alert-success').addClass('alert-danger').show();
+
+                    setTimeout(() => {
+                        alertDiv.hide();
+                    }, 2000);
+                },
+            });
+        }
+    });
+
+</script>
+<!-- end page title -->
+{% endblock %}
+{% block custom_script %}
+{% endblock %}

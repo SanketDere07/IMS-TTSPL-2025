@@ -1,0 +1,695 @@
+{% extends 'base.html' %}
+{% block title %} Users | TTSPL IMS - Trisnota Technical Services Pvt. Ltd.{% endblock %}
+{% block content %}
+
+<div class="row">
+    {% load permissions_filters %}
+    <div class="col-12">
+       <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
+          <h4 class="mb-sm-0">Users</h4>
+          <div class="page-title-right">
+             <ol class="breadcrumb m-0">
+                <li class="breadcrumb-item"><a href="#">Dashboards</a></li>
+                <li class="breadcrumb-item active">Manage Users</li>
+             </ol>
+          </div>
+       </div>
+    </div>
+ </div>
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header d-flex align-items-center">
+                <h5 class="card-title mb-0 flex-grow-1">Users List</h5>
+                <div>
+                    <a class="btn btn-primary" href="create_user_page">+ Add Users</a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="accordion accordion-primary mb-3" id="filterAccordion">
+                    <div class="accordion-item material-shadow">
+                        <h2 class="accordion-header" id="flush-headingFilters">
+                            <button class="accordion-button collapsed d-flex align-items-center" type="button" data-bs-toggle="collapse"
+                                data-bs-target="#flush-collapseFilters" aria-expanded="false" aria-controls="flush-collapseFilters">
+                                <i class="ri-filter-3-line me-2"></i> Filters
+                            </button>
+                        </h2>
+                        <div id="flush-collapseFilters" class="accordion-collapse collapse" aria-labelledby="flush-headingFilters"
+                            data-bs-parent="#filterAccordion">
+                            <div class="accordion-body">
+                                <div class="row mb-3">
+                                    <!-- User ID Filter -->
+                                    <div class="col-md-2">
+                                        <label class="form-label">User ID</label>
+                                        <input type="text" class="form-control" id="user-id-filter" placeholder="Enter User ID">
+                                    </div>
+                
+                                    <!-- User Name Filter -->
+                                    <div class="col-md-2">
+                                        <label class="form-label">User Name</label>
+                                        <input type="text" class="form-control" id="user-name-filter" placeholder="Enter User Name">
+                                    </div>
+                
+                                    <!-- Role Dropdown Filter -->
+                                    <div class="col-md-3">
+                                        <label class="form-label">Role</label>
+                                        <select class="form-select" id="role-filter">
+                                            <option value="" selected>All Roles</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <!-- Submit and Reset Buttons -->
+                                    <div class="col-md-3 d-flex align-items-end">
+                                        <button class="btn btn-primary me-2 w-50" id="apply-user-filters">Submit</button>
+                                        <button class="btn btn-warning w-50 me-2" id="reset-user-filters">Reset</button>
+                                        <button class="btn btn-danger w-50 me-2" id="generate-user-pdf">PDF</button>
+                                        <button class="btn btn-secondary w-50 me-2" id="generate-user-csv">CSV</button>
+                                        <button class="btn btn-success w-50" id="generate-user-excel">Excel</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                
+                <table id="user_table" class="table table-bordered table-responsive align-middle" style="width:100%">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Role</th>
+                            <th>Email</th>
+                            <th>Mobile</th>
+                            <th>Company</th>
+                            <th>Location</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+                <div id="spinner-container" class="text-center my-3" style="display: none;">
+                    <div class="spinner-border text-dark" role="status">
+                        <span class="sr-only">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- BEGIN User Update Modal -->
+<div class="modal fade" id="userModal" tabindex="-1" role="dialog" aria-labelledby="userModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+       <div class="modal-content">
+          <div class="modal-header">
+             <h5 class="modal-title" id="userModalLabel">User Details</h5>
+             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body m-3">
+             <!-- Alert container -->
+             <div id="alertContainer"></div>
+             <form id="updateUserForm">
+                <input type="hidden" id="userId" name="userId">
+                <div class="row">
+                   <div class="mb-3 col-md-4">
+                      <label for="userName" class="form-label">Name</label>
+                      <input type="text" id="userName" name="userName" class="form-control">
+                      <div id="userNameError" class="invalid-feedback"></div>
+                   </div>
+                   <div class="mb-3 col-md-4">
+                      <label for="userEmail" class="form-label">Email</label>
+                      <input type="email" class="form-control" id="userEmail" name="userEmail" readonly>
+                      <div id="userEmailError" class="invalid-feedback"></div>
+                   </div>
+                   <div class="mb-3 col-md-4">
+                      <label for="userMobile" class="form-label">Mobile</label>
+                      <input type="number" class="form-control" id="userMobile" name="userMobile">
+                      <div id="userMobileError" class="invalid-feedback"></div>
+                   </div>
+                </div>
+                <div class="row">
+                   <div class="mb-3 col-md-4">
+                      <label for="userIsActive" class="form-label">Status</label>
+                      <select id="userIsActive" name="userIsActive" class="form-select">
+                         <option value="true">Active</option>
+                         <option value="false">Inactive</option>
+                      </select>
+                      <div id="userIsActiveError" class="invalid-feedback"></div>
+                   </div>
+                   <div class="mb-3 col-md-4">
+                      <label for="userCompany" class="form-label">Company</label>
+                      <input type="text" class="form-control" id="userCompany" name="userCompany">
+                      <div id="userCompanyError" class="invalid-feedback"></div>
+                   </div>
+                   <div class="mb-3 col-md-4">
+                      <label for="userLocation" class="form-label">Location</label>
+                      <input type="text" class="form-control" id="userLocation" name="userLocation">
+                      <div id="userLocationError" class="invalid-feedback"></div>
+                   </div>
+                </div>
+                <div class="row">
+                   <div class="mb-3 col-md-4">
+                      <label for="userRole" class="form-label">Role</label>
+                      <select class="form-select" id="userRole" name="userRole">
+                         <!-- Options will be dynamically populated via JavaScript -->
+                      </select>
+                      <div id="userRoleError" class="invalid-feedback"></div>
+                   </div>
+                </div>
+             </form>
+          </div>
+          <div class="modal-footer">
+             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+             <button type="button" id="updateUserBtn" class="btn btn-primary" onclick="updateUserData()">Update</button>
+          </div>
+       </div>
+    </div>
+ </div>
+ <!-- END  modal -->
+ <!-- BEGIN User Delete Modal -->
+ <div class="modal fade" id="deleteModal" tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-md" role="document">
+       <div class="modal-content">
+          <div class="modal-header">
+             <h5 class="modal-title" id="deleteModalLabel">Delete User</h5>
+             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body m-3">
+             <div id="alertContainerDelete"></div>
+             <p class="mb-0">Are you sure you want to delete user with ID:&nbsp;<span id="userIdDisplay" class="text-success"></span>&nbsp;?</p>
+          </div>
+          <div class="modal-footer">
+             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>
+             <button type="button" id="confirmDelete" class="btn btn-danger">Yes, Delete</button>
+          </div>
+       </div>
+    </div>
+ </div>
+ <!-- END  modal -->
+
+<script>
+
+$(document).ready(function() {
+    $.ajax({
+        type: 'GET',
+        url: "{% url 'get_roles' %}",  // Ensure this matches your URL pattern
+        success: function(response) {
+            console.log("Roles received:", response);
+            var roleSelect = $('#role-filter');
+            roleSelect.empty();
+            roleSelect.append('<option value="" selected>All Roles</option>');
+            
+            $.each(response.roles, function(index, role) {
+                roleSelect.append('<option value="' + role.id + '">' + role.role_name + '</option>');
+            });
+        },
+        error: function(xhr, status, error) {
+            console.error('Error fetching roles:', error);
+        }
+    });
+});
+
+
+$(document).ready(function () {
+    var user_datatable = $('#user_table').DataTable({
+        pagingType: "full_numbers",
+        hover: true,
+        ordering: true,
+        searching: true,
+        order: [[0, 'asc']], // Order by ID
+        lengthMenu: [[5, 10, 25, 50, -1], [5, 10, 25, 50, "All"]],
+        pageLength: 5,
+        columns: [
+            { data: 'id' },
+            { data: 'name' },
+            { data: 'role' },
+            { data: 'email' },
+            { data: 'mobile' },
+            { data: 'company' },
+            { data: 'location' },
+            { data: 'status' },
+            {
+                     data: null,
+                     render: function (data, type, row) {
+                        return `
+                              <div class="dropdown d-inline-block">
+                                 <button class="btn btn-soft-secondary btn-sm dropdown" type="button" data-bs-toggle="dropdown">
+                                    <i class="ri-more-fill align-middle"></i>
+                                 </button>
+                                 <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><astyle="cursor: pointer;" onclick="openViewModal(${row.id})" class="dropdown-item">
+                                          <i class="ri-eye-fill align-bottom me-2 text-muted"></i> View
+                                    </a></li>
+                                    <li><a style="cursor: pointer;" title="Update" onclick="openUpdateModal(${row.id})" class="dropdown-item">
+                                          <i class="ri-pencil-fill align-bottom me-2 text-muted"></i> Edit
+                                    </a></li>
+                                    <li><button type="button" class="dropdown-item" style="cursor: pointer;" title="Delete" onclick="deleteUser(${row.id})">
+                                          <i class="ri-delete-bin-fill align-bottom me-2 text-muted"></i> Delete
+                                    </button></li>
+                                 </ul>
+                              </div>
+                        `;
+                     }
+                  }
+        ]
+    });
+
+    function show_user_datatable_data(filters = {}) {
+        $('#spinner-container').show(); // Show loading spinner
+
+        $.ajax({
+            url: "/user-list/",
+            method: "GET",
+            data: filters,
+            success: function (response) {
+                console.log(response);
+                user_datatable.clear().rows.add(response.users || []).draw(false);
+            },
+            error: function (xhr, textStatus, errorThrown) {
+                console.error("Error fetching user data: ", textStatus, errorThrown);
+            },
+            complete: function () {
+                $('#spinner-container').hide(); // Hide spinner
+            }
+        });
+    }
+
+    // Load initial data
+    show_user_datatable_data();
+
+    // Apply filters
+    $('#apply-user-filters').click(function () {
+        var filters = {
+            user_id: $('#user-id-filter').val(),
+            user_name: $('#user-name-filter').val(),
+            role: $('#role-filter').val()
+        };
+        show_user_datatable_data(filters);
+    });
+
+    // Reset filters
+    $('#reset-user-filters').click(function () {
+        $('#user-id-filter').val('');
+        $('#user-name-filter').val('');
+        $('#role-filter').val('');
+        show_user_datatable_data();
+    });
+
+    $('#generate-user-pdf').click(function () {  
+    let filters = {
+        user_id: $('#user-id-filter').val()?.trim() || '',
+        user_name: $('#user-name-filter').val()?.trim() || '',
+        role: $('#user-role-filter').val()?.trim() || ''
+    };
+    
+    console.log(filters);  // Debugging: check values before sending
+
+    window.location.href = `/generate-user-pdf/?` + $.param(filters);
+});
+
+
+    $('#generate-user-csv').click(function () { 
+        let filters = {
+            user_id: $('#user-id-filter').val()?.trim() || '',
+            user_name: $('#user-name-filter').val()?.trim() || '',
+            role: $('#role-filter').val()?.trim() || ''
+        };
+
+        window.location.href = `/generate-user-csv/?` + $.param(filters);
+    });
+
+    $('#generate-user-excel').click(function () { 
+        let filters = {
+            user_id: $('#user-id-filter').val()?.trim() || '',
+            user_name: $('#user-name-filter').val()?.trim() || '',
+            role: $('#role-filter').val()?.trim() || ''
+        };
+
+        window.location.href = `/generate-user-excel/?` + $.param(filters);
+    });
+
+
+});
+
+
+
+  // openViewModal function
+  window.openViewModal = function(userId) {
+       $.ajax({
+       url: '/get_user_details/' + userId + '/',
+       method: 'GET',
+       success: function(data) {
+       $('#userId').val(data.id);
+       $('#userName').val(data.name);
+       $('#userEmail').val(data.email);
+       $('#userMobile').val(data.mobile_no);
+       $('#userCompany').val(data.company);
+       $('#userLocation').val(data.location);
+       $('#userIsActive').val(data.is_active.toString()); // Set the is_active status
+       
+       // Populate role select field
+       var roleSelect = $('#userRole');
+       roleSelect.empty(); // Clear previous options
+       if (data.all_roles && data.all_roles.length > 0) {
+       $.each(data.all_roles, function(index, role) {
+         roleSelect.append('<option value="' + role.id + '">' + role.role_name + '</option>');
+       });
+       } else {
+       roleSelect.append('<option value="">No Roles Found</option>');
+       }
+       
+       // Select current role if available
+       if (data.role_id) {
+       roleSelect.val(data.role_id);
+       }
+       
+       $('#updateUserBtn').hide();
+       $('#userModal').modal('show');
+       },
+       error: function(err) {
+       console.error('Error fetching user details:', err);
+       alert('Failed to fetch user details. Please try again.');
+       }
+       });
+       }
+       
+       
+       // Function to open modal for updating user details
+       function openUpdateModal(userId) {
+       $.ajax({
+       url: '/get_user_details/' + userId + '/',
+       method: 'GET',
+       success: function(data) {
+       $('#userId').val(data.id);
+       $('#userName').val(data.name);
+       $('#userEmail').val(data.email);
+       $('#userMobile').val(data.mobile_no);
+       $('#userCompany').val(data.company);
+       $('#userLocation').val(data.location);
+       
+       // Populate role select field
+       var roleSelect = $('#userRole');
+       roleSelect.empty(); // Clear previous options
+       if (data.all_roles && data.all_roles.length > 0) {
+       $.each(data.all_roles, function(index, role) {
+         roleSelect.append('<option value="' + role.id + '">' + role.role_name + '</option>');
+       });
+       } else {
+       roleSelect.append('<option value="">No Roles Found</option>');
+       }
+       
+       // Select current role if available
+       if (data.role_id) {
+       roleSelect.val(data.role_id);
+       }
+       
+       // Set is_active status
+       $('#userIsActive').val(data.is_active.toString());
+       
+       $('#updateUserBtn').show();
+       $('#userModal').modal('show');
+       },
+       error: function(err) {
+       console.error('Error fetching user details:', err);
+       alert('Failed to fetch user details. Please try again.');
+       }
+       });
+       }
+       
+       function showAlert(message, type, containerId) {
+          var alertHtml = `
+              <div class="alert alert-${type} alert-dismissible" role="alert">
+                  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                  <div class="alert-message">
+                      ${message}
+                  </div>
+              </div>
+          `;
+          $('#' + containerId).html(alertHtml);
+          setTimeout(function() {
+              $('#' + containerId + ' .alert').alert('close');
+          }, 2000); // 2-second delay before auto-closing the alert
+       }
+    
+       
+    // UpdateUserData 
+    function updateUserData() {
+    var userId = $('#userId').val();
+    var userName = $('#userName').val();
+    var userEmail = $('#userEmail').val();
+    var userMobile = $('#userMobile').val();
+    var userCompany = $('#userCompany').val();
+    var userLocation = $('#userLocation').val();
+    var userRole = $('#userRole').val();
+    var userIsActive = $('#userIsActive').val();
+    
+    // Clear previous error messages
+    $('.invalid-feedback').text('');
+    $('.form-control').removeClass('is-invalid');
+    
+    // Perform client-side validation
+    var isValid = true;
+    var errorFields = new Set();
+    
+    // Helper function to validate a field
+    function validateField(selector, errorMessage, regex, minLength, maxLength) {
+        var $field = $(selector);
+        var value = $field.val().trim();
+        var $errorDiv = $field.siblings('.invalid-feedback');
+    
+        $errorDiv.text('');
+        $field.removeClass('is-invalid');
+    
+        if (value === '' || (regex && !regex.test(value))) {
+            $field.addClass('is-invalid');
+            $errorDiv.text(errorMessage);
+            isValid = false;
+            errorFields.add(selector.replace('#user', '').replace(/([A-Z])/g, ' $1').trim());
+        }
+    
+        if (minLength && value.length < minLength) {
+            $field.addClass('is-invalid');
+            $errorDiv.text(`Minimum ${minLength} characters required.`);
+            isValid = false;
+            errorFields.add(selector.replace('#user', '').replace(/([A-Z])/g, ' $1').trim());
+        }
+    
+        if (maxLength && value.length > maxLength) {
+            $field.addClass('is-invalid');
+            $errorDiv.text(`Maximum ${maxLength} characters allowed.`);
+            isValid = false;
+            errorFields.add(selector.replace('#user', '').replace(/([A-Z])/g, ' $1').trim());
+        }
+    }
+    
+    // Validate fields
+    validateField('#userName', 'Name is required', null, 5, 30);
+    validateField('#userEmail', 'Invalid email format', /^[^\s@]+@[^\s@]+\.[^\s@]+$/);
+    validateField('#userMobile', 'Invalid mobile number format', /^[6-9]\d{9}$/);
+    validateField('#userCompany', 'Company is required', null, 5, 30);
+    validateField('#userLocation', 'Location is required', null, 5, 30);
+    
+    // Show a general alert if there are validation errors
+    if (!isValid) {
+        var errorMessage = '<strong>Please correct the following errors :&nbsp;</strong> ' +
+            Array.from(errorFields).join(', ') + ' are required.';
+        showAlert(errorMessage, 'danger', 'alertContainer');
+        return; // Stop the function if validation fails
+    }
+    
+    $.ajax({
+        type: 'POST',
+        url: '{% url "update_user" %}',
+        data: {
+            userId: userId,
+            userName: userName,
+            userEmail: userEmail,
+            userMobile: userMobile,
+            userCompany: userCompany,
+            userLocation: userLocation,
+            userRole: userRole,
+            userIsActive: userIsActive,
+            csrfmiddlewaretoken: '{{ csrf_token }}'
+        },
+        success: function(response) {
+            if (response.success) {
+                showAlert('User updated successfully', 'success', 'alertContainer');
+                setTimeout(function() {
+                    $('#userModal').modal('hide');
+                    window.location.reload();
+                }, 2000);
+            } else {
+                var errorFields = new Set();
+                $.each(response.errors, function(field, errorMsg) {
+                    errorFields.add(field);
+                    var $field = $('#' + field);
+                    var $errorDiv = $field.siblings('.invalid-feedback');
+                    $errorDiv.text(errorMsg);
+                    $field.addClass('is-invalid');
+                });
+    
+                // Show a general alert if there are errors
+                if (errorFields.size > 0) {
+                    var errorMessage = '<strong>Failed to update user:</strong> Please fix the errors.';
+                    showAlert(errorMessage, 'danger', 'alertContainer');
+                }
+            }
+        },
+        error: function(xhr, status, error) {
+            showAlert('Failed to update user: ' + error, 'danger', 'alertContainer');
+        }
+    });
+    }
+    
+    // Function to show alert messages
+    function showAlert(message, type, containerId) {
+    var alertHtml = `<div class="alert alert-${type} alert-dismissible fade show p-2" role="alert">
+                      ${message}
+                      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                   </div>`;
+    $('#' + containerId).html(alertHtml);
+    }
+    
+    // Function to reset the update form
+    function resetForm() {
+    document.getElementById('updateUserForm').reset();
+    // Clear custom error messages
+    document.querySelectorAll('.invalid-feedback').forEach(function(feedback) {
+        feedback.textContent = '';
+    });
+    // Clear alert container
+    document.getElementById('alertContainer').innerHTML = '';
+    }
+    
+    // Add event listener for modal hide event
+    document.getElementById('userModal').addEventListener('hidden.bs.modal', function() {
+    resetForm();
+    });
+    
+    // Add event listener for form submission
+    $('#updateUserForm').on('submit', function(event) {
+    event.preventDefault(); // Prevent the default form submission
+    updateUserData(); // Call the update function
+    });
+    
+    
+    // get_role     
+     $(document).ready(function() {
+       // Fetch roles on page load
+       $.ajax({
+           type: 'GET',
+           url: "{% url 'get_roles' %}",
+           success: function(response) {
+               var roleSelect = $('#role');
+               var roles = response.roles;
+               roleSelect.empty();  // Clear existing options
+               roleSelect.append('<option value="" disabled selected>Select a role</option>');  // Default option
+               $.each(roles, function(index, role) {
+                   roleSelect.append('<option value="' + role.id + '">' + role.role_name + '</option>');
+               });
+           },
+           error: function(response) {
+               console.log('Error fetching roles:', response);
+               showAlert('Failed to load roles', 'danger', 'alertContainerForm');
+           }
+       });
+    
+       // Form submission
+       $('#userForm').on('submit', function(e) {
+           e.preventDefault();
+           submitForm();  // Call your submitForm function
+       });
+    });
+    
+    // Delete User 
+    function deleteUser(userId, userName) {
+    // Populate user ID and name in the modal
+    $('#userIdDisplay').text(userId);
+    $('#userNameDisplay').text(userName);
+
+    // Show the modal
+    $('#deleteModal').modal('show');
+
+    // Add a one-time event listener to the confirm button
+    $('#confirmDelete').one('click', function() {
+        $.ajax({
+            type: 'POST',
+            url: '/delete_user/',  // URL to your delete view
+            data: {
+                'user_id': userId,
+                'csrfmiddlewaretoken': '{{ csrf_token }}'  // CSRF token for security
+            },
+            success: function(response) {
+                if (response.success) {
+                    // Show success alert
+                    showAlertDelete('User deleted successfully', 'success', 'alertContainerDelete');
+
+                    // Find the row with data-id equal to userId and fade it out
+                    var deletedRow = $('#userTable').find(`tr[data-id="${userId}"]`);
+
+                    // Delay before removing the row
+                    setTimeout(function() {
+                        deletedRow.fadeOut(400, function() {
+                            $(this).remove();  // Remove the row from DOM after fadeout
+                        });
+
+                        // Hide the modal after a short delay
+                        $('#deleteModal').modal('hide');
+
+                        // Reload the page after hiding the modal
+                        setTimeout(function() {
+                            window.location.reload();
+                        }, 400); // Slight delay to ensure the modal is fully hidden before reload
+
+                    }, 1500); // 1.5-second delay before starting fade out
+
+                } else {
+                    showAlertDelete('Failed to delete user: ' + response.message, 'danger', 'alertContainerDelete');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Error deleting user:', error);
+                showAlertDelete('Failed to delete user. Please try again.', 'danger', 'alertContainerDelete');
+            }
+        });
+    });
+}
+
+    function showAlertDelete(message, type, containerId) {
+    var alertHtml = `
+        <div class="alert alert-${type} alert-dismissible" role="alert">
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            <div class="alert-message">
+                ${message}
+            </div>
+        </div>
+    `;
+    $('#' + containerId).html(alertHtml);
+    setTimeout(function() {
+        $('#' + containerId + ' .alert').alert('close');
+    }, 1500); // 2-second delay before auto-closing the alert
+    }
+
+     // Auto-hide messages after 5 seconds
+     $(document).ready(function() {
+        setTimeout(function() {
+            $(".alert").alert('close');
+        }, 5000);
+    });
+
+
+    function clearFormData() {
+    document.getElementById("userForm").reset();
+    // Optionally, you can also clear any message container here if needed
+    document.getElementById("message-container").innerHTML = '';
+    }
+
+</script>
+
+<!-- end page title -->
+{% endblock %}
+{% block custom_script %}
+{% endblock %}

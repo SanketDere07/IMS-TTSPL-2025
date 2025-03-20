@@ -1,0 +1,554 @@
+{% extends 'base.html' %}
+{% block title %} Backup & Recovery | TTSPL IMS - Trisnota Technical Services Pvt. Ltd.{% endblock %}
+{% block content %}
+<style>
+    .table-box {
+        border: 1px solid #ccc; /* Light gray border */
+        padding: 10px; /* Padding inside the box */
+        border-radius: 5px; /* Slightly rounded corners */
+        max-height: 250px; /* Max height for scrolling */
+        overflow: hidden; /* Hide overflow for the outer box */
+        position: relative; /* Positioning context for absolute elements */
+    }
+
+    .table-box h4 {
+        position: sticky; /* Make the heading sticky */
+        top: 0; /* Stick to the top of the box */
+        background: white; /* Set background color for visibility */
+        padding: 5px; /* Optional padding for the heading */
+        z-index: 1; /* Ensure heading is above other content */
+        margin: 0; /* Remove default margin */
+    }
+
+    .table-list {
+        max-height: 300px; /* Max height for the scrolling area */
+        overflow-y: auto; /* Scrollbar if content exceeds height */
+        display: grid; /* Use grid to layout the items */
+        grid-template-columns: repeat(2, 1fr); /* Change to 2 columns */
+        gap: 4px; /* Space between items */
+    }
+
+    .table-box label {
+        display: flex;
+        align-items: center; /* Center align items vertically */
+    }
+
+    /* Optional: Styling checkboxes */
+    .table-box input[type="checkbox"] {
+        margin-right: 5px;
+        margin-left: 5px;
+    }
+    .canvasjs-chart-credit {
+        display: none;
+    }
+</style>
+<div class="row">
+    <div class="col-12">
+       <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
+          <h4 class="mb-sm-0">Backup & Recovery</h4>
+          <div class="page-title-right">
+             <ol class="breadcrumb m-0">
+                <li class="breadcrumb-item"><a href="#">Dashboards</a></li>
+                <li class="breadcrumb-item active">Backup & Recovery</li>
+             </ol>
+          </div>
+       </div>
+    </div>
+ </div>
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+           <div class="card-header d-flex align-items-center">
+              <h5 class="card-title mb-0 flex-grow-1">Import Database</h5>
+           </div>
+           <div class="card-body">
+            <form id="importForm" enctype="multipart/form-data" class="form-group">
+                {% csrf_token %}
+           <div class="row">
+              <div class="mb-3 col-md-4">
+                 <label class="form-label" for="sql_file">Select SQL File</label>
+                 <div>
+                    <input type="file"  class="form-control" name="sql_file" id="sql_file" accept=".sql" required>
+                 </div>
+              </div>
+              <div class="mb-3 col-md-4 d-flex justify-content-start align-items-end">
+                 <button  class="btn btn-secondary mx-1"  type="button" id="showModalBtn">Select Table</button>
+                 <button  class="btn btn-primary" type="submit" id="importBtn" disabled>Import</button>
+              </div>
+           </div>
+        </form> 
+        <div id="result-show"></div>
+        </div>
+           </div>
+        </div>
+     </div>
+     <div class="modal fade" id="tableModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Select Tables to Import</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body m-3">
+                    <div>
+                        <input type="checkbox" id="selectAll"> Select All
+                    </div>
+                    <div id="tableList"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" id="addTablesBtn">Add</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-12">
+        <div class="card">
+           <div class="card-header d-flex align-items-center">
+              <h5 class="card-title mb-0 flex-grow-1">Export Database</h5>
+           </div>
+           <div class="card-body">
+            <form method="POST" action="{% url 'export_db' %}" class="form-group">
+                {% csrf_token %}
+           <div class="row">
+              <div class="mb-3 col-md-5">
+                 <label class="form-label" for="table_name">Select Tables</label>
+                 <div class="d-flex">
+                    <select class="form-control w-100"  name="table_name" id="table_name" multiple required>
+                        <option value="all">All Tables</option>
+                         <!-- Options will be populated dynamically by JavaScript -->   
+                    </select>
+                 </div>
+              </div>
+              <div class="mb-3 col-md-3">
+                 <label class="form-label" for="start_date">Start Date</label>
+                 <div>
+                    <input type="date" name="start_date" id="start_date" class="form-control">
+                 </div>
+              </div>
+              <div class="mb-3 col-md-3">
+                 <label class="form-label" for="end_date">End Date</label>
+                 <div>
+                    <input type="date" name="end_date" id="end_date" class="form-control">
+                 </div>
+              </div>
+              <div class="mb-3 col-md-4 d-flex justify-content-start align-items-end">
+                 <button type="submit" class="btn btn-primary">Export</button>
+              </div>
+           </div>
+        </form>
+           </div>
+         
+           </div>
+        </div>
+     </div>
+
+     <div class="col-lg-12">
+        <div class="card">
+           <div class="card-header d-flex align-items-center">
+              <h5 class="card-title mb-0 flex-grow-1">Scheduled Data Backup & Cleanup
+            </h5>
+           </div>
+           <div class="card-body">
+            <div id="alert-container"></div>
+            <form id="backup-form" method="post" action="{% url 'schedule_backup' %}">
+                {% csrf_token %}
+        
+                <div class="row">
+                    <div class="mb-3 col-md-3">
+                       <label class="form-label" for="days">Backup Duration (Days)</label>
+                       <div>
+                          <input type="number" id="days" name="days" min="1" class="form-control" 
+                                 placeholder="Enter days" required value="{{ schedule_data.days }}">
+                       </div>
+                    </div>
+                    <div class="mb-3 col-md-3">
+                        <label class="form-label" for="operation-select">Scheduled Operation</label>
+                        <select id="operation-select" name="operations" class="form-select">
+                           <option value="" disabled selected>Select Operation</option>
+                           <option value="backup">Backup</option>
+                           <option value="cleanup">Cleanup</option>
+                           <option value="backup_cleanup">Backup & Cleanup</option>
+                           <option value="never">Never</option>
+                        </select>
+                     </div>
+                    <div class="mb-3 col-md-4 d-flex justify-content-start align-items-end">
+                       <button type="submit" class="btn btn-primary" >Backup Schedule</button>
+                    </div>
+                 </div>
+
+                 <div class="accordion" id="accordionExample">
+                    <div class="accordion-item">
+                      <h2 class="accordion-header" id="headingOne">
+                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
+                            Select Tables for Backup
+                        </button>
+                      </h2>
+                      <div id="collapseOne" class="accordion-collapse collapse" aria-labelledby="headingOne" data-bs-parent="#accordionExample">
+                        <div class="accordion-body">
+                            <div class="row mb-3">
+                                <div class="col-md-6 col-xl-4 mb-2 mb-md-0">
+                                    <div class="input-group mb-1">
+                                        <input type="text" id="search-bar-auto" class="form-control" placeholder="Search for tables...">
+                                        <button id="clear-search" class="btn btn-secondary" type="button">Clear</button>
+                                    </div> 
+                                </div>
+                                <div class="col-md-6 col-xl-8">
+                                    <div class="text-sm-end">
+                                        <label>
+                                            <input type="checkbox" id="select-all" class="form-check-input"> Select All Tables
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                
+                            <div class="row">
+                                <div id="table-list" class="table-list py-3">
+                                    <!-- Dynamically added checkboxes with pre-selection for existing schedules -->
+                                </div>
+                            </div>
+                            
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+            </form>
+
+            <div class="mt-4 table-responsive-md pt-0">    
+                <table id="backup_details_table" class="table table-striped w-100">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Backup Name</th>
+                            <th>Info</th>
+                            <th>From Date</th>
+                            <th>To Date</th>
+                            <th>Scheduled Operation</th>
+                            <th>File Size</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+                <div id="spinner-container" class="text-center my-3" style="display: none;">
+                    <div class="spinner-border text-dark" role="status">
+                        <span class="sr-only">Loading...</span>
+                    </div>
+                </div>
+            </div>
+           </div>
+         
+           </div>
+        </div>
+     </div>
+
+
+
+
+</div>
+
+
+<script>
+    $(document).ready(function() {
+        // Fetch tables and existing schedule data via AJAX
+        $.ajax({
+            url: "{% url 'get_tables_ajax' %}",
+            method: "GET",
+            success: function(response) {
+                // Set the backup duration and operation if exists
+                if (response.schedule_data && response.schedule_data.days) {
+                    $('#days').val(response.schedule_data.days);
+                }
+                if (response.schedule_data && response.schedule_data.operation) {
+                    $('#operation-select').val(response.schedule_data.operation);
+                }
+    
+                // Populate table list with checkboxes
+                var tableListDiv = $('#table-list');
+                var selectedTables = response.schedule_data ? response.schedule_data.tables : [];
+                var checkboxGroupHtml = '<div class="row">';
+    
+                response.tables.forEach(function(table, index) {
+                    var isChecked = selectedTables.includes(table) ? 'checked' : '';
+                    var checkbox = `
+                        <label class="py-1">
+                            <input type="checkbox" name="tables" value="${table}" class="table-checkbox" ${isChecked}>
+                            ${table}
+                        </label>`;
+    
+                    checkboxGroupHtml += checkbox;
+    
+                    if ((index + 1) % 2 === 0) {
+                        checkboxGroupHtml += '</div><div class="row">';
+                    }
+                });
+    
+                checkboxGroupHtml += '</div>';
+                tableListDiv.append(checkboxGroupHtml);
+    
+                // Search functionality
+                $('#search-bar-auto').on('keyup', function() {
+                    var searchTerm = $(this).val().toLowerCase();
+                    $('.table-checkbox').each(function() {
+                        var tableLabel = $(this).parent().text().toLowerCase();
+                        if (tableLabel.includes(searchTerm)) {
+                            $(this).parent().show();
+                        } else {
+                            $(this).parent().hide();
+                        }
+                    });
+                });
+    
+                // Clear search input
+                $('#clear-search').on('click', function() {
+                    $('#search-bar-auto').val('');
+                    $('.table-checkbox').parent().show();
+                });
+    
+                // "Select All" checkbox functionality
+                $('#select-all').on('change', function() {
+                    $('.table-checkbox').prop('checked', $(this).prop('checked'));
+                });
+            },
+            error: function(xhr, status, error) {
+                console.error("Error fetching tables:", error);
+            }
+        });
+    
+        // Form submission
+        $('#backup-form').on('submit', function(event) {
+            event.preventDefault();
+    
+            // Validation
+            var backupDays = $('#days').val();
+            var operation = $('#operation-select').val();
+            var atLeastOneTableChecked = $('.table-checkbox:checked').length > 0;
+    
+            if (!backupDays || backupDays < 1) {
+                displayAlert('Please enter a valid Backup Duration (Days).', 'danger');
+                return;
+            }
+    
+            if (!operation) {
+                displayAlert('Please select a Scheduled Operation.', 'danger');
+                return;
+            }
+    
+            if (!atLeastOneTableChecked) {
+                displayAlert('Please select at least one table for backup.', 'danger');
+                return;
+            }
+    
+            // Submit the form via AJAX
+            $.ajax({
+                url: $(this).attr('action'),
+                method: "POST",
+                data: $(this).serialize(),
+                success: function(response) {
+                    displayAlert(response.success_message, 'success');
+                    setTimeout(function() {
+                        $('.alert').alert('close');
+                    }, 3000);
+                },
+                error: function(xhr, status, error) {
+                    displayAlert('An error occurred while updating the backup schedule.', 'danger');
+                }
+            });
+        });
+    
+        // Function to display alert messages
+        function displayAlert(message, type) {
+            var alertHtml = `
+                <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    <div class="alert-message">${message}</div>
+                </div>`;
+            $('#alert-container').html(alertHtml);
+        }
+
+
+        var backupDetailsTable = $('#backup_details_table').DataTable({
+            pagingType: "full_numbers",
+            hover: true,
+            searching: true,
+            "order": [[0, 'desc']],
+            lengthMenu: [[5, 10, 25, 50, -1], [5, 10, 25, 50, "All"]],
+            pageLength: 5,
+            columns: [
+                { data: 'id', title: 'ID', className: 'text-center' },
+                { 
+                    data: 'sql_file_name', 
+                    title: 'Backup Name', 
+                    className: 'text-center',
+                    render: function(data, type, row) {
+                        return `<a href="/download-sql/${row.id}/">${row.sql_file_name}</a>`;
+                    }
+                },
+                { 
+                    data: 'txt_file_name', 
+                    title: 'File Info', 
+                    className: 'text-center',
+                    render: function(data, type, row) {
+                        return `<a href="/download-txt/${row.id}/">${row.txt_file_name}</a>`;
+                    }
+                },
+                { 
+                    data: 'from_date', 
+                    title: 'From Date', 
+                    className: 'text-center',
+                    render: function(data, type, row) {
+                        // Format to display only the date part
+                        return new Date(data).toLocaleDateString();
+                    }
+                },
+                { 
+                    data: 'to_date', 
+                    title: 'To Date', 
+                    className: 'text-center',
+                    render: function(data, type, row) {
+                        // Format to display only the date part
+                        return new Date(data).toLocaleDateString();
+                    }
+                },
+                { data: 'scheduled_operation', title: 'Scheduled Operation', className: 'text-center' },
+                { 
+                    data: 'file_size', 
+                    title: 'File Size (MB)', 
+                    className: 'text-center',
+                    render: function(data, type, row) {
+                        return `${row.file_size} MB`;
+                    }
+                }
+            ]
+        });
+        
+        function loadBackupDetails() {
+            $('#spinner-container').show();
+            
+            $.ajax({
+                url: "/fetch-backup-details/",
+                method: "GET",
+                success: function(response) {
+                    backupDetailsTable.clear().rows.add(response.backup_data).draw(false);
+                },
+                error: function(xhr, textStatus, errorThrown) {
+                    console.log("Error fetching backup data: ", textStatus, errorThrown);
+                },
+                complete: function() {
+                    $('#spinner-container').hide();
+                }
+            });
+        }
+        
+        loadBackupDetails();
+        
+    });
+ </script>  
+ <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // Initialize Select2 select box
+        $("select[name=\"validation-select2\"]").select2({
+            allowClear: true,
+            placeholder: "Select gear...",
+        }).change(function() {
+            $(this).valid();
+        });
+        // Initialize Select2 multiselect box
+        $("select[name=\"table_name\"]").select2({
+            placeholder: "Select Table...",
+        }).change(function() {
+            $(this).valid();
+        });
+    });
+ </script>
+
+<script>
+    $(document).ready(function() {
+      $('#showModalBtn').on('click', function() {
+          var formData = new FormData($('#importForm')[0]);
+          
+          $.ajax({
+              url: "{% url 'import_db' %}",
+              type: 'POST',
+              data: formData,
+              processData: false,
+              contentType: false,
+              success: function(response) {
+                  if (response.error) {
+                      $('#result-show').html('<p style="color: red;">' + response.error + '</p>');
+                  } else {
+                      var tableList = $('#tableList');
+                      tableList.empty();
+                      $.each(response.tables, function(index, table) {
+                          tableList.append('<div><input type="checkbox" name="tables" value="' + table + '"> ' + table + '</div>');
+                      });
+                      $('#tableModal').modal('show');
+                  }
+              },
+              error: function(xhr) {
+                  $('#result-show').html('<p style="color: red;">' + xhr.responseText + '</p>');
+              }
+          });
+      });
+  
+      // Handle "Select All" checkbox
+      $('#selectAll').on('change', function() {
+          $('input[name="tables"]').prop('checked', this.checked);
+      });
+  
+      $('#addTablesBtn').on('click', function() {
+          $('#tableModal').modal('hide');
+          $('#importBtn').prop('disabled', false);
+      });
+  
+      $('#importForm').on('submit', function(e) {
+          e.preventDefault();
+          
+          var formData = new FormData(this);
+          formData.append('selected_tables', JSON.stringify($('input[name="tables"]:checked').map(function() {
+              return this.value;
+          }).get()));
+  
+          $.ajax({
+              url: "{% url 'import_db' %}",
+              type: 'POST',
+              data: formData,
+              processData: false,
+              contentType: false,
+              success: function(response) {
+                  $('#result-show').html('<p style="color: green;">' + response.messages.join('<br>') + '</p>');
+              },
+              error: function(xhr) {
+                  $('#result-show').html('<p style="color: red;">' + xhr.responseText + '</p>');
+              }
+          });
+      });
+  });
+</script>
+<script>
+    $(document).ready(function() {
+        // Fetch table names via AJAX when the page loads
+        $.ajax({
+            url: "{% url 'export_db' %}",
+            type: "GET",
+            dataType: "json",
+            success: function(response) {
+                var tableSelect = $('#table_name');
+                tableSelect.empty();  // Clear existing options
+                tableSelect.append('<option value="all">All Tables</option>');  // Add option for all tables
+                $.each(response.table_names, function(index, table) {
+                    tableSelect.append('<option value="' + table + '">' + table + '</option>');
+                });
+            },
+            error: function() {
+                alert("Failed to load table names.");
+            }
+        });
+    });
+</script>
+
+<!-- end page title -->
+{% endblock %}
+{% block custom_script %}
+{% endblock %}

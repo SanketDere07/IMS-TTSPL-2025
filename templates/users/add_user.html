@@ -1,0 +1,289 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %} User | TTSPL IMS - Trisnota Technical Services Pvt. Ltd.{% endblock %}
+{% block content %}
+<!-- start page title -->
+
+<div class="row">
+    {% load permissions_filters %}
+
+    <div class="col-12">
+        <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
+            <h4 class="mb-sm-0">Create User</h4>
+            <div class="page-title-right">
+                <ol class="breadcrumb m-0">
+                    <li class="breadcrumb-item"><a href="#">Dashboard</a></li>
+                    <li class="breadcrumb-item active">Create User</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header align-items-center d-flex">
+                <h4 class="card-title mb-0 flex-grow-1">New User</h4>
+                <div class="flex-shrink-0">
+                   <a class="btn btn-secondary" href="user_list_page">< Back</a>
+                </div>
+             </div>
+            <div class="card-body">
+                <div id="alertContainerForm"></div>
+                <form id="userForm" method="post">
+                   {% csrf_token %}
+                   <div class="row">
+                      <div class="mb-3 col-md-4">
+                        <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+
+                         <label class="form-label" for="name">Full Name</label>
+                         <input type="text" id="name" name="name" class="form-control" placeholder="Name"
+                            minlength="2" maxlength="30" required
+                            data-error-message="Full name must be between 5 and 30 characters long.">
+                         <div class="invalid-feedback" id="nameError"></div>
+                      </div>
+                      <div class="mb-3 col-md-4">
+                         <label for="username" class="form-label">Username</label>
+                         <input type="text" id="username" name="username" class="form-control" placeholder="Username"
+                            minlength="2" maxlength="30" required
+                            data-error-message="Username must be between 5 and 30 characters long.">
+                         <div class="invalid-feedback" id="usernameError"></div>
+                      </div>
+                      <div class="mb-3 col-md-4">
+                         <label for="email" class="form-label">Email</label>
+                         <input type="email" id="email" name="email" class="form-control" placeholder="Email" required
+                            data-error-message="Enter a valid email address.">
+                         <div class="invalid-feedback" id="emailError"></div>
+                      </div>
+                   </div>
+                   <div class="row">
+                      <div class="mb-3 col-md-4">
+                         <label for="password" class="form-label">Password</label>
+                         <input type="password" id="password" name="password" class="form-control" placeholder="Password" required
+                            data-error-message="Password is required.">
+                         <div class="invalid-feedback" id="passwordError"></div>
+                      </div>
+                      <div class="mb-3 col-md-4">
+                         <label for="role" class="form-label">Role</label>
+                         <select id="role" name="role" class="form-select" required
+                            data-error-message="Role is required.">
+                            <option value="" disabled selected>Select a role</option>
+                         </select>
+                         <div class="invalid-feedback" id="roleError"></div>
+                      </div>
+                      <div class="mb-3 col-md-4">
+                         <label for="mobile_no" class="form-label">Mobile No</label>
+                         <input type="text" id="mobile_no" name="mobile_no" class="form-control" placeholder="Mobile No"
+                            pattern="\d{10}" required
+                            data-error-message="Enter a valid 10-digit phone number.">
+                         <div class="invalid-feedback" id="mobile_noError"></div>
+                      </div>
+                   </div>
+                   <div class="row">
+                      <div class="mb-3 col-md-4">
+                         <label for="company" class="form-label">Company</label>
+                         <input type="text" id="company" name="company" class="form-control" placeholder="Company"
+                            minlength="2" maxlength="30" required
+                            data-error-message="Company name must be between 5 and 30 characters long.">
+                         <div class="invalid-feedback" id="companyError"></div>
+                      </div>
+                      <div class="mb-3 col-md-4">
+                         <label for="location" class="form-label">Location</label>
+                         <input type="text" id="location" name="location" class="form-control" placeholder="Location"
+                            minlength="2" maxlength="30" required
+                            data-error-message="Location must be between 5 and 30 characters long.">
+                         <div class="invalid-feedback" id="locationError"></div>
+                      </div>
+                      <div class="row mt-2">
+                        <div class="mb-3 col-md-4">
+                            <button type="button" class="btn btn-success" onclick="submitForm()">Add Users</button>
+                            <button type="button" class="btn btn-danger" onclick="clearFormData()">Clear</button>
+                        </div>
+                    </div>
+                   </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+ function submitForm() {
+    var form = $('#userForm');
+
+    // Clear previous error messages
+    $('.invalid-feedback').text('');
+    $('.form-control').removeClass('is-invalid');
+
+    $.ajax({
+        type: 'POST',
+        url: "{% url 'add_user' %}",
+        data: form.serialize(),
+        success: function(response) {
+            if (response.success) {
+                showAlert('User added successfully', 'success', 'alertContainerForm');
+                setTimeout(function() {
+                    window.location.href = '/user_list_page'; // Redirect to user list page
+                }, 2000); // Redirect after 2 seconds
+            } else {
+                // Create a Set to collect unique field names with errors
+                var errorFields = new Set();
+
+                // Collect error messages for the alert
+                $.each(response.errors, function(field, errorMsg) {
+                    errorFields.add(field.charAt(0).toUpperCase() + field.slice(1)); // Capitalize field names
+                });
+
+                // Create a concatenated error message for the alert
+                var errorMessage = '<strong>Failed to add user :&nbsp; </strong>' + Array.from(errorFields).join(', ') + ' are required.';
+                showAlert(errorMessage, 'danger', 'alertContainerForm');
+
+                // Display field-specific validation errors
+                $.each(response.errors, function(field, errorMsg) {
+                    var errorDiv = $('#' + field + 'Error');
+                    errorDiv.text(errorMsg); // Set the error message
+                    $('#' + field).addClass('is-invalid'); // Add 'is-invalid' class for styling
+                });
+            }
+        },
+        error: function(response) {
+            showAlert('Failed to add user: ' + response.responseText, 'danger', 'alertContainerForm');
+            console.log('Error:', response);
+        }
+    });
+}
+
+
+ // Function to show alert messages
+ function showAlert(message, type, containerId) {
+    var alertHtml = `<div class="alert alert-${type} alert-dismissible fade show p-2" role="alert">
+                      ${message}
+                      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                   </div>`;
+    $('#' + containerId).html(alertHtml);
+    }
+
+
+    $.ajax({
+    type: 'GET',
+    url: "{% url 'get_roles' %}",
+    headers: { "X-CSRFToken": "{{ csrf_token }}" },  // Add CSRF token
+    success: function(response) {
+        console.log("Roles received:", response);
+        var roleSelect = $('#role');
+        roleSelect.empty();
+        roleSelect.append('<option value="" disabled selected>Select a role</option>');
+        $.each(response.roles, function(index, role) {
+            roleSelect.append('<option value="' + role.id + '">' + role.role_name + '</option>');
+        });
+    },
+    error: function(response) {
+        console.log('Error fetching roles:', response);
+        showAlert('Failed to load roles', 'danger', 'alertContainerForm');
+    }
+});
+
+    
+    document.addEventListener('DOMContentLoaded', function() {
+       const form = document.getElementById('userForm');
+    
+       // Function to validate input fields
+       function validateInput(input) {
+           const value = input.value.trim();
+           const errorDiv = document.getElementById(input.id + 'Error');
+           const errorMessage = input.getAttribute('data-error-message');
+           let isValid = true;
+    
+           // Clear previous errors
+           errorDiv.textContent = '';
+           input.classList.remove('is-invalid');
+    
+           // Check for required fields
+           if (input.required && !value) {
+               isValid = false;
+               errorDiv.textContent = errorMessage;
+               input.classList.add('is-invalid');
+           }
+    
+           // Additional validation for specific types
+           if (input.type === 'email' && value) {
+               if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+                   isValid = false;
+                   errorDiv.textContent = errorMessage;
+                   input.classList.add('is-invalid');
+               }
+           }
+    
+           if (input.type === 'text' && value) {
+               const minLength = parseInt(input.getAttribute('minlength'), 10);
+               const maxLength = parseInt(input.getAttribute('maxlength'), 10);
+               if (value.length < minLength || value.length > maxLength) {
+                   isValid = false;
+                   errorDiv.textContent = errorMessage;
+                   input.classList.add('is-invalid');
+               }
+           }
+    
+           if (input.pattern && value) {
+               const pattern = new RegExp(input.pattern);
+               if (!pattern.test(value)) {
+                   isValid = false;
+                   errorDiv.textContent = errorMessage;
+                   input.classList.add('is-invalid');
+               }
+           }
+    
+           return isValid;
+       }
+    
+       // Attach event listeners to all inputs
+       form.querySelectorAll('input, select').forEach(input => {
+           input.addEventListener('input', function() {
+               validateInput(this);
+           });
+       });
+    
+       // Validate form on submit
+       form.addEventListener('submit', function(event) {
+           let isFormValid = true;
+           form.querySelectorAll('input, select').forEach(input => {
+               if (!validateInput(input)) {
+                   isFormValid = false;
+               }
+           });
+    
+           if (!isFormValid) {
+               event.preventDefault(); // Prevent form submission if invalid
+           }
+       });
+    });
+    
+    
+    // Function to reset the form
+    function resetForm() {
+    document.getElementById('userForm').reset();
+    // Optionally, you can also clear any custom error messages
+    document.querySelectorAll('.invalid-feedback').forEach(function(feedback) {
+      feedback.textContent = '';
+    });
+    // Optionally, you can clear any other content or states if needed
+    document.getElementById('alertContainerForm').innerHTML = '';
+    }
+
+
+       // Function to clear form data
+       function clearFormData() {
+    $('#userForm')[0].reset();  // Reset the form
+    $('.invalid-feedback').text('');  // Clear previous error messages
+    $('.form-control').removeClass('is-invalid');  // Remove 'is-invalid' class
+    }
+
+
+
+
+</script>
+
+<!-- end page title -->
+{% endblock %}
+{% block custom_script %}
+{% endblock %}

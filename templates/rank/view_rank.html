@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% load static %}
+   {% block title %} View Rack | TTSPL IMS - Trisnota Technical Services Pvt. Ltd.{% endblock %}
+   
+   {% block content %}
+   <div class="row">
+    <div class="col-12">
+        <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
+            <h4 class="mb-sm-0">View Rack</h4>
+
+            <div class="page-title-right">
+                <ol class="breadcrumb m-0">
+                    <li class="breadcrumb-item"><a href="#">Dashboards</a></li>
+                    <li class="breadcrumb-item active">Rack Details</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header align-items-center d-flex">
+                <h4 class="card-title mb-0 flex-grow-1">View Rack Details</h4>
+                <div class="flex-shrink-0">
+                    <a class="btn btn-secondary" href="/rank_list_page">< Back</a>
+                </div>
+            </div><!-- end card header -->
+            <div class="card-body">
+                <div class="live-preview">
+                    <form>
+                        <div class="row gy-4">
+                            <!-- Rank ID -->
+                            <div class="col-xxl-3 col-md-3">
+                                <div>
+                                    <label for="rankId" class="form-label">Rack ID</label>
+                                    <input type="text" class="form-control" id="rankId" value="{{ rank.id }}" readonly>
+                                </div>
+                            </div>
+                            <!-- Rank Name -->
+                            <div class="col-xxl-3 col-md-5">
+                                <div>
+                                    <label for="rankName" class="form-label">Rack Name</label>
+                                    <input type="text" class="form-control" id="rankName" value="{{ rank.name }}" readonly>
+                                </div>
+                            </div>
+                            <!-- Rank Description -->
+                            <div class="col-xxl-6 col-md-12">
+                                <div>
+                                    <label for="descriptionInput" class="form-label">Description</label>
+                                    <textarea class="form-control" id="descriptionInput" rows="3" readonly>{{ rank.details }}</textarea>
+                                </div>
+                            </div>
+                            <!-- Created On -->
+                            <div class="col-xxl-6 col-md-12">
+                                <div>
+                                    <label for="createdOnInput" class="form-label">Created On</label>
+                                    <input type="text" class="form-control" id="createdOnInput" value="{{ rank.created_on }}" readonly>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!--end col-->
+</div>
+
+  <!-- end page title -->
+   {% endblock %}
+
+   {% block custom_script %}
+   {% endblock %}

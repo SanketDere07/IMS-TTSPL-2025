@@ -1,0 +1,436 @@
+{% extends 'base.html' %}
+{% block title %} Product | TTSPL IMS - Trisnota Technical Services Pvt. Ltd.{% endblock %}
+{% block content %}
+<!-- start page title -->
+<div class="row">
+    <div class="col-12">
+        <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
+            <h4 class="mb-sm-0">Product List</h4>
+            <div class="page-title-right">
+                <ol class="breadcrumb m-0">
+                    <li class="breadcrumb-item"><a href="#">Dashboards</a></li>
+                    <li class="breadcrumb-item active">Products</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header d-flex align-items-center">
+                <h5 class="card-title mb-0 flex-grow-1">Product List</h5>
+                <div>
+                   <a class="btn btn-primary" href="product_add_page">+ Add Product</a>
+                </div>
+             </div>
+            <div class="card-body">
+                <div class="accordion accordion-primary mb-3" id="filterAccordion">
+                    <div class="accordion-item material-shadow">
+                        <h2 class="accordion-header" id="flush-headingFilters">
+                            <button class="accordion-button collapsed d-flex align-items-center" type="button" data-bs-toggle="collapse"
+                                data-bs-target="#flush-collapseFilters" aria-expanded="false" aria-controls="flush-collapseFilters">
+                                <i class="ri-filter-3-line me-2"></i> Filters
+                            </button>
+                        </h2>
+                        <div id="flush-collapseFilters" class="accordion-collapse collapse" aria-labelledby="flush-headingFilters"
+                            data-bs-parent="#filterAccordion">
+                            <div class="accordion-body">
+                                <div class="row mb-3">
+                                    <!-- Product Code Filter -->
+                                    <div class="col-md-3">
+                                        <label class="form-label">Product Code</label>
+                                        <input type="text" class="form-control" id="pcode-search" placeholder="Enter Product Code">
+                                        <div id="pcode-suggestions" class="dropdown-menu"></div> 
+                                    </div>
+
+                                    <!-- Product Name Filter (Replaced Select2 with Input Search) -->
+                                    <div class="col-md-3">
+                                        <label class="form-label">Product Name</label>
+                                        <input type="text" class="form-control" id="product-search" placeholder="Enter Product Name">
+                                        <div id="product-suggestions" class="dropdown-menu"></div> 
+                                    </div>
+                
+                                    <!-- Category Filter -->
+                                    <div class="col-md-3">
+                                        <label class="form-label">Category</label>
+                                        <select class="form-control" id="category-filter">
+                                            <option value="">Select Category</option>
+                                        </select>
+                                    </div>
+                
+                                    <!-- Subcategory Filter -->
+                                    <div class="col-md-3">
+                                        <label class="form-label">Subcategory</label>
+                                        <select class="form-control" id="subcategory-filter">
+                                            <option value="">Select Subcategory</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-12 d-flex justify-content-end">
+                                        <button class="btn btn-primary me-2" id="apply-filters">Submit</button>
+                                        <button class="btn btn-warning me-2" id="reset-filters">Reset</button>
+                                        <button class="btn btn-danger me-2" id="generate-product-pdf">PDF</button>
+                                        <button class="btn btn-secondary  me-2" id="generate-product-csv">CSV</button>
+                                        <button class="btn btn-success" id="generate-product-excel">Excel</button>
+
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <table id="product" class="table table-bordered nowrap table-striped align-middle" style="width:100%">
+                    <thead>
+                        <tr>
+                            <th>PCode</th>
+                            <th></th>
+                            <th>Product Name</th>
+                            <th>Category</th>
+                            <th>Purchase Amount</th>
+                            <th>Purchase Date</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteProductConfirmationModal" class="modal fade zoomIn" aria-labelledby="deleteProductConfirmationModalLabel" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" id="NotificationModalbtn-close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mt-2 text-center">
+                    <div id="delete_product_alert_message" class="alert alert-danger" style="display: none;">
+                        <span class="alert-message"></span>
+                    </div>
+                    <lord-icon src="https://cdn.lordicon.com/gsqxdxog.json" trigger="loop" colors="primary:#f7b84b,secondary:#f06548" style="width:100px;height:100px"></lord-icon>
+                    <div class="mt-4 pt-2 fs-15 mx-4 mx-sm-5">
+                        <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+                        <p>Are you sure you want to delete the product with ID: <span id="productIdDisplay" class="text-danger"></span>?</p>
+                        <p id="productDetails"></p>
+                    </div>
+                    <div class="d-flex gap-2 justify-content-center mt-4 mb-2">
+                        <button type="button" class="btn w-sm btn-light" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn w-sm btn-danger" id="confirmDeleteProductButton">Yes, Delete It!</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+
+
+    $(document).ready(function () { 
+    
+      // Load categories dynamically
+    $.getJSON("{% url 'get_categories' %}", function (data) {
+        $('#category-filter').append(data.categories.map(cat =>
+            `<option value="${cat.category_id}">${cat.category_name} (${cat.shortcode})</option>`
+        ));
+    });
+
+    // Product Name Search - Show Suggestions
+    $("#product-search").on("keyup", function () { 
+        let query = $(this).val().trim();
+
+        if (query.length >= 2) { 
+            $.getJSON(`/search-products/?q=${query}`, function (data) {
+                let dropdown = $("#product-suggestions").empty().show();
+                if (data.products.length > 0) {
+                    data.products.forEach(prod => {
+                        dropdown.append(`<button class="dropdown-item" data-id="${prod.product_id}">
+                            ${prod.product_name.trim()}
+                        </button>`);
+                    });
+                } else {
+                    dropdown.append('<button class="dropdown-item disabled">No products found</button>');
+                }
+            });
+        } else {
+            $("#product-suggestions").hide();
+        }
+    });
+
+    // When Product Name is selected from suggestions
+    $("#product-suggestions").on("click", ".dropdown-item:not(.disabled)", function () {
+        let productName = $(this).text().trim();
+        $("#product-search").val(productName);  // Only insert the product name
+        $("#product-suggestions").hide();  // Hide the dropdown
+    });
+
+    // PCode Search - Show Suggestions (Only Product Code)
+    $("#pcode-search").on("keyup click", function () { 
+        let query = $(this).val().trim();
+
+        if (query.length >= 2) { 
+            $.getJSON(`/search-products/?pcode=${query}`, function (data) {
+                let dropdown = $("#pcode-suggestions").empty().show();
+                if (data.products.length > 0) {
+                    data.products.forEach(prod => {
+                        dropdown.append(`<button class="dropdown-item" data-id="${prod.product_id}">
+                            ${prod.product_code.trim()}
+                        </button>`);
+                    });
+                } else {
+                    dropdown.append('<button class="dropdown-item disabled">No products found</button>');
+                }
+            });
+        } else {
+            $("#pcode-suggestions").hide();
+        }
+    });
+
+    // When a product is selected from suggestions
+    $("#product-suggestions").on("click", ".dropdown-item:not(.disabled)", function () {
+        let productName = $(this).text().trim();
+        $("#product-search").val(productName);  // Only insert the name
+        $("#product-suggestions").hide();  // Hide dropdown
+    });
+
+
+   // When PCode is selected from suggestions
+    $("#pcode-suggestions").on("click", ".dropdown-item:not(.disabled)", function () {
+        let productCode = $(this).text().trim();  // Get only the product_code
+        $("#pcode-search").val(productCode).trigger("input");  // Set PCode and trigger input event
+        $("#pcode-suggestions").hide();  // Hide the dropdown
+    });
+
+
+            // Load subcategories when category changes (without auto-filter)
+        $('#category-filter').change(function () {
+            let category_id = $(this).val();
+            $('#subcategory-filter').html('<option value="">Select Subcategory</option>');
+
+            if (category_id) {
+                $.getJSON(`/get-subcategories/${category_id}/`, function (data) {
+                    if (data.subcategories.length > 0) {
+                        $('#subcategory-filter').append(data.subcategories.map(sub =>
+                            `<option value="${sub.subcategory_id}">${sub.subcategory_name}</option>`
+                        ));
+                    } else {
+                        $('#subcategory-filter').html('<option value="">No Subcategories Available</option>');
+                    }
+                });
+            }
+        });
+
+    // Reset Filters
+    $("#reset-filters").click(function () {
+        $("#product-search").val("");
+        $("#pcode-search").val("");
+        $("#product-suggestions, #pcode-suggestions").hide();
+        $('#category-filter').val('').trigger('change');
+        $('#subcategory-filter').html('<option value="">Select Subcategory</option>');
+
+        show_product_datatable_data();
+    });
+
+
+        var product_datatable = $('#product').DataTable({
+            pagingType: "full_numbers",
+            hover: true,
+            ordering: true,
+            searching: true,
+            scrollX: true,
+            order: [[0, 'desc']],
+            lengthMenu: [[5, 10, 25, 50, -1], [5, 10, 25, 50, "All"]],
+            pageLength: 5,
+            columns: [
+                { data: 'product_code' },
+                {
+                    data: 'image',
+                    render: function(data) {
+                        return data ? `<img src="${data}" alt="Product Image" width="80" height="50">` : 'No Image';
+                    }
+                },
+                { data: 'name' },
+                { data: 'category' },
+                { data: 'purchase_amount' },
+                { data: 'purchase_date' },
+                {
+                    data: null,
+                    render: function (data, type, row) {
+                        return `
+                            <div class="dropdown d-inline-block">
+                                <button class="btn btn-soft-secondary btn-sm dropdown" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="ri-more-fill align-middle"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li>
+                                        <a href="/view-product/${row.id}" class="dropdown-item">
+                                            <i class="ri-eye-fill align-bottom me-2 text-muted"></i> View
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="/update-product/${row.id}" class="dropdown-item">
+                                            <i class="ri-pencil-fill align-bottom me-2 text-muted"></i> Edit
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <button type="button" class="dropdown-item" onclick="showDeleteModal('${row.id}')">
+                                            <i class="ri-delete-bin-fill align-bottom me-2 text-muted"></i> Delete
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
+                        `;
+                    }
+                }
+            ]
+        });
+    
+        function show_product_datatable_data(filters = {}) {
+            $.ajax({
+                url: "/get-products/",
+                method: "GET",
+                data: filters,
+                success: function (response) {
+                    product_datatable.clear().rows.add(response.products || []).draw(false);
+                },
+                error: function (xhr, textStatus, errorThrown) {
+                    console.error("Error fetching product data:", textStatus, errorThrown);
+                }
+            });
+        }
+        
+    
+        // Initial table load
+        show_product_datatable_data();
+    
+       // Filter DataTable Only on Submit Button Click
+        $("#apply-filters").on("click", function () {
+            let filters = {
+                name: $('#product-search').val().trim(),
+                pcode: $('#pcode-search').val().trim(),
+                category: $('#category-filter').val(),
+                subcategory: $('#subcategory-filter').val()
+            };
+
+            show_product_datatable_data(filters);
+        });
+
+
+        
+        $('#reset-filters').click(function () {
+            // Reset all select fields to default option
+            $('#category-filter, #subcategory-filter, #product-filter').val('').trigger('change');
+    
+            // Reload all products in DataTable
+            show_product_datatable_data();
+        });
+
+    });
+
+        $("#generate-product-pdf").click(function () {
+        let filters = {
+            name: $('#product-search').val().trim(),
+            pcode: $('#pcode-search').val().trim(),
+            category: $('#category-filter').val(),
+            subcategory: $('#subcategory-filter').val()
+        };
+
+        let queryString = $.param(filters);  // Convert filters to query string
+        window.location.href = `/generate-product-pdf/?${queryString}`; 
+    });
+
+        $("#generate-product-csv").click(function () {
+        let filters = {
+            name: $('#product-search').val().trim(),
+            pcode: $('#pcode-search').val().trim(),
+            category: $('#category-filter').val(),
+            subcategory: $('#subcategory-filter').val()
+        };
+
+        let queryString = $.param(filters);
+        window.location.href = `/generate-product-csv/?${queryString}`;
+    });
+
+        $("#generate-product-excel").click(function () {
+        let filters = {
+            name: $('#product-search').val().trim(),
+            pcode: $('#pcode-search').val().trim(),
+            category: $('#category-filter').val(),
+            subcategory: $('#subcategory-filter').val()
+        };
+
+        let queryString = $.param(filters);
+        window.location.href = `/generate-product-excel/?${queryString}`;
+    });
+
+
+
+
+ 
+    
+    
+    let productIdToDelete = null;
+
+    function showDeleteModal(productId) {
+        productIdToDelete = productId;
+        $('#productIdDisplay').text(productId);
+        $('#deleteProductConfirmationModal').modal('show');
+    }
+
+    let csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+    $('#confirmDeleteProductButton').one('click', function () {
+        if (productIdToDelete !== null) {
+            $.ajax({
+                url: `/delete-product/${productIdToDelete}/`,
+                method: 'POST',
+                data: {
+                    csrfmiddlewaretoken: csrfToken
+                },
+                success: function (response) {
+                    const alertDiv = $('#delete_product_alert_message');
+                    const alertMessageDiv = alertDiv.find('.alert-message');
+
+                    if (response.success) {
+                        alertMessageDiv.text("Product deleted successfully.");
+                        alertDiv.removeClass('alert-danger').addClass('alert-success').show();
+
+                        setTimeout(function () {
+                            window.location.reload();
+                        }, 1500);
+                    } else {
+                        alertMessageDiv.text(response.error || "Failed to delete product.");
+                        alertDiv.removeClass('alert-success').addClass('alert-danger').show();
+
+                        setTimeout(() => {
+                            alertDiv.hide();
+                        }, 2000);
+                    }
+                },
+                error: function (xhr, textStatus, errorThrown) {
+                    console.error("Error deleting product:", textStatus, errorThrown);
+                    const alertDiv = $('#delete_product_alert_message');
+                    const alertMessageDiv = alertDiv.find('.alert-message');
+                    alertMessageDiv.text("An error occurred while deleting the product.");
+                    alertDiv.removeClass('alert-success').addClass('alert-danger').show();
+                    setTimeout(() => {
+                        alertDiv.hide();
+                    }, 2000);
+                },
+            });
+        }
+    });
+</script>
+
+
+<!-- end page title -->
+{% endblock %}
+{% block custom_script %}
+{% endblock %}

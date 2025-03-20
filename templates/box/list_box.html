@@ -1,0 +1,293 @@
+{% extends 'base.html' %}
+{% block title %} Box | TTSPL IMS - Trisnota Technical Services Pvt. Ltd.{% endblock %}
+{% block content %}
+
+<div class="row">
+   <div class="col-12">
+      <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
+         <h4 class="mb-sm-0">Box Master</h4>
+         <div class="page-title-right">
+            <ol class="breadcrumb m-0">
+               <li class="breadcrumb-item"><a href="#">Dashboards</a></li>
+               <li class="breadcrumb-item active">Box</li>
+            </ol>
+         </div>
+      </div>
+   </div>
+</div>
+<div class="row">
+    <div class="col-lg-12">
+       <div class="card">
+          <div class="card-header d-flex align-items-center">
+             <h5 class="card-title mb-0 flex-grow-1">Box List</h5>
+             <div>
+                <a class="btn btn-primary" href="box_add_page">+ Add Box</a>
+             </div>
+          </div>
+          <div class="card-body">
+            <div class="accordion accordion-primary mb-3" id="filterAccordion">
+               <div class="accordion-item material-shadow">
+                   <h2 class="accordion-header" id="flush-headingFilters">
+                       <button class="accordion-button collapsed d-flex align-items-center" type="button" data-bs-toggle="collapse"
+                           data-bs-target="#flush-collapseFilters" aria-expanded="false" aria-controls="flush-collapseFilters">
+                           <i class="ri-filter-3-line me-2"></i> Filters
+                       </button>
+                   </h2>
+                   <div id="flush-collapseFilters" class="accordion-collapse collapse" aria-labelledby="flush-headingFilters"
+                       data-bs-parent="#filterAccordion">
+                       <div class="accordion-body">
+                           <div class="row mb-3">
+                               <!-- Box ID Filter -->
+                               <div class="col-md-2">
+                                   <label class="form-label">Box ID</label>
+                                   <input type="text" class="form-control" id="box-id-filter" placeholder="Enter Box ID">
+                               </div>
+           
+                               <!-- Box Name Filter -->
+                               <div class="col-md-3">
+                                   <label class="form-label">Box Name</label>
+                                   <input type="text" class="form-control" id="box-name-filter" placeholder="Enter Box Name">
+                               </div>
+           
+                               <!-- Submit, Reset, Export Buttons -->
+                               <div class="col-md-3 d-flex align-items-end">
+                                   <button class="btn btn-primary me-2 w-50" id="apply-box-filters">Submit</button>
+                                   <button class="btn btn-warning w-50 me-2" id="reset-box-filters">Reset</button>
+                                   <button class="btn btn-danger w-50 me-2" id="generate-box-pdf">PDF</button>
+                                   <button class="btn btn-secondary w-50 me-2" id="generate-box-csv">CSV</button>
+                                   <button class="btn btn-success w-50" id="generate-box-excel">Excel</button>
+                               </div>
+                           </div>
+                       </div>
+                   </div>
+               </div>
+           </div>
+           
+             <table id="box" class="table table-bordered table-responsive align-middle" style="width:100%">
+                <thead>
+                   <tr>
+                      <th>ID</th>
+                      <th>Name</th>
+                      <th>Description</th>
+                      <th>Action</th>
+                   </tr>
+                </thead>
+                <tbody>
+                </tbody>
+             </table>
+          </div>
+       </div>
+    </div>
+ </div>
+
+ <!-- Delete Confirmation Modal -->
+ <div id="deleteBoxConfirmationModal" class="modal fade zoomIn" aria-labelledby="deleteBoxConfirmationModalLabel" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+       <div class="modal-content">
+          <div class="modal-header">
+             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" id="NotificationModalbtn-close"></button>
+          </div>
+          <div class="modal-body">
+             <div class="mt-2 text-center">
+                <div id="delete_box_alert_message" class="alert alert-danger" style="display: none;">
+                   <span class="alert-message"></span>
+                </div>
+                <lord-icon src="https://cdn.lordicon.com/gsqxdxog.json" trigger="loop" colors="primary:#f7b84b,secondary:#f06548" style="width:100px;height:100px"></lord-icon>
+                <div class="mt-4 pt-2 fs-15 mx-4 mx-sm-5">
+                   <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+                   <p>Are you sure you want to delete the box with ID: <span id="boxIdDisplay" class="text-danger"></span>?</p>
+                </div>
+                <div class="d-flex gap-2 justify-content-center mt-4 mb-2">
+                   <button type="button" class="btn w-sm btn-light" data-bs-dismiss="modal">Close</button>
+                   <button type="button" class="btn w-sm btn-danger" id="confirmDeleteBoxButton">Yes, Delete It!</button>
+                </div>
+             </div>
+          </div>
+       </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+ </div><!-- /.modal -->
+
+<script>
+      $(document).ready(function () {
+         var box_datatable = $('#box').DataTable({
+            pagingType: "full_numbers",
+            hover: true,
+            ordering: true,
+            searching: true,
+            order: [[0, 'asc']], // Order by ID
+            lengthMenu: [[5, 10, 25, 50, -1], [5, 10, 25, 50, "All"]],
+            pageLength: 5,
+            columns: [
+                  { data: 'id' },
+                  { data: 'name' },
+                  { data: 'description' },
+                  {
+                     data: null,
+                     render: function (data, type, row) {
+                        return `
+                              <div class="dropdown d-inline-block">
+                                 <button class="btn btn-soft-secondary btn-sm dropdown" type="button" data-bs-toggle="dropdown">
+                                    <i class="ri-more-fill align-middle"></i>
+                                 </button>
+                                 <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a href="/view-box/${row.id}" class="dropdown-item">
+                                          <i class="ri-eye-fill align-bottom me-2 text-muted"></i> View
+                                    </a></li>
+                                    <li><a href="/update-box/${row.id}" class="dropdown-item">
+                                          <i class="ri-pencil-fill align-bottom me-2 text-muted"></i> Edit
+                                    </a></li>
+                                    <li><button type="button" class="dropdown-item" onclick="showDeleteModal('${row.id}')">
+                                          <i class="ri-delete-bin-fill align-bottom me-2 text-muted"></i> Delete
+                                    </button></li>
+                                 </ul>
+                              </div>
+                        `;
+                     }
+                  }
+            ]
+         });
+
+         function show_box_datatable_data(filters = {}) {
+            $('#spinner-container').show(); // Show loading spinner
+
+            $.ajax({
+                  url: "/box-list/",
+                  method: "GET",
+                  data: filters,
+                  success: function (response) {
+                     console.log(response);
+                     box_datatable.clear().rows.add(response.boxes || []).draw(false);
+                  },
+                  error: function (xhr, textStatus, errorThrown) {
+                     console.error("Error fetching box data: ", textStatus, errorThrown);
+                  },
+                  complete: function () {
+                     $('#spinner-container').hide(); // Hide spinner
+                  }
+            });
+         }
+
+         // Load initial data
+         show_box_datatable_data();
+
+         // Apply filters
+         $('#apply-box-filters').click(function () {
+            var filters = {
+                  box_id: $('#box-id-filter').val(),
+                  box_name: $('#box-name-filter').val()
+            };
+            show_box_datatable_data(filters);
+         });
+
+         // Reset filters
+         $('#reset-box-filters').click(function () {
+            $('#box-id-filter').val('');
+            $('#box-name-filter').val('');
+            show_box_datatable_data();
+         });
+      });
+
+
+      $('#generate-box-pdf').click(function () {  
+      let filters = {
+         box_id: $('#box-id-filter').val()?.trim() || '',
+         box_name: $('#box-name-filter').val()?.trim() || '',
+      };
+
+      window.location.href = `/generate-box-pdf/?` + $.param(filters);
+   });
+
+
+
+      $('#generate-box-csv').click(function () { 
+      let filters = {
+         box_name: $('#box-name-filter').val()?.trim() || ''
+      };
+
+      // Redirect to CSV download URL with filters
+      window.location.href = `/generate-box-csv/?` + $.param(filters);
+   });
+
+   $('#generate-box-excel').click(function () {
+      let filters = {
+         box_name: $('#box-name-filter').val()?.trim() || ''
+      };
+
+      // Redirect to Excel download URL with filters
+      window.location.href = `/generate-box-excel/?` + $.param(filters);
+   });
+
+
+
+    let boxIdToDelete = null;
+    
+    function showDeleteModal(boxId) {
+        boxIdToDelete = boxId;
+        $('#boxIdDisplay').text(boxId);
+        $('#deleteBoxConfirmationModal').modal('show');
+    }
+    
+    let csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    
+    // Handle the delete confirmation
+    $('#confirmDeleteBoxButton').one('click', function () {
+        if (boxIdToDelete !== null) {
+            $.ajax({
+                url: `/delete-box/${boxIdToDelete}/`,
+                method: 'POST',
+                data: {
+                    csrfmiddlewaretoken: csrfToken 
+                },
+                success: function (response) {
+                    const alertDiv = $('#delete_box_alert_message');
+                    const alertMessageDiv = alertDiv.find('.alert-message');
+    
+                    if (response.success) {
+                        alertMessageDiv.text("Box deleted successfully.");
+                        alertDiv.removeClass('alert-danger').addClass('alert-success').show();
+    
+                        var deletedRow = $('#box').find(`tr[data-id="${boxIdToDelete}"]`);
+    
+                        setTimeout(function () {
+                            deletedRow.fadeOut(400, function () {
+                                $(this).remove();
+                            });
+    
+                            $('#deleteBoxConfirmationModal').modal('hide');
+    
+                            setTimeout(function () {
+                                window.location.reload();
+                            }, 400);
+                        }, 1500);
+                    } else {
+                        alertMessageDiv.text(response.error || "Failed to delete box.");
+                        alertDiv.removeClass('alert-success').addClass('alert-danger').show();
+    
+                        setTimeout(() => {
+                            alertDiv.hide();
+                        }, 2000);
+                    }
+                },
+                error: function (xhr, textStatus, errorThrown) {
+                    console.error("Error deleting box:", textStatus, errorThrown);
+    
+                    const alertDiv = $('#delete_box_alert_message');
+                    const alertMessageDiv = alertDiv.find('.alert-message');
+    
+                    alertMessageDiv.text("An error occurred while deleting the box.");
+                    alertDiv.removeClass('alert-success').addClass('alert-danger').show();
+    
+                    setTimeout(() => {
+                        alertDiv.hide();
+                    }, 2000);
+                },
+            });
+        }
+    });
+</script>
+
+
+<!-- end page title -->
+{% endblock %}
+{% block custom_script %}
+{% endblock %}

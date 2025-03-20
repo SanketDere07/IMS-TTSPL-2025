@@ -1,0 +1,168 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %} View Stock | TTSPL IMS - Trisnota Technical Services Pvt. Ltd.{% endblock %}   
+{% block content %}
+<!-- Print CSS -->
+<style>
+    /* Hide the logo in normal view */
+    .print-only {
+        display: none;
+    }
+
+    /* Show the logo only in print view */
+    @media print {
+        body * {
+            visibility: hidden;
+        }
+        #printableArea, #printableArea * {
+            visibility: visible;
+        }
+        #printableArea {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+        }
+        .print-only {
+            display: block !important;
+            text-align: center;
+        }
+        #pdfHeader img {
+            width: 100%;
+            height: auto;
+        }
+    }
+</style>
+
+   <div class="row">
+    <div class="col-12">
+        <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
+            <h4 class="mb-sm-0">View Stock</h4>
+
+            <div class="page-title-right">
+                <ol class="breadcrumb m-0">
+                    <li class="breadcrumb-item"><a href="#">Dashboards</a></li>
+                    <li class="breadcrumb-item active">Stock Details</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header align-items-center d-flex">
+                <h4 class="card-title mb-0 flex-grow-1">View Stock Details</h4>
+                <div class="flex-shrink-0">
+                    <button class="btn btn-cancel close-btn fs-13 btn-danger shadow-none" onclick="printForm()"><i class="ri-printer-fill me-2"></i>Print</button>
+                    <a class="btn btn-secondary" href="/stock_list_page">< Back</a>
+                </div>
+            </div>
+            <!-- end card header -->
+            <div class="card-body">
+                <div class="live-preview" id="printableArea">
+                    
+                    <!-- PDF Header (Hidden in Normal View) -->
+                    <div class="text-center mb-3 print-only" id="pdfHeader">
+                        <img src="{% static 'assets/images/pdf/report_header.png' %}" alt="Company Logo" class="img-fluid" style="max-width: 100%; height: auto;">
+                        <h2 class="mt-2">View Stock Product Details</h2>
+                        <hr>
+                    </div>
+
+                    <form>
+                        <div class="row gy-4">
+                            {% if barcodes %}
+                                {% for barcode in barcodes %}
+                                    <div class="col-xxl-3 col-md-2">
+                                        <div class="d-flex flex-column align-items-start">
+                                            <label class="form-label mb-2">Barcode</label>
+                                            {% if barcode.barcode_image %}
+                                                <img src="{{ barcode.barcode_image.url }}" class="img-fluid mb-3" alt="Barcode"
+                                                     style="width: 150px; height: auto; object-fit: contain;">
+                                            {% else %}
+                                                <p>No Barcode Image</p>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+
+                                    <div class="col-xxl-3 col-md-4">
+                                        <div>
+                                            <label class="form-label">Barcode Label</label>
+                                            <input type="text" class="form-control mb-3" value="{{ barcode.barcode_text }}" readonly>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            {% else %}
+                                <p>No barcodes available for this stock.</p>
+                            {% endif %}
+                        </div>
+
+                        <div class="row gy-4">
+                            <div class="col-xxl-3 col-md-3">
+                                <div>
+                                    <label class="form-label">Stock ID</label>
+                                    <input type="text" class="form-control" value="{{ stock.stock_id }}" readonly>
+                                </div>
+                            </div>
+                            <div class="col-xxl-3 col-md-5">
+                                <div>
+                                    <label class="form-label">Product Name</label>
+                                    <input type="text" class="form-control" value="{{ stock.product_name }}" readonly>
+                                </div>
+                            </div>
+                            <div class="col-xxl-3 col-md-4">
+                                <div>
+                                    <label class="form-label">Category Name</label>
+                                    <input type="text" class="form-control" value="{{ stock.category_name }}" readonly>
+                                </div>
+                            </div>
+                            <div class="col-xxl-3 col-md-4">
+                                <div>
+                                    <label class="form-label">Subcategory Name</label>
+                                    <input type="text" class="form-control" value="{{ stock.subcategory_name }}" readonly>
+                                </div>
+                            </div>
+                            <div class="col-xxl-3 col-md-4">
+                                <div>
+                                    <label class="form-label">Location</label>
+                                    <input type="text" class="form-control" value="{{ stock.location }}" readonly>
+                                </div>
+                            </div>
+                            <div class="col-xxl-3 col-md-3">
+                                <div>
+                                    <label class="form-label">Rack</label>
+                                    <input type="text" class="form-control" value="{{ stock.rack }}" readonly>
+                                </div>
+                            </div>
+                            <div class="col-xxl-3 col-md-3">
+                                <div>
+                                    <label class="form-label">Box</label>
+                                    <input type="text" class="form-control" value="{{ stock.box }}" readonly>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function printForm() {
+        var printContents = document.getElementById("printableArea").innerHTML;
+        var originalContents = document.body.innerHTML;
+
+        document.body.innerHTML = printContents;
+        window.print();
+        document.body.innerHTML = originalContents;
+        location.reload(); // Reload page to restore form
+    }
+</script>
+
+  <!-- end page title -->
+   {% endblock %}
+
+   {% block custom_script %}
+   {% endblock %}

@@ -1,0 +1,212 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %} View Product  | TTSPL IMS - Trisnota Technical Services Pvt. Ltd.{% endblock %}   
+{% block content %}
+<!-- Print CSS -->
+<style>
+    /* Hide the logo in normal view */
+    .print-only {
+        display: none;
+    }
+
+    /* Show the logo only in print view */
+    @media print {
+        body * {
+            visibility: hidden;
+        }
+        #printableArea, #printableArea * {
+            visibility: visible;
+        }
+        #printableArea {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+        }
+        .print-only {
+            display: block !important;
+            text-align: center;
+        }
+        #pdfHeader img {
+            width: 100%;
+            height: auto;
+        }
+    }
+</style>
+
+     <!-- start page title -->
+     <div class="row">
+        <div class="col-12">
+            <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
+                <h4 class="mb-sm-0">View Product</h4>
+                <div class="page-title-right">
+                    <ol class="breadcrumb m-0">
+                        <li class="breadcrumb-item"><a href="#">Dashboards</a></li>
+                        <li class="breadcrumb-item active">Product List</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card">
+                <div class="card-header align-items-center d-flex">
+                    <h4 class="card-title mb-0 flex-grow-1">Product Details</h4>
+                    <div class="flex-shrink-0">
+                        <button class="btn btn-cancel close-btn fs-13 btn-danger shadow-none" onclick="printProductDetails()"><i class="ri-printer-fill me-2"></i>Print</button>
+                        <a class="btn btn-secondary" href="/product_list_page">< Back</a>
+                    </div>
+                </div>
+                <div class="card-body" id="printSection">
+                    <div class="live-preview">
+                          <!-- PDF Header (Hidden in Normal View) -->
+                    <div class="text-center mb-3 print-only" id="pdfHeader">
+                        <img src="{% static 'assets/images/pdf/report_header.png' %}" alt="Company Logo" class="img-fluid" style="max-width: 100%; height: auto;">
+                        <h2 class="mt-2">View Product Details</h2>
+                        <hr>
+                    </div>
+                        <form>
+                            <div class="row gy-4">
+                                <!-- Barcode Image -->
+                                <div class="col-xxl-3 col-md-3">
+                                    <div>
+                                        <label class="form-label">Product Barcode</label>
+                                        <div>
+                                            {% if product.barcode_image %}
+                                                <img src="{{ product.barcode_image }}" alt="Barcode Image" class="img-thumbnail" style="width: 150px; height: 122px;">
+                                            {% else %}
+                                                <p>No barcode image available</p>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Product ID -->
+                                <div class="col-xxl-3 col-md-4">
+                                    <div>
+                                        <label for="productId" class="form-label">Product ID</label>
+                                        <input type="text" class="form-control" id="productId" value="{{ product.id }}" readonly>
+                                    </div>
+                                </div>
+                                <!-- Product Code -->
+                                <div class="col-xxl-3 col-md-4">
+                                    <div>
+                                        <label for="productCode" class="form-label">Product Code</label>
+                                        <input type="text" class="form-control" id="productCode" value="{{ product.product_code }}" readonly>
+                                    </div>
+                                </div>
+                                <!-- Product Name -->
+                                <div class="col-xxl-3 col-md-6">
+                                    <div>
+                                        <label for="productName" class="form-label">Product Name</label>
+                                        <input type="text" class="form-control" id="productName" value="{{ product.name }}" readonly>
+                                    </div>
+                                </div>
+                                <!-- Category -->
+                                <div class="col-xxl-3 col-md-4">
+                                    <div>
+                                        <label for="categoryInput" class="form-label">Category</label>
+                                        <input type="text" class="form-control" id="categoryInput" value="{{ product.category }}" readonly>
+                                    </div>
+                                </div>
+                                <!-- Subcategory -->
+                                <div class="col-xxl-3 col-md-4">
+                                    <div>
+                                        <label for="subcategoryInput" class="form-label">Subcategory</label>
+                                        <input type="text" class="form-control" id="subcategoryInput" value="{{ product.subcategory }}" readonly>
+                                    </div>
+                                </div>
+                                <!-- Size -->
+                                <div class="col-xxl-3 col-md-4">
+                                    <div>
+                                        <label for="sizeInput" class="form-label">Size (L x B x H)</label>
+                                        <input type="text" class="form-control" id="sizeInput" value="{{ product.size }}" readonly>
+                                    </div>
+                                </div>
+                                <!-- Weight -->
+                                <div class="col-xxl-3 col-md-4">
+                                    <div>
+                                        <label for="weightInput" class="form-label">Weight</label>
+                                        <input type="text" class="form-control" id="weightInput" value="{{ product.weight }} kg" readonly>
+                                    </div>
+                                </div>
+                                <!-- Manufacture Name -->
+                                <div class="col-xxl-6 col-md-6">
+                                    <div>
+                                        <label for="manufactureName" class="form-label">Manufacturer</label>
+                                        <input type="text" class="form-control" id="manufactureName" value="{{ product.manufacture_name }}" readonly>
+                                    </div>
+                                </div>
+                                <!-- Barcode -->
+                                <div class="col-xxl-3 col-md-4">
+                                    <div>
+                                        <label for="barcodeInput" class="form-label">Barcode</label>
+                                        <input type="text" class="form-control" id="barcodeInput" value="{{ product.barcode }}" readonly>
+                                    </div>
+                                </div>
+                                <!-- Description -->
+                                <div class="col-xxl-6 col-md-12">
+                                    <div>
+                                        <label for="description" class="form-label">Description</label>
+                                        <textarea class="form-control" id="description" rows="5" readonly>{{ product.description }}</textarea>
+                                    </div>
+                                </div>
+                                <!-- Vendor -->
+                                <div class="col-xxl-3 col-md-4">
+                                    <div>
+                                        <label for="vendorInput" class="form-label">Vendor</label>
+                                        <input type="text" class="form-control" id="vendorInput" value="{{ product.vendor }}" readonly>
+                                    </div>
+                                </div>
+                                <!-- Purchase Date -->
+                                <div class="col-xxl-3 col-md-4">
+                                    <div>
+                                        <label for="purchaseDate" class="form-label">Purchase Date</label>
+                                        <input type="text" class="form-control" id="purchaseDate" value="{{ product.purchase_date }}" readonly>
+                                    </div>
+                                </div>
+                                <!-- Purchase Amount -->
+                                <div class="col-xxl-3 col-md-4">
+                                    <div>
+                                        <label for="purchaseAmount" class="form-label">Purchase Amount</label>
+                                        <input type="text" class="form-control" id="purchaseAmount" value="{{ product.purchase_amount }} $" readonly>
+                                    </div>
+                                </div>
+                                <!-- Product Images -->
+                                <div class="col-xxl-12 col-md-12">
+                                    <div>
+                                        <label class="form-label">Product Images</label>
+                                        <div class="d-flex flex-wrap gap-2">
+                                            {% for image in product.images %}
+                                                <img src="{{ image.image.url }}" alt="Product Image" class="img-thumbnail" style="width: 100px; height: 100px;">
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+    function printProductDetails() {
+        var printContents = document.getElementById("printSection").innerHTML;
+        var originalContents = document.body.innerHTML;
+    
+        document.body.innerHTML = printContents;
+        window.print();
+        document.body.innerHTML = originalContents;
+    }
+    </script>
+    
+
+
+  <!-- end page title -->
+   {% endblock %}
+
+   {% block custom_script %}
+   {% endblock %}

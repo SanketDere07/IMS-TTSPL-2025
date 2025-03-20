@@ -1,0 +1,63 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark" data-layout="fluid" data-sidebar-theme="dark" data-sidebar-position="left" data-sidebar-behavior="sticky">
+<meta http-equiv="content-type" content="text/html;charset=UTF-8" />
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+	<meta name="description" content="Responsive Bootstrap 5 Admin &amp; Dashboard Template">
+	<meta name="author" content="Bootlab">
+
+	<title>Access Denied</title>
+
+	<link rel="canonical" href="auth-405.html" />
+	<link rel="shortcut icon" href="img/favicon.ico">
+
+	<link rel="preconnect" href="https://fonts.googleapis.com/">
+	<link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500&amp;display=swap" rel="stylesheet">
+
+    <link href="{% static 'css/app.css' %}" rel="stylesheet">
+    <link href="{% static 'css/custom.css' %}" rel="stylesheet">
+    <!-- BEGIN SETTINGS -->
+    <!-- Remove this after purchasing -->
+    <script src="{% static 'js/settings.js' %}"></script>
+	<!-- END SETTINGS -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Function to redirect after a delay
+            function redirectAfterDelay(url, delay) {
+                setTimeout(function() {
+                    window.location.href = url;
+                }, delay);
+            }
+
+            // Perform the redirection directly after the delay
+            redirectAfterDelay('/dashboard_page', 3000); // Redirect after 2 seconds (2000 seconds)
+        });
+    </script>
+</head>
+
+<body>
+	<div class="auth-full-page d-flex">
+		<div class="auth-form p-1">
+
+			<div class="text-center">
+				<h3 class="display-1 fw-bold">404</h3>
+				<p class="h3">You do not have permission to access this page.</p>
+				<p class="lead fw-normal mt-1 mb-3">If you do not have permission, you will be redirected automatically.</p>
+				<a class='btn btn-primary btn-lg' href='dashboard_page'>Return To DTS-VER-3</a>
+			</div>
+
+		</div>
+	</div>
+
+    <script src="{% static 'js/app.js' %}"></script>
+
+
+</body>
+
+
+</html>
+

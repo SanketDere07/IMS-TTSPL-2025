@@ -1,0 +1,189 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %} View Employee | TTSPL IMS - Trisnota Technical Services Pvt. Ltd.{% endblock %}
+{% block content %}
+<style>
+    /* Hide the logo in normal view */
+    .print-only {
+        display: none;
+    }
+
+    /* Show the logo only in print view */
+    @media print {
+        body * {
+            visibility: hidden;
+        }
+        #printableArea, #printableArea * {
+            visibility: visible;
+        }
+        #printableArea {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+        }
+        .print-only {
+            display: block !important;
+            text-align: center;
+        }
+        #pdfHeader img {
+            width: 100%;
+            height: auto;
+        }
+    }
+</style>
+     <!-- start page title -->
+     <div class="row">
+      <div class="col-12">
+          <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
+              <h4 class="mb-sm-0">View Employee </h4>
+
+              <div class="page-title-right">
+                  <ol class="breadcrumb m-0">
+                      <li class="breadcrumb-item"><a href="#">Dashboards</a></li>
+                      <li class="breadcrumb-item active">Employee List</li>
+                  </ol>
+              </div>
+
+          </div>
+      </div>
+  </div>
+
+  <div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header align-items-center d-flex">
+                <h4 class="card-title mb-0 flex-grow-1">View Employee Details</h4>
+                <div class="flex-shrink-0">
+                    <button class="btn btn-cancel close-btn fs-13 btn-danger shadow-none" onclick="printForm()">
+                        <i class="ri-printer-fill me-2"></i>Print
+                    </button>
+                    <a class="btn btn-secondary" href="/employee_list_page">< Back</a>
+                </div>
+            </div>
+            <!-- end card header -->
+            <div class="card-body">
+                <div class="live-preview" id="printableArea">
+                    
+                    <!-- PDF Header (Hidden in Normal View) -->
+                    <div class="text-center mb-3 print-only" id="pdfHeader">
+                        <img src="{% static 'assets/images/pdf/report_header.png' %}" alt="Company Logo" class="img-fluid" style="max-width: 100%; height: auto;">
+                        <h2 class="mt-2">View Employee Details</h2>
+                        <hr>
+                    </div>
+
+                    <form>
+                        <div class="row gy-4">
+                            <!-- Employee ID -->
+                            <div class="col-xxl-3 col-md-3">
+                                <div>
+                                    <label class="form-label">Employee ID</label>
+                                    <input type="text" class="form-control" value="{{ employee.id }}" readonly>
+                                </div>
+                            </div>
+                            <!-- Employee Code -->
+                            <div class="col-xxl-3 col-md-3">
+                                <div>
+                                    <label class="form-label">Employee Code</label>
+                                    <input type="text" class="form-control" value="{{ employee.employee_code }}" readonly>
+                                </div>
+                            </div>
+                            <!-- Name -->
+                            <div class="col-xxl-3 col-md-5">
+                                <div>
+                                    <label class="form-label">Name</label>
+                                    <input type="text" class="form-control" value="{{ employee.name }}" readonly>
+                                </div>
+                            </div>
+                            <!-- Designation -->
+                            <div class="col-xxl-3 col-md-4">
+                                <div>
+                                    <label class="form-label">Designation</label>
+                                    <input type="text" class="form-control" value="{{ employee.designation }}" readonly>
+                                </div>
+                            </div>
+                            <!-- Location -->
+                            <div class="col-xxl-3 col-md-4">
+                                <div>
+                                    <label class="form-label">Location</label>
+                                    <input type="text" class="form-control" value="{{ employee.location }}" readonly>
+                                </div>
+                            </div>
+                            <!-- Work Location -->
+                            <div class="col-xxl-3 col-md-4">
+                                <div>
+                                    <label class="form-label">Work Location</label>
+                                    <input type="text" class="form-control" value="{{ employee.work_location }}" readonly>
+                                </div>
+                            </div>
+                            <!-- Address -->
+                            <div class="col-xxl-6 col-md-12">
+                                <div>
+                                    <label class="form-label">Address</label>
+                                    <textarea class="form-control" rows="3" readonly>{{ employee.address }}</textarea>
+                                </div>
+                            </div>
+                            <!-- Date of Birth -->
+                            <div class="col-xxl-3 col-md-4">
+                                <div>
+                                    <label class="form-label">Date of Birth</label>
+                                    <input type="text" class="form-control" value="{{ employee.date_of_birth }}" readonly>
+                                </div>
+                            </div>
+                            <!-- Mobile Number -->
+                            <div class="col-xxl-3 col-md-4">
+                                <div>
+                                    <label class="form-label">Mobile Number</label>
+                                    <input type="text" class="form-control" value="{{ employee.mobile_number }}" readonly>
+                                </div>
+                            </div>
+                            <!-- Email -->
+                            <div class="col-xxl-3 col-md-4">
+                                <div>
+                                    <label class="form-label">Email</label>
+                                    <input type="text" class="form-control" value="{{ employee.email }}" readonly>
+                                </div>
+                            </div>
+                            <!-- Aadhaar Card -->
+                            <div class="col-xxl-3 col-md-4">
+                                <div>
+                                    <label class="form-label">Aadhaar Card</label>
+                                    <input type="text" class="form-control" value="{{ employee.aadhaar_card }}" readonly>
+                                </div>
+                            </div>
+                            <!-- PAN Card -->
+                            <div class="col-xxl-3 col-md-4">
+                                <div>
+                                    <label class="form-label">PAN Card</label>
+                                    <input type="text" class="form-control" value="{{ employee.pan_card }}" readonly>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function printForm() {
+        var printContents = document.getElementById("printableArea").innerHTML;
+        var originalContents = document.body.innerHTML;
+
+        document.body.innerHTML = printContents;
+        window.print();
+        document.body.innerHTML = originalContents;
+        location.reload(); // Reload page to restore form
+    }
+</script>
+
+
+
+
+
+  <!-- end page title -->
+   {% endblock %}
+
+   {% block custom_script %}
+   {% endblock %}

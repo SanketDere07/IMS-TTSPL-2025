@@ -1,0 +1,326 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %} Update Employee | TTSPL IMS - Trisnota Technical Services Pvt. Ltd.{% endblock %}   
+{% block content %}
+<style>
+    /* Ensure select2 elements have uniform height */
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    color: #444;
+    line-height: 34px;
+}
+
+.select2-container--default .select2-selection--single {
+    background-color: #fff;
+    border: 1px solid #aaa;
+    border-radius: 4px;
+    height: 36px; /* Match input height */
+}
+
+/* Style for quantity input and buttons */
+.input-group .btn {
+    height: 38px !important; /* Ensure buttons match select2 height */
+    line-height: auto;
+}
+
+.input-group input[type="number"] {
+    height: 38px !important; /* Match select2 height */
+}
+
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 30px !important;
+    position: absolute;
+    top: 1px;
+    right: 1px;
+    width: 20px;
+}
+
+.error-text {
+    font-size: 12px; /* Slightly smaller font */
+    color: #dc3545; /* Bootstrap danger color */
+    display: block;
+    margin-top: 5px;
+    font-weight: 200;
+    text-shadow:none;
+}
+
+/* Highlight the input field when there's an error */
+input.is-invalid, select.is-invalid, textarea.is-invalid {
+    border-color: #dc3545 !important;
+    background-color: #f8d7da !important;
+}
+
+
+</style>
+
+<!-- start page title -->
+<div class="row">
+      <div class="col-12">
+          <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
+              <h4 class="mb-sm-0">Update Employee </h4>
+
+              <div class="page-title-right">
+                  <ol class="breadcrumb m-0">
+                      <li class="breadcrumb-item"><a href="#">Dashboards</a></li>
+                      <li class="breadcrumb-item active">Employee List</li>
+                  </ol>
+              </div>
+
+          </div>
+      </div>
+  </div>
+
+  <div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header align-items-center d-flex">
+                <h4 class="card-title mb-0 flex-grow-1">Update Employee Details</h4>
+                <div class="flex-shrink-0">
+                    <a class="btn btn-secondary" href="/employee_list_page">< Back</a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="live-preview">
+                    <div id="alertContainer"></div>
+                    <form id="updateEmployeeForm" method="POST">
+                        <input type="hidden" id="employeeId" value="{{ employee.employee_id }}">
+                        <div class="row gy-4">
+                            <!-- Code -->
+                            <div class="col-xxl-3 col-md-3">
+                                <div>
+                                    <label for="employeeCode" class="form-label">Employee Code</label>
+                                    <input type="text" class="form-control" id="employeeCode" name="employee_code" value="{{ employee.employee_code }}" disabled>
+                                    <small class="text-danger error-text employee_code_error"></small>
+                                </div>
+                            </div>
+                            <!-- Name -->
+                            <div class="col-xxl-3 col-md-5">
+                                <div>
+                                    <label for="employeeName" class="form-label">Name</label>
+                                    <input type="text" class="form-control" id="employeeName" name="name" value="{{ employee.name }}" required>
+                                    <small class="text-danger error-text name_error"></small>
+                                </div>
+                            </div>
+                            <!-- Designation -->
+                            <div class="col-xxl-3 col-md-4">
+                                <div>
+                                    <label for="designation" class="form-label">Designation</label>
+                                    <input type="text" class="form-control" id="designation" name="designation" value="{{ employee.designation }}" required>
+                                    <small class="text-danger error-text designation_error"></small>
+                                </div>
+                            </div>
+                            <!-- Address -->
+                            <div class="col-xxl-6 col-md-12">
+                                <div>
+                                    <label for="address" class="form-label">Address</label>
+                                    <textarea class="form-control" id="address" name="address" rows="3" required>{{ employee.address }}</textarea>
+                                    <small class="text-danger error-text address_error"></small>
+                                </div>
+                            </div>
+                            <!-- Location -->
+                            <div class="col-xxl-3 col-md-6">
+                                <div>
+                                    <label for="location" class="form-label">Location</label>
+                                    <input type="text" class="form-control" id="location" name="location" value="{{ employee.location }}">
+                                    <small class="text-danger error-text location_error"></small>
+                                </div>
+                            </div>
+                            <!-- Work Location Dropdown -->
+                            <div class="col-xxl-3 col-md-6">
+                                <div>
+                                    <label for="workLocation" class="form-label">Work Location</label>
+                                    <select class="form-control select2" id="workLocation" name="work_location">
+                                        <option value="">Select Location</option> <!-- Placeholder option -->
+                                    </select>
+                                    <small class="text-danger error-text work_location_error"></small>
+                                </div>
+                            </div>
+                            <!-- Mobile Number -->
+                            <div class="col-xxl-3 col-md-6">
+                                <div>
+                                    <label for="mobileNumber" class="form-label">Mobile Number</label>
+                                    <input type="text" class="form-control" id="mobileNumber" name="mobile_number" value="{{ employee.mobile_number }}" required>
+                                    <small class="text-danger error-text mobile_number_error"></small>
+                                </div>
+                            </div>
+                            <!-- Email -->
+                            <div class="col-xxl-3 col-md-6">
+                                <div>
+                                    <label for="email" class="form-label">Email</label>
+                                    <input type="email" class="form-control" id="email" name="email" value="{{ employee.email }}" required>
+                                    <small class="text-danger error-text email_error"></small>
+                                </div>
+                            </div>
+                            <!-- Aadhaar Card -->
+                            <div class="col-xxl-3 col-md-6">
+                                <div>
+                                    <label for="aadhaarCard" class="form-label">Aadhaar Card</label>
+                                    <input type="text" class="form-control" id="aadhaarCard" name="aadhaar_card" value="{{ employee.aadhaar_card }}" required>
+                                    <small class="text-danger error-text aadhaar_card_error"></small>
+                                </div>
+                            </div>
+                            <!-- PAN Card -->
+                            <div class="col-xxl-3 col-md-6">
+                                <div>
+                                    <label for="panCard" class="form-label">PAN Card</label>
+                                    <input type="text" class="form-control" id="panCard" name="pan_card" value="{{ employee.pan_card }}">
+                                    <small class="text-danger error-text pan_card_error"></small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row mt-4">
+                            <div class="col-12 text-start">
+                                <button type="submit" class="btn btn-primary">Update Employee</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+</div>
+
+<script>
+    function loadWorkLocations(selectedWorkLocationId) {
+        $.getJSON("{% url 'get_work_locations' %}", function (data) {
+            $('#workLocation').empty().append('<option value="">Select Location</option>'); // Clear existing options
+
+            $.each(data.work_locations, function (index, item) {
+                let selected = (item.id == selectedWorkLocationId) ? 'selected' : '';
+                $('#workLocation').append(`<option value="${item.id}" ${selected}>${item.name}</option>`);
+            });
+
+            $('#workLocation').select2(); // Reinitialize Select2
+        });
+    }
+
+    $(document).ready(function () {
+        let selectedWorkLocationId = "{{ employee.work_location.id|default:'' }}"; // Get the existing work location
+        loadWorkLocations(selectedWorkLocationId);
+    });
+
+
+    document.addEventListener('DOMContentLoaded', function () { 
+        const form = document.getElementById('updateEmployeeForm');
+        const alertContainer = document.getElementById('alertContainer');
+    
+        const showError = (id, message) => {
+            const inputField = document.getElementById(id);
+            if (!inputField) return;
+    
+            let errorContainer = inputField.nextElementSibling;
+            if (!errorContainer || !errorContainer.classList.contains('error-text')) {
+                errorContainer = document.createElement('small');
+                errorContainer.className = 'text-danger error-text';
+                inputField.insertAdjacentElement('afterend', errorContainer);
+            }
+            errorContainer.innerText = message;
+            errorContainer.style.display = message ? 'block' : 'none';
+        };
+    
+        const validateField = (id, pattern, message, required = true) => {
+            const input = document.getElementById(id);
+            if (!input) return false;
+    
+            const value = input.value.trim();
+            if (required && !value) {
+                showError(id, `${input.previousElementSibling.innerText} is required.`);
+                return false;
+            }
+    
+            if (value && pattern && !value.match(pattern)) {
+                showError(id, message);
+                return false;
+            }
+    
+            showError(id, ''); // Clear error
+            return true;
+        };
+    
+        const namePattern = /^[A-Za-z\s]+$/;
+        const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        const mobilePattern = /^[6789]\d{9}$/;
+        const aadhaarPattern = /^\d{12}$/;
+        const panPattern = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+    
+        const fields = [
+            { id: 'employeeName', pattern: namePattern, message: 'Only alphabets and spaces are allowed.' },
+            { id: 'designation', pattern: null, message: '' },
+            { id: 'email', pattern: emailPattern, message: 'Enter a valid email address.' },
+            { id: 'mobileNumber', pattern: mobilePattern, message: 'Enter a valid 10-digit Indian mobile number.' },
+            { id: 'address', pattern: null, message: '' },
+            { id: 'location', pattern: null, message: '' },
+            { id: 'workLocation', pattern: null, message: '' },
+            { id: 'aadhaarCard', pattern: aadhaarPattern, message: 'Aadhaar number must be exactly 12 digits.' },
+            { id: 'panCard', pattern: panPattern, message: 'Enter a valid PAN number (e.g., ABCDE1234F).' },
+        ];
+    
+        fields.forEach(field => {
+            const input = document.getElementById(field.id);
+            if (input) {
+                input.addEventListener('input', () => validateField(field.id, field.pattern, field.message));
+            }
+        });
+    
+        form.addEventListener('submit', function (event) {
+            event.preventDefault();
+    
+            alertContainer.innerHTML = '';
+            document.querySelectorAll('.error-text').forEach(el => el.remove());
+    
+            let isValid = true;
+            fields.forEach(field => {
+                if (!validateField(field.id, field.pattern, field.message)) {
+                    isValid = false;
+                }
+            });
+    
+            if (!isValid) {
+                alertContainer.innerHTML = `
+                    <div class="alert alert-danger">
+                        <strong>Error:</strong> Please correct the highlighted fields.
+                    </div>`;
+                return;
+            }
+    
+            const employeeId = document.getElementById('employeeId').value;
+    
+            fetch(`/update-employee/${employeeId}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+                body: JSON.stringify(Object.fromEntries(new FormData(form))),
+            })
+            .then(response => response.json())
+            .then(data => {
+                alertContainer.innerHTML = ''; 
+                const alertDiv = document.createElement('div');
+                alertDiv.className = data.message ? 'alert alert-success' : 'alert alert-danger';
+                alertDiv.innerHTML = data.message || `<strong>Error:</strong> ${data.error}`;
+                alertContainer.appendChild(alertDiv);
+    
+                if (data.message) {
+                    setTimeout(() => {
+                        alertContainer.innerHTML = '';
+                        window.location.href = '/employee_list_page';
+                    }, 3000);
+                }
+            })
+            .catch(error => {
+                alertContainer.innerHTML = `<div class="alert alert-danger"><strong>Error:</strong> Something went wrong!</div>`;
+                console.error('Error:', error);
+            });
+        });
+    });
+    
+</script>
+
+
+
+  <!-- end page title -->
+   {% endblock %}
+
+   {% block custom_script %}
+   {% endblock %}

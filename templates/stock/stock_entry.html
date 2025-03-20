@@ -1,0 +1,786 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %} Stock Entry | TTSPL IMS - Trisnota Technical Services Pvt. Ltd.{% endblock %}
+{% block content %}
+<!-- start page title -->
+
+<style>
+    /* Ensure select2 elements have uniform height */
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    color: #444;
+    line-height: 34px;
+}
+
+.select2-container--default .select2-selection--single {
+    background-color: #fff;
+    border: 1px solid #aaa;
+    border-radius: 4px;
+    height: 38px; /* Match input height */
+}
+
+/* Style for quantity input and buttons */
+.input-group .btn {
+    height: 38px !important; /* Ensure buttons match select2 height */
+    line-height: auto;
+}
+
+.input-group input[type="number"] {
+    height: 38px !important; /* Match select2 height */
+}
+
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 34px !important;
+    position: absolute;
+    top: 1px;
+    right: 1px;
+    width: 20px;
+}
+</style>
+
+<div class="row">
+    <div class="col-12">
+        <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
+            <h4 class="mb-sm-0">Stock Entry</h4>
+            <div class="page-title-right">
+                <ol class="breadcrumb m-0">
+                    <li class="breadcrumb-item"><a href="#">Dashboard</a></li>
+                    <li class="breadcrumb-item active">Stock List</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header align-items-center d-flex">
+                <h4 class="card-title mb-0 flex-grow-1">Stock Entry</h4>
+                <div class="flex-shrink-0">
+                   <a class="btn btn-secondary" href="stock_list_page">< Back</a>
+                </div>
+             </div>
+             <div class="card-body">
+                <div id="alertContainer"></div>
+                <form id="stockForm" method="post">
+                    {% csrf_token %}
+                    <div class="row gy-3">
+
+                        <!-- Category -->
+                        <div class="col-md-3">
+                            <label class="form-label">Category</label>
+                            <select id="category" class="form-control select2 " name="category_id" required>
+                                <option value="">Select Category</option>
+                            </select>
+                        </div>
+            
+                        <!-- SubCategory -->
+                        <div class="col-md-3">
+                            <label class="form-label">SubCategory</label>
+                            <select id="subcategory" class="form-control select2" name="subcategory_id" required>
+                                <option value="">Select SubCategory</option>
+                            </select>
+                        </div>
+            
+                        <!-- Product Name -->
+                        <div class="col-md-3">
+                            <label class="form-label">Product Name</label>
+                            <select id="product" class="form-control select2" name="product_id" required>
+                                <option value="">Select Product</option>
+                            </select>
+                        </div>
+
+                          <!-- Product Barcode Display -->
+                          <div class="col-md-3">
+                            <label class="form-label">Product Barcode</label>
+                            <div id="barcodeImageContainer">
+                                <img id="barcodeImage" src="/static/assets/images/placeholder.jpg" class="img-thumbnail" style="width:150px; height: 60px;" />
+                            </div> 
+                        </div>
+                        
+
+                         <!-- Location -->
+                        <div class="col-md-3">
+                            <label class="form-label">Location</label>
+                            <select id="location" class="js-example-basic-single" name="location_id" required>
+                                <option value="">Select Location</option>
+                            </select>
+                        </div>
+
+                 <!-- Quantity -->
+                    <div class="col-md-3">
+                        <label class="form-label">Quantity</label>
+                        <div class="input-group">
+                            <button type="button" class="btn btn-outline-secondary decrement h-25">-</button>
+                            <input type="number" id="quantity" name="quantity" class="form-control text-center" value="1" min="1" required>
+                            <button type="button" class="btn btn-outline-secondary increment h-25">+</button>
+                        </div>
+                    </div>
+
+                    <div class="col-md-2 d-flex justify-content-start align-items-end">
+                        <button type="button" id="addStockBtn" class="btn btn-success">Add Stock</button>
+                    </div>
+                </div>
+
+                   <!-- Barcode List Display -->
+                   <div class="row mt-4" id="barcodeListContainer" style="display: none;">
+                    <div class="col-12">
+                        <h5>Add Stock Entry</h5>
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Barcode</th>
+                                    <th>Barcode Label</th>
+                                    <th>Product Name</th>
+                                    <th>Location</th>
+                                    <th>Rack</th>
+                                    <th>Box</th>
+                                    <th>SN & MFG No</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="barcodeList">
+                                <!-- Barcodes will be dynamically added here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                    <div class="row">
+                        <div class="col-12 d-flex justify-content-end">
+                            <button type="submit" class="btn btn-primary" id="submitStockBtn" style="display:none;">Submit Stock</button>
+                        </div>
+                    </div>
+                    
+                </form>
+            
+                    <div class="col-lg-12 pt-4">
+                          <div class="card-header d-flex align-items-center">
+                             <h5 class="card-title mb-0 flex-grow-1">Selected Stock Entry</h5>
+                          </div>
+                          <div class="card-body">
+                             <table id="barcode_table" class="table table-bordered table-responsive align-start" style="width:100%">
+                                <thead>
+                                   <tr>
+                                     <th>Stock Id</th>
+                                      <th>Barcode</th>
+                                      <th>Barcode Label</th>
+                                      <th>Product Name</th>
+                                      <th>Location</th>
+                                      <th>SN & MFG No</th>
+                                      <th>Rack</th>
+                                      <th>Box</th>
+                                      <th>Action</th>
+                                   </tr>
+                                </thead>
+                                <tbody>
+                                   <tr>
+                                      <td colspan="6" class="text-center">Select filters to load barcodes</td>
+                                   </tr>
+                                </tbody>
+                             </table>
+                          </div>
+                    </div>
+            </div>
+
+            <!-- Toast container (make sure this is somewhere in your HTML body) -->
+            <div id="toast-container" class="position-fixed bottom-0 end-0 p-3" style="z-index: 9999;"></div>
+
+
+        </div>
+    </div>
+</div>
+
+<div id="deleteModal" class="modal fade" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mt-2 text-center">
+                    <lord-icon src="https://cdn.lordicon.com/gsqxdxog.json" trigger="loop"
+                        colors="primary:#f7b84b,secondary:#f06548" style="width:100px;height:100px">
+                    </lord-icon>
+                    <div class="mt-4 pt-2 fs-15 mx-4 mx-sm-5">
+                        <h4>Are you Sure?</h4>
+                        <p class="text-muted mx-4 mb-0">Are you sure you want to remove this record?</p>
+                    </div>
+                </div>
+                <div class="d-flex gap-2 justify-content-center mt-4 mb-2">
+                    <button type="button" class="btn w-sm btn-light" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn w-sm btn-danger" id="delete-record">Yes, Delete It!</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize Select2
+        $('.select2').select2();
+    
+        $.getJSON("{% url 'get_categories' %}", function(data) {
+            $('#category').append(data.categories.map(cat => 
+                `<option value="${cat.category_id}">${cat.category_name} (${cat.shortcode})</option>`
+            ));
+        });
+    
+        // Load Subcategories on Category Change
+        $('#category').change(function() {
+            let category_id = $(this).val();
+            $('#subcategory').html('<option value="">Select SubCategory</option>');
+        
+            if (category_id) {
+                $.getJSON(`/get-subcategories/${category_id}/`, function(data) {
+                    $('#subcategory').append(data.subcategories.map(sub => 
+                        `<option value="${sub.subcategory_id}">${sub.subcategory_name} (${sub.shortcode})</option>`
+                    ));
+                });
+            }
+        });
+    
+        // Load Products on Subcategory Change
+        $('#subcategory').change(function() {
+            let subcategory_id = $(this).val();
+            $('#product').html('<option value="">Select Product</option>');
+    
+            if (subcategory_id) {
+                $.getJSON(`/get-products-stock/${subcategory_id}/`, function(data) {
+                    $('#product').append(data.products.map(prod => 
+                        `<option value="${prod.product_id}" data-image="${prod.barcode_image}">${prod.product_name}</option>`
+                    ));
+                });
+            }
+        });
+    
+        // Load locations for Select2
+        $.getJSON("{% url 'get_locations' %}", function (data) {
+            $.each(data.locations, function (index, item) {
+                $('#location').append($('<option>', { value: item.id, text: `${item.name} (${item.shortcode})` }));
+            });
+        });
+    
+        // Show Barcode Image on Product Selection
+        $('#product').change(function() {
+        let selectedProduct = $(this).find(':selected');
+        let barcodeImage = selectedProduct.data('image');
+
+        if (barcodeImage) {
+            $('#barcodeImage').attr('src', `/media/${barcodeImage}`).show();
+        } else {
+            $('#barcodeImage').attr('src', '/static/assets/images/placeholder.jpg').show(); // Show placeholder if no image
+        }
+    });
+    
+        // Handle increment
+        $('.increment').click(function () {
+            let quantityInput = $('#quantity');
+            let value = parseInt(quantityInput.val());
+            quantityInput.val(value + 1);
+        });
+    
+        // Handle decrement
+        $('.decrement').click(function () {
+            let quantityInput = $('#quantity');
+            let value = parseInt(quantityInput.val());
+            if (value > 1) {
+                quantityInput.val(value - 1);
+            }
+        });
+
+        function loadRackAndBoxForNewRows() {
+        $.getJSON("{% url 'get_ranks' %}", function(data) {
+            $('.rack-select').each(function() {
+                if ($(this).children('option').length === 1) { // Only update empty selects
+                    let rackSelect = $(this);
+                    data.ranks.forEach(function(rack) {
+                        rackSelect.append(`<option value="${rack.rank_id}">${rack.rank_name}</option>`);
+                    });
+                }
+            });
+        });
+
+        $.getJSON("{% url 'get_boxes' %}", function(data) {
+            $('.box-select').each(function() {
+                if ($(this).children('option').length === 1) {
+                    let boxSelect = $(this);
+                    data.boxes.forEach(function(box) {
+                        boxSelect.append(`<option value="${box.box_id}">${box.box_name}</option>`);
+                    });
+                }
+            });
+        });
+
+        $('.rack-select, .box-select').select2(); // Reinitialize Select2
+
+        $(document).off('change', '.rack-select, .box-select').on('change', '.rack-select, .box-select', function() {
+        let row = $(this).closest('.barcode-item'); // Get the row where change happened
+        let rackSelected = row.find('.rack-select').val();
+        let boxSelected = row.find('.box-select').val();
+
+        if (rackSelected && boxSelected) { // Ensure both are selected
+            let barcodeDetails = {
+                barcode: row.find('td:eq(1)').text(), // Barcode text
+                product_name: row.find('td:eq(2)').text(), // Product Name
+                location: row.find('td:eq(3)').text(), // Location
+                rack: row.find('.rack-select option:selected').text(), // Selected Rack Name
+                box: row.find('.box-select option:selected').text() // Selected Box Name
+            };
+            console.log("Selected Barcode Details:", barcodeDetails);
+        }
+    });    
+}
+    
+
+    $('#addStockBtn').click(function () {
+        let formData = $('#stockForm').serialize();
+
+        $.ajax({
+            type: 'POST',
+            url: "{% url 'add_stock' %}",
+            data: formData,
+            dataType: 'json',
+            success: function (response) {
+                console.log("AJAX Response:", response);
+
+                if (response.status === 'success' && response.barcodes.length > 0) {
+                    let barcodeList = $('#barcodeList');
+                    barcodeList.empty(); // Clear previous barcodes
+
+                    response.barcodes.forEach((barcodeObj, index) => {
+                        let newRow = `
+                            <tr class="barcode-item" id="barcode-${index}">
+                                <td>
+                                    <img src="${barcodeObj.image}" class="img-thumbnail" style="width:120px; height:auto;" />
+                                </td>
+                                <td>${barcodeObj.barcode}</td>
+                                <td>${response.product_name}</td> 
+                                <td>${response.location_name}</td>
+                                <td>
+                                    <select class="form-control select2 rack-select" name="rank_id[]" required>
+                                        <option value="">Select Rack</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <select class="form-control select2 box-select" name="box_id[]" required>
+                                        <option value="">Select Box</option>
+                                    </select>
+                                </td>
+                                <td>
+                                <input type="text" class="form-control serial-number" name="serial_no[]" placeholder="Enter Serial No / Manufacture No" required />
+                            </td>
+                                <td>
+                                    <button class="btn btn-danger btn-sm remove-barcode" 
+                                        data-image="${barcodeObj.image}" data-index="${index}">
+                                        Remove
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                        barcodeList.append(newRow);
+                    });
+
+                    $('#barcodeListContainer').show(); // Show barcode list section
+                    $('#submitStockBtn').show();
+
+                    // Load Rack and Box dropdowns inside newly added rows
+                    loadRackAndBoxForNewRows();
+                } else {
+                    console.warn("No barcodes received. Fetching existing barcodes...");
+
+                    fetchExistingBarcodes();
+
+                }
+            },
+            error: function (xhr, status, error) {
+                console.error("AJAX Error:", error);
+                alert("Something went wrong. Check console for details.");
+            }
+        });
+    });
+
+
+        function fetchExistingBarcodes() {
+        console.log("Fetching existing barcodes...");
+        
+        let productId = $('#product_id').val();
+        let locationId = $('#location_id').val();
+
+        if (!productId || !locationId) {
+            console.warn("Missing product_id or location_id for fetching existing barcodes.");
+            return;
+        }
+
+        $.ajax({
+            type: 'GET',
+            url: `/get-existing-barcodes/?product_id=${productId}&location_id=${locationId}`,
+            dataType: 'json',
+            success: function (response) {
+                console.log("Existing barcodes response:", response);
+                if (response.status === 'success' && response.barcodes.length > 0) {
+                    let barcodeList = $('#barcodeList');
+                    barcodeList.empty();
+
+                    response.barcodes.forEach((barcodeObj, index) => {
+                        let newRow = `
+                            <tr class="barcode-item" id="barcode-${index}">
+                                <td>
+                                    <img src="${barcodeObj.image}" class="img-thumbnail" style="width:120px; height:auto;" />
+                                </td>
+                                <td>${barcodeObj.barcode}</td>
+                                <td>${response.product_name}</td> 
+                                <td>${response.location_name}</td>
+                                <td>
+                                    <select class="form-control select2 rack-select" name="rank_id[]" required>
+                                        <option value="">Select Rack</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <select class="form-control select2 box-select" name="box_id[]" required>
+                                        <option value="">Select Box</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <button class="btn btn-danger btn-sm remove-barcode" 
+                                        data-image="${barcodeObj.image}" data-index="${index}">
+                                        Remove
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                        barcodeList.append(newRow);
+                    });
+
+                    $('#barcodeListContainer').show();
+                    $('#submitStockBtn').show();
+                    loadRackAndBoxForNewRows();
+                } else {
+                    console.warn("No existing barcodes found.");
+                }
+            },
+            error: function (xhr, status, error) {
+                console.error("AJAX Error:", error);
+            }
+        });
+    }
+
+    
+        $(document).on('click', '.remove-barcode', function () {
+            let image_path = $(this).data('image').replace(window.location.origin + "/media/", ""); // Send relative path
+            let barcode_text = $(this).closest('tr').find('td:nth-child(2)').text().trim(); // Get barcode text from table
+
+            console.log("Deleting barcode with text:", barcode_text); 
+            console.log("Image path:", image_path); 
+
+            let barcodeRow = $(this).closest('tr');
+
+            $.ajax({
+                type: 'POST',
+                url: "{% url 'delete_temp_barcode' %}",
+                data: {
+                    image_path: image_path,
+                    barcode_text: barcode_text,
+                    csrfmiddlewaretoken: '{{ csrf_token }}'
+                },
+                success: function (response) {
+                    console.log("Delete response:", response); 
+
+                    if (response.status === 'success') {
+                        barcodeRow.remove(); // Remove the row from table
+
+                        // If no more barcodes, hide the container
+                        if ($('#barcodeList tr').length === 0) {
+                            $('#barcodeListContainer').hide();
+                            $('#submitStockBtn').hide();
+                        }
+                    } else {
+                        alert(response.message);
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error("AJAX Error:", error);
+                    alert("Something went wrong. Check console for details.");
+                }
+            });
+        });
+
+
+        
+        // Submit stock - move images & save to DB
+        $('#submitStockBtn').click(function () {
+                let formData = $('#stockForm').serializeArray();
+                let barcodeList = [];
+
+                // Collect barcodes from table
+                $('#barcodeList tr.barcode-item').each(function () {
+                    let barcodeText = $(this).find('td:nth-child(2)').text().trim();
+                    let imageSrc = $(this).find('img').attr('src');
+                    let rackId = $(this).find('.rack-select').val();
+                    let boxId = $(this).find('.box-select').val();
+                    let serialNumber = $(this).find('.serial-number').val();
+
+                    barcodeList.push({
+                        barcode: barcodeText,
+                        image: imageSrc,
+                        rank_id: rackId,
+                        box_id: boxId,
+                        serial_number: serialNumber 
+                    });
+                });
+
+                // Add barcode list to form data
+                formData.push({ name: 'barcodes', value: JSON.stringify(barcodeList) });
+
+                  // Print formData to console
+                    console.log("Form Data:", formData);
+
+                $.ajax({
+                    type: 'POST',
+                    url: "{% url 'submit_stock' %}",
+                    data: formData,
+                    dataType: 'json',
+                    success: function (response) {
+                        console.log("Stock Submission Response:", response);
+                        if (response.status === 'success') {
+                            alert("Stock submitted successfully!");
+                            location.reload(); // Refresh page or handle UI reset
+                        } else {
+                            alert("Error: " + response.message);
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        console.error("Stock Submission AJAX Error:", error);
+                        alert("Something went wrong. Check console for details.");
+                    }
+                });
+            });
+
+
+        // Remove barcode from list and optionally from the database
+        function removeBarcode(barcode, index) {
+            $.ajax({
+                type: 'POST',
+                url: "{% url 'remove_barcode' %}",
+                data: { barcode: barcode, csrfmiddlewaretoken: '{{ csrf_token }}' },
+                success: function (response) {
+                    if (response.status === 'success') {
+                        $('#barcode-' + index).remove(); // Remove from the UI
+                    } else {
+                        alert(response.message);
+                    }
+                },
+                error: function () {
+                    alert('Error removing barcode');
+                }
+            });
+        }
+
+
+        $(document).ready(function () {
+        let rackOptions = {};
+        let boxOptions = {};
+
+        $.getJSON("{% url 'get_ranks' %}", function (data) {
+            data.ranks.forEach(function (rack) {
+                rackOptions[rack.rank_id] = rack.rank_name;
+            });
+        });
+
+        $.getJSON("{% url 'get_boxes' %}", function (data) {
+            data.boxes.forEach(function (box) {
+                boxOptions[box.box_id] = box.box_name;
+            });
+        });
+
+        // Handle filter changes
+        $("#category, #subcategory, #product, #location").change(function () {
+            var category = $("#category").val();
+            var subcategory = $("#subcategory").val();
+            var product = $("#product").val();
+            var location = $("#location").val();
+
+            if (category && subcategory && product && location) {
+                $.ajax({
+                    url: "{% url 'fetch_barcode' %}",
+                    type: "GET",
+                    data: { category, subcategory, product, location },
+                    success: function (response) {
+                        var barcodeTable = $("#barcode_table tbody");
+                        barcodeTable.empty();
+
+                        if (response.barcodes.length > 0) {
+                            response.barcodes.forEach(function (barcode) {
+                                let rackDropdown = `<select class="form-control rack-select" data-stock-id="${barcode.stock_id}">
+                                                        <option value="">Select Rack</option>`;
+                                Object.keys(rackOptions).forEach(function (id) {
+                                    let selected = barcode.rank === rackOptions[id] ? "selected" : "";
+                                    rackDropdown += `<option value="${id}" ${selected}>${rackOptions[id]}</option>`;
+                                });
+                                rackDropdown += `</select>`;
+
+                                let boxDropdown = `<select class="form-control box-select" data-stock-id="${barcode.stock_id}">
+                                                        <option value="">Select Box</option>`;
+                                Object.keys(boxOptions).forEach(function (id) {
+                                    let selected = barcode.box === boxOptions[id] ? "selected" : "";
+                                    boxDropdown += `<option value="${id}" ${selected}>${boxOptions[id]}</option>`;
+                                });
+                                boxDropdown += `</select>`;
+
+                                barcodeTable.append(`
+                                    <tr>
+                                        <td>${barcode.stock_id}</td>
+                                        <td><img src="${barcode.barcode_image}" width="100"></td>
+                                        <td>${barcode.barcode_text}</td>
+                                        <td>${barcode.product_name}</td>
+                                        <td>${barcode.location}</td>
+                                        <td>${barcode.serial_number}</td>
+                                        <td>${rackDropdown}</td>
+                                        <td>${boxDropdown}</td>
+                                        <td>
+                                            <button class="btn btn-danger btn-sm delete-stock" data-stock-id="${barcode.stock_id}">
+                                                <i class="ri-delete-bin-5-line"></i> 
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `);
+                            });
+
+                            $('.rack-select, .box-select').select2();
+                        } else {
+                            barcodeTable.append("<tr><td colspan='7'>No Barcode Found</td></tr>");
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        console.error("AJAX Error:", status, error);
+                    }
+                });
+            }
+        });
+
+    // Handle Rack or Box Update
+    $(document).on("change", ".rack-select, .box-select", function () {
+        var row = $(this).closest("tr");
+        var stockId = $(this).data("stock-id");
+        var rackId = row.find(".rack-select").val();
+        var boxId = row.find(".box-select").val();
+        var rackName = row.find(".rack-select option:selected").text();
+        var boxName = row.find(".box-select option:selected").text();
+
+        if (!rackId || !boxId) {
+            return;
+        }
+
+        $.ajax({
+            url: "{% url 'update_stock' %}",
+            type: "POST",
+            contentType: "application/json",
+            data: JSON.stringify({
+                stock_id: stockId,
+                rank_id: rackId,
+                box_id: boxId,
+                csrfmiddlewaretoken: "{{ csrf_token }}"
+            }),
+            success: function (response) {
+                if (response.status === "success") {
+                    showToast(`Stock ID ${stockId} updated! Rack: ${rackName}, Box: ${boxName}`, "success");
+                } else {
+                    showToast(response.message, "error");
+                }
+            },
+            error: function () {
+                showToast("Failed to update stock!", "error");
+            }
+        });
+    });
+
+    // Toast Notification Function
+    function showToast(message, type) {
+        let toastClass = type === "success" ? "bg-success" : "bg-danger";
+
+        // Remove existing toasts before showing a new one
+        $("#toast-container").empty();
+
+        let toastHTML = `
+            <div class="toast align-items-center text-white ${toastClass} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="d-flex">
+                    <div class="toast-body">${message}</div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        `;
+
+        $("#toast-container").append(toastHTML);
+        $(".toast").toast({ delay: 3000 }).toast("show");
+
+        // Remove toast from DOM after fade-out
+        $(".toast").on("hidden.bs.toast", function () {
+            $(this).remove();
+        });
+    }
+
+    });
+
+
+
+        $(document).on("click", ".delete-stock", function () {
+    var stockId = $(this).data("stock-id"); // Get stock ID from button attribute
+    $("#delete-record").data("stock-id", stockId); // Store stockId in the modal button
+    $("#deleteModal").modal("show"); // Show the confirmation modal
+});
+
+// Handle delete confirmation
+$("#delete-record").on("click", function () {
+    var stockId = $(this).data("stock-id"); // Retrieve stored stock ID
+    var row = $('.delete-stock[data-stock-id="' + stockId + '"]').closest("tr"); // Find row to delete
+
+    $.ajax({
+        url: `/delete-stock/${stockId}/`, // Adjust the URL based on your Django URL pattern
+        type: "DELETE",
+        headers: { "X-CSRFToken": getCookie("csrftoken") }, // CSRF token for security
+        success: function (response) {
+            if (response.status === "success") {
+                row.remove(); // Remove row from table on successful deletion
+                $("#deleteModal").modal("hide"); // Hide the modal after successful delete
+                alert("Stock entry deleted successfully!");
+            } else {
+                alert("Error: " + response.message);
+            }
+        },
+        error: function (xhr, status, error) {
+            alert("Error: Unable to delete stock entry.");
+            console.error("AJAX Error:", status, error);
+        }
+    });
+});
+
+// Function to get CSRF token
+function getCookie(name) {
+    var cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        var cookies = document.cookie.split(';');
+        for (var i = 0; i < cookies.length; i++) {
+            var cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+
+
+
+    });
+    
+</script>
+
+
+<!-- end page title -->
+{% endblock %}
+{% block custom_script %}
+{% endblock %}

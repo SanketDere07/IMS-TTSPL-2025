@@ -1,0 +1,264 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %} Update Stock | TTSPL IMS - Trisnota Technical Services Pvt. Ltd.{% endblock %}
+   
+{% block content %}
+<!-- start page title -->
+<style>
+    /* Ensure select2 elements have uniform height */
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    color: #444;
+    line-height: 34px;
+}
+
+.select2-container--default .select2-selection--single {
+    background-color: #fff;
+    border: 1px solid #aaa;
+    border-radius: 4px;
+    height: 37px; /* Match input height */
+}
+
+/* Style for quantity input and buttons */
+.input-group .btn {
+    height: 38px !important; /* Ensure buttons match select2 height */
+    line-height: auto;
+}
+
+.input-group input[type="number"] {
+    height: 38px !important; /* Match select2 height */
+}
+
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 34px !important;
+    position: absolute;
+    top: 1px;
+    right: 1px;
+    width: 20px;
+}
+</style>
+
+<div class="row">
+    <div class="col-12">
+        <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
+            <h4 class="mb-sm-0">Update Stock</h4>
+            <div class="page-title-right">
+                <ol class="breadcrumb m-0">
+                    <li class="breadcrumb-item"><a href="#">Dashboards</a></li>
+                    <li class="breadcrumb-item active">Stock List</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header align-items-center d-flex">
+                <h4 class="card-title mb-0 flex-grow-1">Update Stock Details</h4>
+                <div class="flex-shrink-0">
+                    <a class="btn btn-secondary" href="/stock_list_page">< Back</a>
+                </div>
+            </div>
+
+            <div class="card-body">
+                <div class="live-preview">
+                    <div id="alertContainer"></div>
+                    <form id="updateStockForm" method="POST">
+                        <input type="hidden" id="stockId" value="{{ stock.stock_id }}">
+            
+                        <div class="row gy-4 mb-2">
+                            {% if barcodes %}
+                                {% for barcode in barcodes %}
+                                    <!-- Barcode Image -->
+                                    <div class="col-xxl-3 col-md-2 text-center">
+                                        <div class="d-flex flex-column align-items-start">
+                                        <label class="form-label">Barcode</label>
+                                        {% if barcode.barcode_image_url %}
+                                            <img src="{{ barcode.barcode_image_url }}" class="img-fluid mb-2" alt="Barcode Image" 
+                                                 style="width: 150px; height: auto; object-fit: contain;">
+                                        {% else %}
+                                            <p>No Barcode Image</p>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                        
+                                    <!-- Barcode Text -->
+                                    <div class="col-xxl-3 col-md-4">
+                                        <label class="form-label">Barcode Label</label>
+                                        <input type="text" class="form-control text-center" value="{{ barcode.barcode_text }}" readonly>
+                                    </div>
+                                {% endfor %}
+                            {% else %}
+                                <p class="text-center">No barcodes available.</p>
+                            {% endif %}
+                        </div>
+                        
+            
+                        <div class="row gy-4">
+                            <!-- Stock ID -->
+                            <div class="col-xxl-3 col-md-3">
+                                <label class="form-label">Stock ID</label>
+                                <input type="text" class="form-control" value="{{ stock.stock_id }}" readonly>
+                            </div>
+            
+                            <!-- Product Name -->
+                            <div class="col-xxl-3 col-md-5">
+                                <label class="form-label">Product Name</label>
+                                <input type="text" class="form-control" value="{{ stock.product_name }}" readonly>
+                            </div>
+            
+                            <!-- Category Name -->
+                            <div class="col-xxl-3 col-md-4">
+                                <label class="form-label">Category Name</label>
+                                <input type="text" class="form-control" value="{{ stock.category_name }}" readonly>
+                            </div>
+            
+                            <!-- Subcategory Name -->
+                            <div class="col-xxl-3 col-md-4">
+                                <label class="form-label">Subcategory Name</label>
+                                <input type="text" class="form-control" value="{{ stock.subcategory_name }}" readonly>
+                            </div>
+            
+                            <!-- Location -->
+                            <div class="col-xxl-3 col-md-4">
+                                <label class="form-label">Location</label>
+                                <input type="text" class="form-control" value="{{ stock.location }}" readonly>
+                            </div>
+            
+                            <!-- Rack (Dropdown) -->
+                            <div class="col-xxl-3 col-md-4">
+                                <label class="form-label">Rack</label>
+                                <select class="form-control rack-select" id="rack" name="rack">
+                                    <option value="">Select Rack</option>
+                                    {% for rack in racks %}
+                                    <option value="{{ rack.rank_id }}" {% if rack.rank_id == stock.rack %}selected{% endif %}>
+                                        {{ rack.rank_name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+            
+                            <!-- Box (Dropdown) -->
+                            <div class="col-xxl-3 col-md-4">
+                                <label class="form-label">Box</label>
+                                <select class="form-control box-select" id="box" name="box">
+                                    <option value="">Select Box</option>
+                                    {% for box in boxes %}
+                                    <option value="{{ box.box_id }}" {% if box.box_id == stock.box %}selected{% endif %}>
+                                        {{ box.box_name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+            
+                        <!-- Update Button -->
+                        <div class="row mt-4">
+                            <div class="col-12 text-start">
+                                <button type="submit" class="btn btn-primary">Update Stock</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            
+
+         
+            
+        </div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function() {
+        // Initialize Select2
+        $('.rack-select, .box-select').select2();
+
+        // Fetch Racks
+        $.getJSON("{% url 'get_ranks' %}", function(data) {
+            let rackSelect = $('#rack');
+            rackSelect.find("option:not(:first)").remove(); // Remove old options except the first one
+
+            data.ranks.forEach(function(rack) {
+                rackSelect.append(`<option value="${rack.rank_id}">${rack.rank_name}</option>`);
+            });
+
+            // Set selected rack if exists
+            rackSelect.val("{{ stock.rack }}").trigger('change');
+        });
+
+        // Fetch Boxes
+        $.getJSON("{% url 'get_boxes' %}", function(data) {
+            let boxSelect = $('#box');
+            boxSelect.find("option:not(:first)").remove(); // Remove old options except the first one
+
+            data.boxes.forEach(function(box) {
+                boxSelect.append(`<option value="${box.box_id}">${box.box_name}</option>`);
+            });
+
+            // Set selected box if exists
+            boxSelect.val("{{ stock.box }}").trigger('change');
+        });
+        
+        // Handle form submission
+        document.getElementById('updateStockForm').addEventListener('submit', function(event) {
+            event.preventDefault(); // Prevent default form submission
+    
+            // Collect form data
+            const stockId = document.getElementById('stockId').value;
+            const rack = document.getElementById('rack').value;
+            const box = document.getElementById('box').value;
+    
+            // Make an AJAX POST request
+            fetch(`/update-stock-page/${stockId}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}', // Django CSRF token
+                },
+                body: JSON.stringify({
+                    rack: rack,
+                    box: box
+                }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                let alertClass = data.message ? 'alert-success' : 'alert-danger';
+                let alertMessage = data.message || `Error: ${data.error}`;
+    
+                // Create alert div dynamically
+                const alertDiv = document.createElement('div');
+                alertDiv.className = `alert ${alertClass} material-shadow`;
+                alertDiv.role = 'alert';
+                alertDiv.innerHTML = alertMessage;
+    
+                // Add alert to the DOM
+                const alertContainer = document.getElementById('alertContainer');
+                alertContainer.innerHTML = ''; // Clear previous alerts
+                alertContainer.appendChild(alertDiv);
+    
+                // Hide the alert after 3 seconds and redirect to the stock list page
+                setTimeout(() => {
+                    if (data.message) {
+                        window.location.href = '/stock_list_page'; // Redirect to stock list page
+                    } else {
+                        alertContainer.innerHTML = ''; // Clear the alert if there was an error
+                    }
+                }, 3000);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An unexpected error occurred.');
+            });
+        });
+    });
+</script>
+
+
+<!-- end page title -->
+{% endblock %}
+
+{% block custom_script %}
+{% endblock %}

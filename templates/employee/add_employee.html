@@ -1,0 +1,346 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %} Add Employee | TTSPL IMS - Trisnota Technical Services Pvt. Ltd.{% endblock %}
+{% block content %}
+<style>
+    /* Ensure select2 elements have uniform height */
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    color: #444;
+    line-height: 34px;
+}
+
+.select2-container--default .select2-selection--single {
+    background-color: #fff;
+    border: 1px solid #aaa;
+    border-radius: 4px;
+    height: 36px; /* Match input height */
+}
+
+/* Style for quantity input and buttons */
+.input-group .btn {
+    height: 38px !important; /* Ensure buttons match select2 height */
+    line-height: auto;
+}
+
+.input-group input[type="number"] {
+    height: 38px !important; /* Match select2 height */
+}
+
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 30px !important;
+    position: absolute;
+    top: 1px;
+    right: 1px;
+    width: 20px;
+}
+.error-text {
+    font-size: 12px; /* Slightly smaller font */
+    color: #dc3545; /* Bootstrap danger color */
+    display: block;
+    margin-top: 5px;
+    font-weight: 200;
+    text-shadow:none;
+}
+
+/* Highlight the input field when there's an error */
+input.is-invalid, select.is-invalid, textarea.is-invalid {
+    border-color: #dc3545 !important;
+    background-color: #f8d7da !important;
+}
+
+</style>
+<!-- start page title -->
+<div class="row">
+   <div class="col-12">
+      <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
+         <h4 class="mb-sm-0">Add Employee </h4>
+         <div class="page-title-right">
+            <ol class="breadcrumb m-0">
+               <li class="breadcrumb-item"><a href="#">Dashboards</a></li>
+               <li class="breadcrumb-item active">Employee List</li>
+            </ol>
+         </div>
+      </div>
+   </div>
+</div>
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header align-items-center d-flex">
+                <h4 class="card-title mb-0 flex-grow-1">Add New Employee</h4>
+                <div class="flex-shrink-0">
+                    <a class="btn btn-secondary" href="employee_list_page">< Back</a>
+                </div>
+            </div>
+            <div class="card-body"> 
+                <div id="alertContainer"></div>
+                <form id="employeeForm">
+                    <div class="row gy-3">
+                        <!-- Name -->
+                        <div class="col-md-6">
+                            <label class="form-label">Name</label>
+                            <input type="text" class="form-control" id="name" name="name" required>
+                            <small class="text-danger error-text"></small>
+                        </div>
+                        <!-- Designation -->
+                        <div class="col-md-6">
+                            <label class="form-label">Designation</label>
+                            <input type="text" class="form-control" id="designation" name="designation" required>
+                            <small class="text-danger error-text"></small>
+                        </div>
+                        <!-- Email -->
+                        <div class="col-md-4">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                            <small class="text-danger error-text"></small>
+                        </div>
+                        <!-- Mobile Number -->
+                        <div class="col-md-4">
+                            <label class="form-label">Mobile Number</label>
+                            <input type="text" class="form-control" id="mobile_number" name="mobile_number" required>
+                            <small class="text-danger error-text"></small>
+                        </div>
+                        <!-- Date of Birth -->
+                        <div class="col-md-4">
+                            <label class="form-label">Date of Birth</label>
+                            <input type="date" class="form-control" id="date_of_birth" name="date_of_birth" required>
+                            <small class="text-danger error-text"></small>
+                        </div>
+                        <!-- Address -->
+                        <div class="col-md-12">
+                            <label class="form-label">Address</label>
+                            <textarea class="form-control" id="address" name="address" rows="2" required></textarea>
+                            <small class="text-danger error-text"></small>
+                        </div>
+                        <!-- Location -->
+                        <div class="col-md-6">
+                            <label class="form-label">Location</label>
+                            <input type="text" class="form-control" id="location" name="location" required>
+                            <small class="text-danger error-text"></small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Work Location</label>
+                            <select class="form-control select2" id="work_location" name="work_location" required>
+                                <option value="">Select Work Location</option>
+                            </select>
+                            <small class="text-danger error-text"></small>
+                        </div>
+                        <!-- Aadhaar Card -->
+                        <div class="col-md-6">
+                            <label class="form-label">Aadhaar Card</label>
+                            <input type="text" class="form-control" id="aadhaar_card" name="aadhaar_card" required>
+                            <small class="text-danger error-text"></small>
+                        </div>
+                        <!-- PAN Card -->
+                        <div class="col-md-6">
+                            <label class="form-label">PAN Card</label>
+                            <input type="text" class="form-control" id="pan_card" name="pan_card" required>
+                            <small class="text-danger error-text"></small>
+                        </div>
+                    </div>
+            
+                    <!-- Employee Code Section -->
+                    <div class="row gy-3 mt-2">
+                        <div class="col-md-5">
+                            <label class="form-label">Employee Code</label>
+                            <input type="text" class="form-control" id="employee_code" name="employee_code" readonly>
+                        </div>
+                    </div>
+            
+                    <!-- Auto-generate Employee Code Section -->
+                    <div class="row gy-3 mt-0">
+                        <div class="col-md-6">
+                            <input type="checkbox" class="form-check-input" id="auto_generate_code">
+                            <label class="form-label">Auto-generate Employee Code</label>
+                        </div>
+                    </div>
+            
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-success">Add Employee</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            
+        </div>
+    </div>
+</div>
+
+
+<script> 
+    $(document).ready(function() {
+
+    $('.select2').select2();
+
+    function loadLocations() {
+        $.getJSON("{% url 'get_locations' %}", function (data) {
+            $('#work_location').empty().append('<option value="">Select Work Location</option>');
+            $.each(data.locations, function (index, item) {
+                $('#work_location').append(`<option value="${item.id}">${item.name}</option>`);
+            });
+        });
+    }
+
+    loadLocations();
+});
+
+document.addEventListener('DOMContentLoaded', function () { 
+    const form = document.getElementById('employeeForm');
+    const alertContainer = document.getElementById('alertContainer');
+
+    const showError = (id, message) => {
+        const inputField = document.getElementById(id);
+        if (!inputField) return;
+
+        let errorContainer = inputField.nextElementSibling;
+        if (!errorContainer || !errorContainer.classList.contains('error-text')) {
+            errorContainer = document.createElement('small');
+            errorContainer.className = 'text-danger error-text';
+            inputField.insertAdjacentElement('afterend', errorContainer);
+        }
+        errorContainer.innerText = message;
+        errorContainer.style.display = message ? 'block' : 'none';
+    };
+
+    const validateField = (id, pattern, message, required = true) => {
+        const input = document.getElementById(id);
+        if (!input) return false;
+
+        const value = input.value.trim();
+        if (required && !value) {
+            showError(id, `${input.previousElementSibling.innerText} is required.`);
+            return false;
+        }
+
+        if (value && pattern && !value.match(pattern)) {
+            showError(id, message);
+            return false;
+        }
+
+        showError(id, ''); // Clear error
+        return true;
+    };
+
+    const namePattern = /^[A-Za-z\s]+$/;
+    const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    const mobilePattern = /^[6789]\d{9}$/;
+    const aadhaarPattern = /^\d{12}$/;
+    const panPattern = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+
+    const fields = [
+        { id: 'name', pattern: namePattern, message: 'Only alphabets and spaces are allowed.' },
+        { id: 'designation', pattern: null, message: '' },
+        { id: 'email', pattern: emailPattern, message: 'Enter a valid email address.' },
+        { id: 'mobile_number', pattern: mobilePattern, message: 'Enter a valid 10-digit Indian mobile number.' },
+        { id: 'date_of_birth', pattern: null, message: '' },
+        { id: 'address', pattern: null, message: '' },
+        { id: 'location', pattern: null, message: '' },
+        { id: 'work_location', pattern: null, message: '' },
+        { id: 'aadhaar_card', pattern: aadhaarPattern, message: 'Aadhaar number must be exactly 12 digits.' },
+        { id: 'pan_card', pattern: panPattern, message: 'Enter a valid PAN number (e.g., ABCDE1234F).' },
+    ];
+
+    fields.forEach(field => {
+        const input = document.getElementById(field.id);
+        if (input) {
+            input.addEventListener('input', () => validateField(field.id, field.pattern, field.message));
+        }
+    });
+
+    form.addEventListener('submit', function (event) {
+        event.preventDefault();
+
+        alertContainer.innerHTML = '';
+        document.querySelectorAll('.error-text').forEach(el => el.remove());
+
+        let isValid = true;
+        fields.forEach(field => {
+            if (!validateField(field.id, field.pattern, field.message)) {
+                isValid = false;
+            }
+        });
+
+        const employeeCodeField = document.getElementById('employee_code');
+        if (!document.getElementById('auto_generate_code').checked && !employeeCodeField.value.trim()) {
+            showError('employee_code', 'Employee code is required.');
+            isValid = false;
+        }
+
+        if (!isValid) {
+            alertContainer.innerHTML = `
+                <div class="alert alert-danger">
+                    <strong>Error:</strong> Please correct the highlighted fields.
+                </div>`;
+            return;
+        }
+
+        fetch('/add-employee/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}',
+            },
+            body: JSON.stringify(Object.fromEntries(new FormData(form))),
+        })
+        .then(response => response.json())
+        .then(data => {
+            alertContainer.innerHTML = ''; 
+            const alertDiv = document.createElement('div');
+            alertDiv.className = data.message ? 'alert alert-success' : 'alert alert-danger';
+            alertDiv.innerHTML = data.message || `<strong>Error:</strong> ${data.error}`;
+            alertContainer.appendChild(alertDiv);
+
+            if (data.message) {
+                setTimeout(() => {
+                    alertContainer.innerHTML = '';
+                    window.location.href = '/employee_list_page';
+                }, 3000);
+            }
+        })
+        .catch(error => {
+            alertContainer.innerHTML = `<div class="alert alert-danger"><strong>Error:</strong> Something went wrong!</div>`;
+            console.error('Error:', error);
+        });
+    });
+});
+
+
+
+
+    // Event listener to automatically generate employee code when the checkbox is checked
+    document.getElementById('auto_generate_code').addEventListener('change', function() {
+        const employeeCodeInput = document.getElementById('employee_code');
+        
+        if (this.checked) {
+            // If auto-generate checkbox is checked, disable input and generate employee code
+            employeeCodeInput.readOnly = true;
+            fetch('/generate-employee-code/') // Endpoint to generate code
+                .then(response => response.json())
+                .then(data => {
+                    employeeCodeInput.value = data.employee_code;
+                })
+                .catch(error => console.error('Error generating employee code:', error));
+        } else {
+            // If unchecked, allow manual input and reset employee code field to empty
+            employeeCodeInput.readOnly = false;
+            employeeCodeInput.value = '';
+        }
+    });
+
+    // Initial check when the page loads to handle if the checkbox is already checked or unchecked
+    if (document.getElementById('auto_generate_code').checked) {
+        document.getElementById('employee_code').readOnly = true;
+    } else {
+        document.getElementById('employee_code').readOnly = false;
+    }
+</script>
+
+
+
+
+
+<!-- end page title -->
+{% endblock %}
+{% block custom_script %}
+{% endblock %}

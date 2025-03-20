@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %} Add Location | TTSPL IMS - Trisnota Technical Services Pvt. Ltd.{% endblock %}
+{% block content %}
+<!-- start page title -->
+<div class="row">
+   <div class="col-12">
+      <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
+         <h4 class="mb-sm-0">Add Location </h4>
+         <div class="page-title-right">
+            <ol class="breadcrumb m-0">
+               <li class="breadcrumb-item"><a href="#">Dashboards</a></li>
+               <li class="breadcrumb-item active">Location List</li>
+            </ol>
+         </div>
+      </div>
+   </div>
+</div>
+<div class="row">
+   <div class="col-lg-12">
+      <div class="card">
+         <div class="card-header align-items-center d-flex">
+            <h4 class="card-title mb-0 flex-grow-1">Add New Location</h4>
+            <div class="flex-shrink-0">
+               <a class="btn btn-secondary" href="location_list_page">< Back</a>
+            </div>
+         </div>
+         <!-- end card header -->
+         <div class="card-body">
+            <div class="live-preview">
+               <div id="alertContainer"></div>
+               <form id="locationForm" method="POST" action="/add-location/">
+                  <div class="row gy-4">
+                     <!-- Location Name -->
+                     <div class="col-xxl-3 col-md-6">
+                        <div>
+                           <label for="locationName" class="form-label">Location Name</label>
+                           <input type="text" class="form-control" id="locationName" name="name" placeholder="Enter location name" required>
+                        </div>
+                     </div>
+                     <!-- Status (Active/Inactive) -->
+                     <div class="col-xxl-3 col-md-6">
+                        <div>
+                           <label for="statusInput" class="form-label">Status</label>
+                           <select class="form-select" id="statusInput" name="status" required>
+                              <option value="active" selected>Active</option>
+                              <option value="inactive">Inactive</option>
+                           </select>
+                        </div>
+                     </div>
+                     <!-- Location Details -->
+                     <div class="col-xxl-6 col-md-12">
+                        <div>
+                           <label for="locationDetails" class="form-label">Details</label>
+                           <textarea class="form-control" id="locationDetails" name="details" rows="3" placeholder="Enter location details" required></textarea>
+                        </div>
+                     </div>
+                  </div>
+                  <!--end row-->
+                  <div class="row mt-4">
+                     <div class="col-12 text-start">
+                        <button type="submit" class="btn btn-success">Add Location</button>
+                     </div>
+                  </div>
+               </form>
+            </div>
+         </div>
+      </div>
+   </div>
+   <!--end col-->
+</div>
+<script>
+   document.getElementById('locationForm').addEventListener('submit', function(event) {
+       event.preventDefault(); // Prevent default form submission
+   
+       // Collect form data
+       const name = document.getElementById('locationName').value;
+       const details = document.getElementById('locationDetails').value;
+   
+       // Make an AJAX POST request
+       fetch('/add-location/', {
+           method: 'POST',
+           headers: {
+               'Content-Type': 'application/json',
+               'X-CSRFToken': '{{ csrf_token }}', // Django CSRF token
+           },
+           body: JSON.stringify({
+               name: name,
+               details: details,
+               status: 'active', // Hardcoded status to active
+           }),
+       })
+       .then(response => response.json())
+       .then(data => {
+           let alertMessage;
+           let alertClass;
+           let message;
+   
+           if (data.message) {
+               alertMessage = data.message;
+               alertClass = 'alert-success';  // Success class
+               message = `${alertMessage}`;
+           } else {
+               alertMessage = data.error;
+               alertClass = 'alert-danger'; // Error class
+               message = `<strong>Error:</strong> ${alertMessage}`;
+           }
+   
+           // Create alert div dynamically
+           const alertDiv = document.createElement('div');
+           alertDiv.className = `alert ${alertClass} material-shadow`;
+           alertDiv.role = 'alert';
+           alertDiv.innerHTML = message;
+   
+           // Add alert to the DOM
+           const alertContainer = document.getElementById('alertContainer');
+           alertContainer.innerHTML = ''; // Clear previous alerts
+           alertContainer.appendChild(alertDiv);
+   
+           // Hide the alert after 3 seconds and then redirect
+           setTimeout(() => {
+               alertContainer.innerHTML = ''; // Clear the alert
+               // Redirect to location list page
+               window.location.href = '/location_list_page'; // Update this with the correct URL
+           }, 3000); // Hide alert and redirect after 3 seconds
+   
+           // Reset form fields
+           document.getElementById('locationForm').reset();
+       })
+       .catch(error => {
+           console.error('Error:', error);
+           alert('An unexpected error occurred.');
+       });
+   });
+</script>
+<!-- end page title -->
+{% endblock %}
+{% block custom_script %}
+{% endblock %}

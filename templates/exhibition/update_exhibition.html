@@ -1,0 +1,220 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %} Update Exhibition | TTSPL IMS - Trisnota Technical Services Pvt. Ltd.{% endblock %}
+   
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
+            <h4 class="mb-sm-0">Update Exhibition</h4>
+            <div class="page-title-right">
+                <ol class="breadcrumb m-0">
+                    <li class="breadcrumb-item"><a href="#">Dashboards</a></li>
+                    <li class="breadcrumb-item active">Exhibition List</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header align-items-center d-flex">
+                <h4 class="card-title mb-0 flex-grow-1">Update Exhibition Details</h4>
+                <div class="flex-shrink-0">
+                    <a class="btn btn-secondary" href="/exhibition_list_page">< Back</a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="live-preview">
+                    <div id="alertContainer"></div>
+                    <form id="updateExhibitionForm" method="POST">
+                        <input type="hidden" id="exhibitionId" value="{{ exhibition.exhibition_id }}">
+                        <div class="row gy-4">
+                            <!-- Exhibition Name -->
+                            <div class="col-xxl-4 col-md-6">
+                                <div>
+                                    <label for="exhibitionName" class="form-label">Exhibition Name</label>
+                                    <input type="text" class="form-control" id="exhibitionName" name="exhibition_name" value="{{ exhibition.exhibition_name }}" required>
+                                </div>
+                            </div>
+                    
+                            <!-- Location -->
+                            <div class="col-xxl-4 col-md-6">
+                                <div>
+                                    <label for="location" class="form-label">Location</label>
+                                    <input type="text" class="form-control" id="location" name="location" value="{{ exhibition.location }}" required>
+                                </div>
+                            </div>
+                    
+                            <!-- Address -->
+                            <div class="col-xxl-4 col-md-6">
+                                <div>
+                                    <label for="address" class="form-label">Address</label>
+                                    <textarea class="form-control" id="address" name="address" rows="3" required>{{ exhibition.address }}</textarea>
+                                </div>
+                            </div>
+                    
+                            <!-- City -->
+                            <div class="col-xxl-3 col-md-6">
+                                <div>
+                                    <label for="city" class="form-label">City</label>
+                                    <input type="text" class="form-control" id="city" name="city" value="{{ exhibition.city }}" required>
+                                </div>
+                            </div>
+                    
+                            <!-- State (Dropdown) -->
+                            <div class="col-xxl-3 col-md-6">
+                                <div>
+                                    <label for="state" class="form-label">State</label>
+                                    <select id="state" class="form-control" name="state" required>
+                                        <option value="" disabled selected>Select State</option>
+                                        <!-- States will be populated dynamically -->
+                                    </select>
+                                </div>
+                            </div>
+                    
+                            <!-- Pincode -->
+                            <div class="col-xxl-3 col-md-6">
+                                <div>
+                                    <label for="pincode" class="form-label">Pincode</label>
+                                    <input type="text" class="form-control" id="pincode" name="pincode" value="{{ exhibition.pincode }}" required>
+                                </div>
+                            </div>
+                    
+                            <!-- Start Date -->
+                            <div class="col-xxl-3 col-md-6">
+                                <div>
+                                    <label for="startDate" class="form-label">Start Date</label>
+                                    <input type="date" class="form-control" id="startDate" name="start_date" value="{{ exhibition.start_date|date:'Y-m-d' }}" required>
+                                </div>
+                            </div>
+                    
+                            <!-- End Date -->
+                            <div class="col-xxl-3 col-md-6">
+                                <div>
+                                    <label for="endDate" class="form-label">End Date</label>
+                                    <input type="date" class="form-control" id="endDate" name="end_date" value="{{ exhibition.end_date|date:'Y-m-d' }}" required>
+                                </div>
+                            </div>
+                    
+                            <!-- Details -->
+                            <div class="col-12">
+                                <div>
+                                    <label for="details" class="form-label">Details</label>
+                                    <textarea class="form-control" id="details" name="details" rows="4" required>{{ exhibition.details }}</textarea>
+                                </div>
+                            </div>
+                        </div>
+                    
+                        <div class="row mt-4">
+                            <div class="col-12 text-start">
+                                <button type="submit" class="btn btn-primary">Update Exhibition</button>
+                            </div>
+                        </div>
+                    </form>
+                    
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // JSON data for all Indian states
+    const indianStates = [
+        "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", 
+        "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", 
+        "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram", 
+        "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", 
+        "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal", 
+        "Andaman and Nicobar Islands", "Chandigarh", "Dadra and Nagar Haveli and Daman and Diu", 
+        "Delhi", "Jammu and Kashmir", "Ladakh", "Lakshadweep", "Puducherry"
+    ];
+
+    // Populate the state dropdown
+    const stateDropdown = document.getElementById('state');
+    indianStates.forEach(state => {
+        const option = document.createElement('option');
+        option.value = state;
+        option.textContent = state;
+        stateDropdown.appendChild(option);
+    });
+
+    // Pre-select the current state in the dropdown
+    const currentState = "{{ exhibition.state }}";  // Django variable for the current exhibition's state
+    if (currentState) {
+        stateDropdown.value = currentState;
+    }
+
+    
+    document.getElementById('updateExhibitionForm').addEventListener('submit', function(event) {
+        event.preventDefault();
+
+        // Collect form data
+        const exhibitionId = document.getElementById('exhibitionId').value;
+        const exhibitionName = document.getElementById('exhibitionName').value;
+        const location = document.getElementById('location').value;
+        const address = document.getElementById('address').value;
+        const city = document.getElementById('city').value;
+        const state = document.getElementById('state').value;
+        const pincode = document.getElementById('pincode').value;
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        const details = document.getElementById('details').value;
+
+        // AJAX request
+        fetch(`/update-exhibition/${exhibitionId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}',
+            },
+            body: JSON.stringify({
+                exhibition_name: exhibitionName,
+                location: location,
+                address: address,
+                city: city,
+                state: state,
+                pincode: pincode,
+                start_date: startDate,
+                end_date: endDate,
+                details: details,
+            }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            let alertClass = data.message ? 'alert-success' : 'alert-danger';
+            let alertMessage = data.message || `Error: ${data.error}`;
+
+            // Show alert
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert ${alertClass}`;
+            alertDiv.innerHTML = alertMessage;
+
+            const alertContainer = document.getElementById('alertContainer');
+            alertContainer.innerHTML = '';
+            alertContainer.appendChild(alertDiv);
+
+            setTimeout(() => {
+                if (data.message) {
+                    window.location.href = '/exhibition_list_page';
+                } else {
+                    alertContainer.innerHTML = '';
+                }
+            }, 3000);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+    });
+</script>
+
+
+
+<!-- end page title -->
+{% endblock %}
+
+{% block custom_script %}
+{% endblock %}

@@ -1,0 +1,183 @@
+{% extends 'base.html' %}
+{% block title %} General Settings | TTSPL IMS - Trisnota Technical Services Pvt. Ltd.{% endblock %}
+{% block content %}
+
+<div class="row">
+    <div class="col-12">
+       <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
+          <h4 class="mb-sm-0">General Settings</h4>
+          <div class="page-title-right">
+             <ol class="breadcrumb m-0">
+                <li class="breadcrumb-item"><a href="#">Dashboards</a></li>
+                <li class="breadcrumb-item active">Settings</li>
+             </ol>
+          </div>
+       </div>
+    </div>
+ </div>
+<div class="row">
+    <div class="col-xxl-6">
+        <div class="card">
+            <div class="card-body pt-4">
+                <!-- Nav tabs -->
+                <ul class="nav nav-pills nav-customs nav-danger mb-3" role="tablist">
+                    <li class="nav-item">
+                        <a class="nav-link active" data-bs-toggle="tab" href="#border-navs-home" role="tab">Add Configuration for OTP Generation</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#border-navs-help" role="tab">Help & Support</a>
+                    </li>
+                </ul><!-- Tab panes -->
+                <div class="tab-content text-muted">
+                    <div class="tab-pane active" id="border-navs-home" role="tabpanel">
+                        <div class="row">
+                            <div class="col-12 col-xl-6">
+                               <div id="response"></div>
+                               <form id="secondary-email-form">
+                                  <div class="mb-3">
+                                     <label class="form-label" for="otp_host">OTP Email Host</label>
+                                     <input type="text" class="form-control" placeholder="Email Host" id="otp_host" name="otp_host" required>
+                                  </div>
+                                  <div class="mb-3">
+                                     <label class="form-label" for="otp_port">OTP Email Port</label>
+                                     <input type="number" class="form-control" placeholder="Email Port" id="otp_port" name="otp_port" required>
+                                  </div>
+                                  <div class="mb-3">
+                                     <label class="form-label" for="otp_use_tls">Use TLS for OTP</label>
+                                     <select id="otp_use_tls" name="otp_use_tls" class="form-control">
+                                        <option value="true">True</option>
+                                        <option value="false">False</option>
+                                     </select>
+                                  </div>
+                                  <div class="mb-3">
+                                     <label class="form-label" for="otp_user">OTP Email User</label>
+                                     <input type="email" class="form-control" placeholder="Email User" id="otp_user" name="otp_user" required>
+                                  </div>
+                                  <div class="mb-3">
+                                     <label class="form-label" for="otp_password">OTP Email Password</label>
+                                     <input type="password" class="form-control" placeholder="Email Password" id="otp_password" name="otp_password" required>
+                                  </div>
+                                  <div class="mb-3">
+                                     <label class="form-label" for="otp_from_email">OTP Default From Email</label>
+                                     <input type="email" class="form-control" placeholder="Default From Email" id="otp_from_email" name="otp_from_email" required>
+                                  </div>
+                                  <button type="submit" class="btn btn-primary">Submit</button>
+                               </form>
+                            </div>
+                            <div class="col-12 col-xl-6">
+                               <h4 class="tab-title">SMTP For OTP  Configuration</h4>
+                               <p>Enable Less Secure Apps Access:
+                               </p>
+                               <p class="text-muted">Access your email account settings and enable "Less secure app access" if required by your SMTP provider.</p>
+                               <p>Generate App Password:
+                               </p>
+                               <p class="text-muted">If two-factor authentication is enabled, generate an app-specific password for your application. This password will be used for SMTP authentication.</p>
+                               <p>SMTP Configuration:
+                               </p>
+                               <p class="text-muted">Use a form to collect SMTP configuration details such as:
+                               </p>
+                               <div class="card-body">
+                                  <ul>
+                                     <li>
+                                        Email Host: The SMTP server address (e.g., smtp.example.com).
+                                     </li>
+                                     <li>
+                                        Email Port: The port number used by the SMTP server (e.g., 465 for TLS).										
+                                     </li>
+                                     <li>
+                                        Email Host User: Your username or email address for SMTP authentication.										
+                                     </li>
+                                     <li>
+                                        Email Host Password: The app-specific password generated in step 2.										
+                                     </li>
+                                     <li>
+                                        Default From Email: The email address used as the sender by default.
+                                     </li>
+                                     <li>
+                                        Default Recipient Email: The default recipient email address for outgoing emails.                                        
+                                     </li>
+                                  </ul>
+                               </div>
+                               <p>Testing:
+                               </p>
+                               <p class="text-muted">Verify the SMTP configuration by sending a test email from your application. This ensures that emails can be successfully sent using the configured SMTP server.
+                               </p>
+                            </div>
+                         </div>
+                    </div>
+                    <div class="tab-pane" id="border-navs-help" role="tabpanel">
+                            <div class="card-header">
+                               <div class="card-actions float-end">
+                               </div>
+                               <h5 class="card-title mb-0">Help & Support</h5>
+                            </div>
+                            <div class="card-body">
+                               <p>We’re here to assist you with any queries or concerns. Feel free to reach out to us:</p>
+                               <ul>
+                                   <li><strong>Email:</strong> <a href="mailto:sales@ttspl.co.in">sales@ttspl.co.in</a></li>
+                                   <li><strong>Phone:</strong> <a href="tel:+912246055448">+91 22 4605 5448</a></li>
+                               </ul>
+                               <p>For more information, visit our <a href="https://ttspl.co.in" target="_blank">Help Center</a>.</p>
+                            </div>
+                    </div>
+                </div>
+            </div><!-- end card-body -->
+        </div>
+    </div>
+</div>
+
+
+<script>
+    $(document).ready(function() {
+        // Fetch the existing configuration when the page loads
+        $.ajax({
+            type: 'GET',
+            url: 'save-secondary-email-config',  // Update with your URL pattern
+            success: function(response) {
+                // Pre-fill the form with the existing configuration
+                $('#otp_host').val(response.otp_host);
+                $('#otp_port').val(response.otp_port);
+                $('#otp_use_tls').val(response.otp_use_tls ? 'true' : 'false');
+                $('#otp_user').val(response.otp_user);
+                $('#otp_password').val(response.otp_password);
+                $('#otp_from_email').val(response.otp_from_email);
+            },
+            error: function(xhr) {
+                $('#response').html('<p>Error loading configuration: ' + xhr.responseText + '</p>');
+            }
+        });
+    
+        // Handle form submission
+        $('#secondary-email-form').on('submit', function(e) {
+            e.preventDefault();
+            const formData = $(this).serialize();
+            $.ajax({
+                type: 'POST',
+                url: '{% url "save_secondary_email_config" %}',  // Update with your URL pattern
+                data: formData,
+                success: function(response) {
+                    // Show the success alert
+                    let alertHtml = `
+                    <div class="alert alert-success alert-dismissible fade show px-2 py-3" role="alert">
+                       OTP Generation Configuration saved successfully.
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>`;
+                    
+                    $('#response').html(alertHtml);
+    
+                    // Automatically dismiss the alert after 3 seconds
+                    setTimeout(function() {
+                        $('.alert').alert('close');
+                    }, 3000);  // 3000 milliseconds = 3 seconds
+                },
+                error: function(xhr) {
+                    $('#response').html('<p>Error saving configuration: ' + xhr.responseText + '</p>');
+                }
+            });
+        });
+    });
+ </script>  
+<!-- end page title -->
+{% endblock %}
+{% block custom_script %}
+{% endblock %}

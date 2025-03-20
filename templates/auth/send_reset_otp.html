@@ -1,0 +1,200 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" data-layout="vertical" data-topbar="light" data-sidebar="dark" data-sidebar-size="lg" data-sidebar-image="none" data-preloader="disable" data-theme="default" data-theme-colors="purple">
+<head>
+    <meta charset="utf-8" />
+    <title>Forget Password | TTSPL - IMS</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- App favicon -->
+	<link rel="shortcut icon" href="{% static 'assets/images/favicon.ico' %}">
+
+	<!-- jsvectormap css -->
+	<link href="{% static 'assets/libs/jsvectormap/jsvectormap.min.css' %}" rel="stylesheet" type="text/css" />
+	
+	<!-- Swiper slider css -->
+	<link href="{% static 'assets/libs/swiper/swiper-bundle.min.css' %}" rel="stylesheet" type="text/css" />
+	
+	<!-- Layout config Js -->
+	<script src="{% static 'assets/js/layout.js' %}"></script>
+	
+	<!-- Bootstrap Css -->
+	<link href="{% static 'assets/css/bootstrap.min.css' %}" rel="stylesheet" type="text/css" />
+	
+	<!-- Icons Css -->
+	<link href="{% static 'assets/css/icons.min.css' %}" rel="stylesheet" type="text/css" />
+	
+	<!-- App Css -->
+	<link href="{% static 'assets/css/app.min.css' %}" rel="stylesheet" type="text/css" />
+	
+	<!-- Custom Css -->
+	<link href="{% static 'assets/css/custom.min.css' %}" rel="stylesheet" type="text/css" />
+    <style>
+        .logo-font {
+            font-family: 'Arial', sans-serif;
+            font-size: 32px; /* Larger Text Size */
+            font-weight: 900; /* Extra Bold */
+            font-stretch: expanded; /* Letter Width Increased */
+            color: white;
+            text-transform: uppercase;
+            letter-spacing: 3px; /* Spacing Between Letters */
+            text-shadow: 3px 3px 10px rgba(255, 255, 255, 0.3);
+            display: inline-block;
+            border-radius: 10px;
+            box-shadow: 0px 4px 15px rgba(81, 71, 163, 0.8);
+            animation: glow 2s infinite alternate;
+        }
+
+        @keyframes glow {
+            from {
+                box-shadow: 0px 4px 10px rgba(81, 71, 163, 0.6);
+            }
+            to {
+                box-shadow: 0px 4px 20px rgba(81, 71, 163, 1);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="auth-page-wrapper auth-bg-cover py-5 d-flex justify-content-center align-items-center min-vh-100">
+        <div class="bg-overlay"></div>
+        <!-- auth-page content -->
+        <div class="auth-page-content overflow-hidden pt-lg-5">
+            <div class="container">
+                <div class="row">
+                    <div class="col-lg-12">
+                        <div class="card overflow-hidden card-bg-fill galaxy-border-none">
+                            <div class="row justify-content-center g-0">
+                                <div class="col-lg-6">
+                                    <div class="p-lg-5 p-4 auth-one-bg h-100">
+                                        <div class="bg-overlay"></div>
+                                        <div class="position-relative h-100 d-flex flex-column">
+                                            <div class="mb-4">
+                                                <a href="index-2.html" class="d-block">
+                                                    <div class="logo-font">TTSPL IMS</div>
+                                                </a>
+                                            </div>
+                                            <div class="mt-auto">
+                                                <div class="mb-3">
+                                                    <i class="ri-double-quotes-l display-4 text-success"></i>
+                                                </div>
+
+                                                <div id="qoutescarouselIndicators" class="carousel slide" data-bs-ride="carousel">
+                                                    <div class="carousel-indicators">
+                                                        <button type="button" data-bs-target="#qoutescarouselIndicators" data-bs-slide-to="0" class="active" aria-current="true" aria-label="Slide 1"></button>
+                                                        <button type="button" data-bs-target="#qoutescarouselIndicators" data-bs-slide-to="1" aria-label="Slide 2"></button>
+                                                        <button type="button" data-bs-target="#qoutescarouselIndicators" data-bs-slide-to="2" aria-label="Slide 3"></button>
+                                                    </div>
+                                                    <div class="carousel-inner text-center text-white-50 pb-5">
+                                                        <div class="carousel-item active">
+                                                            <p class="fs-15 fst-italic">" Great! Clean code, intuitive interface, and seamless inventory tracking. Easy to customize and highly efficient! "</p>
+                                                        </div>
+                                                        <div class="carousel-item">
+                                                            <p class="fs-15 fst-italic">"The system is outstanding! Smooth inventory management with excellent customer support."</p>
+                                                        </div>
+                                                        <div class="carousel-item">
+                                                            <p class="fs-15 fst-italic">"Highly recommended! Clean design, user-friendly, and simplifies stock management effortlessly. "</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <!-- end carousel -->
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- end col -->
+
+                                <div class="col-lg-6">
+                                    <div class="p-lg-5 p-4">
+                                        <h5 class="text-primary">Forgot Password?</h5>
+                                        <p class="text-muted">Reset password with TTSPL IMS</p>
+
+                                        <div class="mt-2 text-center">
+                                            <lord-icon
+                                                src="https://cdn.lordicon.com/rhvddzym.json" trigger="loop" colors="primary:#0ab39c" class="avatar-xl">
+                                            </lord-icon>
+                                        </div>
+
+                                        <div class="alert border-0 alert-warning text-center mb-2 mx-2" role="alert">
+                                            Enter your email and instructions will be sent to you!
+                                        </div>
+                                        <div class="p-2">
+                                            <form method="post">
+                                                    {% csrf_token %}
+                                                    {% if messages %}
+                                                    <div id="alert-container">
+                                                        {% for message in messages %}
+                                                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                                                <div class="alert-message">
+                                                                    {{ message }}
+                                                                </div>
+                                                            </div>
+                                                        {% endfor %}
+                                                    </div>
+                                                {% endif %}
+                                                <div class="mb-4">
+                                                    <label class="form-label">Email</label>
+                                                    <input type="email" class="form-control" id="email" name="email" placeholder="Enter email address">
+                                                </div>
+
+                                                <div class="text-center mt-4">
+                                                    <button class="btn btn-success w-100" type="submit">Send OTP</button>
+                                                </div>
+                                            </form><!-- end form -->
+                                        </div>
+
+                                        <div class="mt-5 text-center">
+                                            <p class="mb-0">Wait, I remember my password... <a href="/" class="fw-semibold text-primary text-decoration-underline"> Click here </a> </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- end col -->
+                            </div>
+                            <!-- end row -->
+                        </div>
+                        <!-- end card -->
+                    </div>
+                    <!-- end col -->
+
+                </div>
+                <!-- end row -->
+            </div>
+            <!-- end container -->
+        </div>
+        <!-- end auth page content -->
+
+        <!-- footer -->
+        <footer class="footer galaxy-border-none">
+            <div class="container">
+                <div class="row">
+                    <div class="col-lg-12">
+                        <div class="text-center">
+                            <p class="mb-0">&copy;
+                                <script>document.write(new Date().getFullYear())</script> TTSPL. Design & Develop <i class="mdi mdi-heart text-danger"></i> by TTSPL
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </footer>
+        <!-- end Footer -->
+    </div>
+
+    <!-- JAVASCRIPT -->
+    <script src="{% static 'assets/libs/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+    <script src="{% static 'assets/libs/simplebar/simplebar.min.js' %}"></script>
+    <script src="{% static 'assets/libs/node-waves/waves.min.js' %}"></script>
+    <script src="{% static 'assets/libs/feather-icons/feather.min.js' %}"></script>
+    <script src="{% static 'assets/js/pages/plugins/lord-icon-2.1.0.js' %}"></script>
+    <script src="{% static 'assets/js/plugins.js' %}"></script>
+    
+
+    <!-- validation init -->
+    <script src="{% static 'assets/js/pages/form-validation.init.js' %}"></script>
+    <!-- password create init -->
+    <script src="{% static 'assets/js/pages/passowrd-create.init.js' %}></script>
+</body>
+
+</html>

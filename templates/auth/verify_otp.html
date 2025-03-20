@@ -1,0 +1,260 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" data-layout="vertical" data-topbar="light" data-sidebar="dark" data-sidebar-size="lg" data-sidebar-image="none" data-preloader="disable" data-theme="default" data-theme-colors="purple">
+<head>
+    <meta charset="utf-8" />
+    <title>OTP Verify | TTSPL - IMS</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- App favicon -->
+	<link rel="shortcut icon" href="{% static 'assets/images/favicon.ico' %}">
+
+	<!-- jsvectormap css -->
+	<link href="{% static 'assets/libs/jsvectormap/jsvectormap.min.css' %}" rel="stylesheet" type="text/css" />
+	
+	<!-- Swiper slider css -->
+	<link href="{% static 'assets/libs/swiper/swiper-bundle.min.css' %}" rel="stylesheet" type="text/css" />
+	
+	<!-- Layout config Js -->
+	<script src="{% static 'assets/js/layout.js' %}"></script>
+	
+	<!-- Bootstrap Css -->
+	<link href="{% static 'assets/css/bootstrap.min.css' %}" rel="stylesheet" type="text/css" />
+	
+	<!-- Icons Css -->
+	<link href="{% static 'assets/css/icons.min.css' %}" rel="stylesheet" type="text/css" />
+	
+	<!-- App Css -->
+	<link href="{% static 'assets/css/app.min.css' %}" rel="stylesheet" type="text/css" />
+	
+	<!-- Custom Css -->
+	<link href="{% static 'assets/css/custom.min.css' %}" rel="stylesheet" type="text/css" />
+    <style>
+        .logo-font {
+            font-family: 'Arial', sans-serif;
+            font-size: 32px; /* Larger Text Size */
+            font-weight: 900; /* Extra Bold */
+            font-stretch: expanded; /* Letter Width Increased */
+            color: white;
+            text-transform: uppercase;
+            letter-spacing: 3px; /* Spacing Between Letters */
+            text-shadow: 3px 3px 10px rgba(255, 255, 255, 0.3);
+            display: inline-block;
+            border-radius: 10px;
+            box-shadow: 0px 4px 15px rgba(81, 71, 163, 0.8);
+            animation: glow 2s infinite alternate;
+        }
+
+        @keyframes glow {
+            from {
+                box-shadow: 0px 4px 10px rgba(81, 71, 163, 0.6);
+            }
+            to {
+                box-shadow: 0px 4px 20px rgba(81, 71, 163, 1);
+            }
+        }
+        .timer {
+            font-size: 12px; /* Smaller font size */
+            color: red; /* Red color for the timer text */
+        }
+        .text-center {
+            text-align: center; /* Center-align text inside the div */
+        }        
+    </style>
+</head>
+
+<body>
+
+    <div class="auth-page-wrapper auth-bg-cover py-5 d-flex justify-content-center align-items-center min-vh-100">
+        <div class="bg-overlay"></div>
+        <!-- auth-page content -->
+        <div class="auth-page-content overflow-hidden pt-lg-5">
+            <div class="container">
+                <div class="row">
+                    <div class="col-lg-12">
+                        <div class="card overflow-hidden card-bg-fill galaxy-border-none">
+                            <div class="row justify-content-center g-0">
+                                <div class="col-lg-6">
+                                    <div class="p-lg-5 p-4 auth-one-bg h-100">
+                                        <div class="bg-overlay"></div>
+                                        <div class="position-relative h-100 d-flex flex-column">
+                                            <div class="mb-4">
+                                                <a href="index-2.html" class="d-block">
+                                                    <div class="logo-font">TTSPL IMS</div>
+                                                </a>
+                                            </div>
+                                            <div class="mt-auto">
+                                                <div class="mb-3">
+                                                    <i class="ri-double-quotes-l display-4 text-success"></i>
+                                                </div>
+
+                                                <div id="qoutescarouselIndicators" class="carousel slide" data-bs-ride="carousel">
+                                                    <div class="carousel-indicators">
+                                                        <button type="button" data-bs-target="#qoutescarouselIndicators" data-bs-slide-to="0" class="active" aria-current="true" aria-label="Slide 1"></button>
+                                                        <button type="button" data-bs-target="#qoutescarouselIndicators" data-bs-slide-to="1" aria-label="Slide 2"></button>
+                                                        <button type="button" data-bs-target="#qoutescarouselIndicators" data-bs-slide-to="2" aria-label="Slide 3"></button>
+                                                    </div>
+                                                    <div class="carousel-inner text-center text-white-50 pb-5">
+                                                        <div class="carousel-item active">
+                                                            <p class="fs-15 fst-italic">" Great! Clean code, intuitive interface, and seamless inventory tracking. Easy to customize and highly efficient! "</p>
+                                                        </div>
+                                                        <div class="carousel-item">
+                                                            <p class="fs-15 fst-italic">"The system is outstanding! Smooth inventory management with excellent customer support."</p>
+                                                        </div>
+                                                        <div class="carousel-item">
+                                                            <p class="fs-15 fst-italic">"Highly recommended! Clean design, user-friendly, and simplifies stock management effortlessly. "</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <!-- end carousel -->
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- end col -->
+
+                                <div class="col-lg-6">
+                                    <div class="p-lg-5 p-4">
+                                        <div class="mb-4">
+                                            <div class="avatar-lg mx-auto">
+                                                <div class="avatar-title bg-light text-primary display-5 rounded-circle">
+                                                    <i class="ri-mail-line"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="text-muted text-center mx-lg-3">
+                                            <h4 class="">Verify Your Email</h4>
+                                            <p>Please enter the 6 digit code sent to <span class="fw-semibold">example@abc.com</span></p>
+                                        </div>
+
+                                        <div class="mt-4">
+                                            <form method="post" autocomplete="off">
+                                                {% csrf_token %}
+                                            
+                                                {% if messages %}
+                                                <div id="alert-container">
+                                                    {% for message in messages %}
+                                                    <div class="alert alert-primary alert-dismissible fade show" role="alert">
+                                                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                                        <div class="alert-message">{{ message }}</div>
+                                                    </div>
+                                                    {% endfor %}
+                                                </div>
+                                                {% endif %}
+                                            
+                                                <!-- Timer Message -->
+                                                <div class="text-center mb-3">
+                                                    <div class="timer" id="timer">Please wait for the timer...</div>
+                                                </div>
+                                            
+                                                <!-- OTP Input Fields -->
+                                                <div class="row justify-content-center">
+                                                    {% for i in "012345" %}
+                                                    <div class="col-2">
+                                                        <div class="mb-3">
+                                                            <label for="otp{{ forloop.counter0 }}" class="visually-hidden">Digit {{ forloop.counter }}</label>
+                                                            <input type="text" class="form-control form-control-lg bg-light border-light text-center otp-input"
+                                                                   onkeyup="moveToNext({{ forloop.counter0 }}, event)" maxLength="1"
+                                                                   id="otp{{ forloop.counter0 }}" name="otp{{ forloop.counter0 }}" required>
+                                                        </div>
+                                                    </div>
+                                                    {% endfor %}
+                                                </div>
+                                            
+                                                <!-- Resend OTP Message & Button -->
+                                                <div class="d-flex justify-content-between">
+                                                    <div>
+                                                        <div id="otp-message" class="text-success" style="display: none;">
+                                                            A new OTP has been sent to your email.
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <button type="button" class='btn btn-sm border-0 text-secondary' id="resend-otp">Resend OTP</button>
+                                                    </div>
+                                                </div>
+                                            
+                                                <!-- Submit Button -->
+                                                <div class="d-grid gap-2 mt-3">
+                                                    <button type="submit" class="btn btn-lg btn-success w-100">Confirm</button>
+                                                </div>
+                                            </form>
+                                            
+
+                                        </div>
+
+                                        <div class="mt-5 text-center">
+                                            <p class="mb-0">Didn't receive a code ? <a href="auth-pass-reset-cover.html" class="fw-semibold text-primary text-decoration-underline">Resend</a> </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- end col -->
+                            </div>
+                            <!-- end row -->
+                        </div>
+                        <!-- end card -->
+                    </div>
+                    <!-- end col -->
+
+                </div>
+                <!-- end row -->
+            </div>
+            <!-- end container -->
+        </div>
+        <!-- end auth page content -->
+
+        <!-- footer -->
+        <footer class="footer galaxy-border-none">
+            <div class="container">
+                <div class="row">
+                    <div class="col-lg-12">
+                        <div class="text-center">
+                            <p class="mb-0">&copy;
+                                <script>document.write(new Date().getFullYear())</script> TTSPL. Design & Develop <i class="mdi mdi-heart text-danger"></i> by TTSPL
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </footer>
+        <!-- end Footer -->
+    </div>
+
+    <!-- JavaScript for OTP Input Navigation -->
+<script>
+    function moveToNext(index, event) {
+        let inputBoxes = document.querySelectorAll('.otp-input');
+        let key = event.key;
+
+        if (key === "Backspace" && index > 0) {
+            inputBoxes[index - 1].focus();
+        } else if (key.match(/[0-9]/) && index < inputBoxes.length - 1) {
+            inputBoxes[index + 1].focus();
+        }
+    }
+
+    // Auto-hide alerts after 5 seconds
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(() => {
+            document.querySelectorAll('.alert').forEach(alert => {
+                alert.classList.remove('show');
+                alert.classList.add('fade');
+            });
+        }, 5000);
+    });
+</script>
+
+    <!-- JAVASCRIPT -->
+    <script src="{% static 'assets/libs/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+    <script src="{% static 'assets/libs/simplebar/simplebar.min.js' %}"></script>
+    <script src="{% static 'assets/libs/node-waves/waves.min.js' %}"></script>
+    <script src="{% static 'assets/libs/feather-icons/feather.min.js' %}"></script>
+    <script src="{% static 'assets/js/pages/plugins/lord-icon-2.1.0.js' %}"></script>
+    <script src="{% static 'assets/js/plugins.js' %}"></script>
+    
+
+    <!-- validation init -->
+    <script src="{% static 'assets/js/pages/form-validation.init.js' %}"></script>
+    <!-- password create init -->
+    <script src="{% static 'assets/js/pages/passowrd-create.init.js' %}></script>
+</body>
+
+</html>

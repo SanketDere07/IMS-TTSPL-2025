@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %} Add Rack | TTSPL IMS - Trisnota Technical Services Pvt. Ltd.{% endblock %}
+{% block content %}
+<!-- start page title -->
+
+<div class="row">
+    <div class="col-12">
+        <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+            <h4 class="mb-sm-0">Add Rack</h4>
+            <div class="page-title-right">
+                <ol class="breadcrumb m-0">
+                    <li class="breadcrumb-item"><a href="#">Dashboard</a></li>
+                    <li class="breadcrumb-item active">Rack List</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header align-items-center d-flex">
+                <h4 class="card-title mb-0 flex-grow-1">Add New Rack</h4>
+                <div class="flex-shrink-0">
+                   <a class="btn btn-secondary" href="rank_list_page">< Back</a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="alertContainer"></div>
+                <form id="rankForm" method="post">
+                    {% csrf_token %}
+                    <div class="row gy-3">
+                        <!-- Rank Name -->
+                        <div class="col-md-6">
+                            <label class="form-label">Rack Name</label>
+                            <input type="text" id="rank_name" class="form-control" name="rank_name" required>
+                        </div>
+                        <!-- Details -->
+                        <div class="col-md-12">
+                            <label class="form-label">Details</label>
+                            <textarea id="rank_details" class="form-control" name="details" rows="2" required></textarea>
+                        </div>
+                    </div>
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-success">Add Rack</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('rankForm').addEventListener('submit', function(event) {
+        event.preventDefault();
+    
+        // Collect form data
+        const rank_name = document.getElementById('rank_name').value;
+        const details = document.getElementById('rank_details').value;
+    
+        // AJAX POST request
+        fetch('/add-rank/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}',
+            },
+            body: JSON.stringify({
+                rank_name,
+                details,
+            }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            const alertContainer = document.getElementById('alertContainer');
+            alertContainer.innerHTML = '';
+            const alertDiv = document.createElement('div');
+            alertDiv.className = data.success ? 'alert alert-success' : 'alert alert-danger';
+            alertDiv.innerHTML = data.message || `<strong>Error:</strong> ${data.error}`;
+            alertContainer.appendChild(alertDiv);
+    
+            if (data.success) {
+                setTimeout(() => {
+                    alertContainer.innerHTML = '';
+                    window.location.href = '/rank_list_page';
+                }, 3000);
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    });
+</script>
+
+
+
+<!-- end page title -->
+{% endblock %}
+{% block custom_script %}
+{% endblock %}

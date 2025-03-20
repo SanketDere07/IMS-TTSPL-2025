@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %} Update Rack | TTSPL IMS - Trisnota Technical Services Pvt. Ltd.{% endblock %}
+   
+{% block content %}
+<!-- start page title -->
+<div class="row">
+    <div class="col-12">
+        <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+            <h4 class="mb-sm-0">Update Rack</h4>
+            <div class="page-title-right">
+                <ol class="breadcrumb m-0">
+                    <li class="breadcrumb-item"><a href="#">Dashboards</a></li>
+                    <li class="breadcrumb-item active">Rack List</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+<div class="col-lg-12">
+        <div class="card">
+            <div class="card-header align-items-center d-flex">
+                <h4 class="card-title mb-0 flex-grow-1">Update Rack Details</h4>
+                <div class="flex-shrink-0">
+                    <a class="btn btn-secondary" href="/rank_list_page">< Back</a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="live-preview">
+                    <div id="alertContainer"></div>
+                    <form id="updateRankForm" method="POST">
+                        <input type="hidden" id="rankId" value="{{ rank.rank_id }}">
+                        <div class="row gy-4">
+                            <!-- Rank Name -->
+                            <div class="col-xxl-6 col-md-12">
+                                <div>
+                                    <label for="rankName" class="form-label">Rack Name</label>
+                                    <input type="text" class="form-control" id="rankName" name="rank_name" value="{{ rank.rank_name }}" required>
+                                </div>
+                            </div>
+                            <!-- Details -->
+                            <div class="col-xxl-6 col-md-12">
+                                <div>
+                                    <label for="details" class="form-label">Details</label>
+                                    <textarea class="form-control" id="details" name="details" rows="3" required>{{ rank.details }}</textarea>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row mt-4">
+                            <div class="col-12 text-start">
+                                <button type="submit" class="btn btn-primary">Update Rack</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('updateRankForm').addEventListener('submit', function(event) {
+        event.preventDefault(); // Prevent default form submission
+
+        // Collect form data
+        const rankId = document.getElementById('rankId').value;
+        const rankName = document.getElementById('rankName').value;
+        const details = document.getElementById('details').value;
+
+        // Make an AJAX POST request
+        fetch(`/update-rank/${rankId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}', // Django CSRF token
+            },
+            body: JSON.stringify({
+                rank_name: rankName,
+                details: details,
+            }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            let alertClass = data.message ? 'alert-success' : 'alert-danger';
+            let alertMessage = data.message || `Error: ${data.error}`;
+
+            // Create alert div dynamically
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert ${alertClass}`;
+            alertDiv.role = 'alert';
+            alertDiv.innerHTML = alertMessage;
+
+            // Add alert to the DOM
+            const alertContainer = document.getElementById('alertContainer');
+            alertContainer.innerHTML = ''; // Clear previous alerts
+            alertContainer.appendChild(alertDiv);
+
+            // Hide the alert after 3 seconds and redirect to the list page
+            setTimeout(() => {
+                if (data.message) {
+                    window.location.href = '/rank_list_page'; // Redirect to the list page
+                } else {
+                    alertContainer.innerHTML = ''; // Clear the alert if there was an error
+                }
+            }, 3000);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An unexpected error occurred.');
+        });
+    });
+</script>
+
+
+<!-- end page title -->
+{% endblock %}
+
+{% block custom_script %}
+{% endblock %}

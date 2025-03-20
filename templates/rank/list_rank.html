@@ -1,0 +1,284 @@
+{% extends 'base.html' %}
+{% block title %} Rack | TTSPL IMS - Trisnota Technical Services Pvt. Ltd.{% endblock %}
+{% block content %}
+
+<div class="row">
+    <div class="col-12">
+       <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
+          <h4 class="mb-sm-0">Rack Master</h4>
+          <div class="page-title-right">
+             <ol class="breadcrumb m-0">
+                <li class="breadcrumb-item"><a href="#">Dashboards</a></li>
+                <li class="breadcrumb-item active">Rack</li>
+             </ol>
+          </div>
+       </div>
+    </div>
+ </div>
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header d-flex align-items-center">
+                <h5 class="card-title mb-0 flex-grow-1">Rack List</h5>
+                <div>
+                    <a class="btn btn-primary" href="rank_add_page">+ Add Rack</a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="accordion accordion-primary mb-3" id="filterAccordion">
+                    <div class="accordion-item material-shadow">
+                        <h2 class="accordion-header" id="flush-headingFilters">
+                            <button class="accordion-button collapsed d-flex align-items-center" type="button" data-bs-toggle="collapse"
+                                data-bs-target="#flush-collapseFilters" aria-expanded="false" aria-controls="flush-collapseFilters">
+                                <i class="ri-filter-3-line me-2"></i> Filters
+                            </button>
+                        </h2>
+                        <div id="flush-collapseFilters" class="accordion-collapse collapse" aria-labelledby="flush-headingFilters"
+                            data-bs-parent="#filterAccordion">
+                            <div class="accordion-body">
+                            <div class="row mb-3">
+                                   <!-- Rack ID Filter -->
+                                <div class="col-md-2">
+                                    <label class="form-label">Rack ID</label>
+                                    <input type="text" class="form-control" id="rack-id-filter" placeholder="Enter Rack ID">
+                                </div>
+
+                                <!-- Rack Name Filter -->
+                                <div class="col-md-3">
+                                    <label class="form-label">Rack Name</label>
+                                    <input type="text" class="form-control" id="rack-name-filter" placeholder="Enter Rack Name">
+                                </div>
+
+                                <!-- Submit, Reset Buttons -->
+                                <div class="col-md-3 d-flex align-items-end">
+                                    <button class="btn btn-primary me-2 w-50" id="apply-rack-filters">Submit</button>
+                                    <button class="btn btn-warning w-50 me-2" id="reset-rack-filters">Reset</button>
+                                    <button class="btn btn-danger w-50 me-2" id="generate-rank-pdf">PDF</button>
+                                    <button class="btn btn-secondary w-50 me-2" id="generate-rank-csv">CSV</button>
+                                    <button class="btn btn-success w-50" id="generate-rank-excel">Excel</button>
+                                </div>               
+                            </div>
+                       </div>
+                        </div>
+                    </div>
+                </div>
+                <table id="rank" class="table table-bordered table-responsive align-middle" style="width:100%">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Description</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteRankConfirmationModal" class="modal fade zoomIn" aria-labelledby="deleteRankConfirmationModalLabel" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mt-2 text-center">
+                    <div id="delete_rank_alert_message" class="alert alert-danger" style="display: none;">
+                        <span class="alert-message"></span>
+                    </div>
+                    <lord-icon src="https://cdn.lordicon.com/gsqxdxog.json" trigger="loop" colors="primary:#f7b84b,secondary:#f06548" style="width:100px;height:100px"></lord-icon>
+                    <div class="mt-4 pt-2 fs-15 mx-4 mx-sm-5">
+                        <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+                        <p>Are you sure you want to delete the rank with ID: <span id="rankIdDisplay" class="text-danger"></span>?</p>
+                    </div>
+                    <div class="d-flex gap-2 justify-content-center mt-4 mb-2">
+                        <button type="button" class="btn w-sm btn-light" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn w-sm btn-danger" id="confirmDeleteRankButton">Yes, Delete It!</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function () {
+        var rank_datatable = $('#rank').DataTable({
+            pagingType: "full_numbers",
+            hover: true,
+            ordering: true,
+            searching: true,
+            order: [[0, 'asc']],
+            lengthMenu: [[5, 10, 25, 50, -1], [5, 10, 25, 50, "All"]],
+            pageLength: 5,
+            columns: [
+                { data: 'id' },
+                { data: 'name' },
+                { data: 'description' },
+                {
+                    data: null,
+                    render: function (data, type, row) {
+                        return `
+                            <div class="dropdown d-inline-block">
+                                <button class="btn btn-soft-secondary btn-sm dropdown" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="ri-more-fill align-middle"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li>
+                                        <a href="/view-rank/${row.id}" class="dropdown-item">
+                                            <i class="ri-eye-fill align-bottom me-2 text-muted"></i> View
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="/update-rank/${row.id}" class="dropdown-item">
+                                            <i class="ri-pencil-fill align-bottom me-2 text-muted"></i> Edit
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <button type="button" class="dropdown-item" onclick="showDeleteRankModal('${row.id}')">
+                                            <i class="ri-delete-bin-fill align-bottom me-2 text-muted"></i> Delete
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
+                        `;
+                    }
+                }
+            ]
+        });
+
+        function show_rank_datatable_data(filters = {}) {
+            $.ajax({
+                url: "/rank-list/",
+                method: "GET",
+                data: filters,
+                success: function (response) {
+                    rank_datatable.clear().rows.add(response.ranks || []).draw(false);
+                },
+                error: function (xhr, textStatus, errorThrown) {
+                    console.error("Error fetching rank data: ", textStatus, errorThrown);
+                },
+            });
+        }
+
+        // Load initial data
+        show_rank_datatable_data();
+
+        // Apply filters
+        $('#apply-rack-filters').click(function () {
+            var filters = {
+                rack_id: $('#rack-id-filter').val(),
+                rack_name: $('#rack-name-filter').val()
+            };
+            show_rank_datatable_data(filters);
+        });
+
+        // Reset filters
+        $('#reset-rack-filters').click(function () {
+            $('#rack-id-filter').val('');
+            $('#rack-name-filter').val('');
+            show_rank_datatable_data();
+        });
+    });
+    
+
+        $('#generate-rank-pdf').click(function () {
+        let filters = {
+            rank_id: $('#rank-id-filter').val()?.trim() || '',
+            rank_name: $('#rank-name-filter').val()?.trim() || '',
+        };
+
+        // Debugging: Check if filters are being applied
+        console.log("Applying Filters:", filters);
+
+        window.location.href = `/generate-rank-pdf/?` + $.param(filters);
+    });
+
+
+        $('#generate-rank-csv').click(function () {
+        let filters = {
+            rank_id: $('#rank-id-filter').val()?.trim() || '',
+            rank_name: $('#rank-name-filter').val()?.trim() || ''
+        };
+
+        console.log("CSV Filters Sent:", filters);
+        console.log("CSV URL:", `/generate-rank-csv/?` + $.param(filters));
+
+        window.open(`/generate-rank-csv/?` + $.param(filters), '_blank');
+    });
+
+    $('#generate-rank-excel').click(function () {
+        let filters = {
+            rank_id: $('#rank-id-filter').val()?.trim() || '',
+            rank_name: $('#rank-name-filter').val()?.trim() || ''
+        };
+
+        console.log("Excel Filters Sent:", filters);
+        console.log("Excel URL:", `/generate-rank-excel/?` + $.param(filters));
+
+        window.open(`/generate-rank-excel/?` + $.param(filters), '_blank');
+    });
+
+
+
+
+
+    let rankIdToDelete = null;
+
+    function showDeleteRankModal(rankId) {
+        rankIdToDelete = rankId;
+        $('#rankIdDisplay').text(rankId);
+        $('#deleteRankConfirmationModal').modal('show');
+    }
+    
+    $('#confirmDeleteRankButton').one('click', function () {
+        if (rankIdToDelete !== null) {
+            $.ajax({
+                url: `/delete-rank/${rankIdToDelete}/`,
+                method: 'POST',
+                data: {
+                    csrfmiddlewaretoken: document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                success: function (response) {
+                    const alertDiv = $('#delete_rank_alert_message');
+                    const alertMessageDiv = alertDiv.find('.alert-message');
+    
+                    if (response.success) {
+                        alertMessageDiv.text("Rack deleted successfully.");
+                        alertDiv.removeClass('alert-danger').addClass('alert-success').show();
+    
+                        setTimeout(function () {
+                            window.location.reload();
+                        }, 1500);
+                    } else {
+                        alertMessageDiv.text(response.error || "Failed to delete rank.");
+                        alertDiv.removeClass('alert-success').addClass('alert-danger').show();
+    
+                        setTimeout(() => {
+                            alertDiv.hide();
+                        }, 2000);
+                    }
+                },
+                error: function () {
+                    const alertDiv = $('#delete_rank_alert_message');
+                    const alertMessageDiv = alertDiv.find('.alert-message');
+                    alertMessageDiv.text("An error occurred while deleting the rank.");
+                    alertDiv.removeClass('alert-success').addClass('alert-danger').show();
+    
+                    setTimeout(() => {
+                        alertDiv.hide();
+                    }, 2000);
+                },
+            });
+        }
+    });
+    
+</script>    
+<!-- end page title -->
+{% endblock %}
+{% block custom_script %}
+{% endblock %}

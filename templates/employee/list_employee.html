@@ -1,0 +1,375 @@
+{% extends 'base.html' %}
+{% block title %} Location | TTSPL IMS - Trisnota Technical Services Pvt. Ltd.{% endblock %}
+{% block content %}
+<style>
+    /* Ensure select2 elements have uniform height */
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    color: #444;
+    line-height: 34px;
+}
+
+.select2-container--default .select2-selection--single {
+    background-color: #fff;
+    border: 1px solid #aaa;
+    border-radius: 4px;
+    height: 38px; /* Match input height */
+}
+
+/* Style for quantity input and buttons */
+.input-group .btn {
+    height: 38px !important; /* Ensure buttons match select2 height */
+    line-height: auto;
+}
+
+.input-group input[type="number"] {
+    height: 38px !important; /* Match select2 height */
+}
+
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 34px !important;
+    position: absolute;
+    top: 1px;
+    right: 1px;
+    width: 20px;
+}
+</style>
+
+<div class="row">
+   <div class="col-12">
+      <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
+         <h4 class="mb-sm-0">Employee Master</h4>
+         <div class="page-title-right">
+            <ol class="breadcrumb m-0">
+               <li class="breadcrumb-item"><a href="#">Dashboards</a></li>
+               <li class="breadcrumb-item active">Employee</li>
+            </ol>
+         </div>
+      </div>
+   </div>
+</div>
+<div class="row">
+   <div class="col-lg-12">
+      <div class="card">
+         <div class="card-header d-flex align-items-center">
+            <h5 class="card-title mb-0 flex-grow-1">Employee List</h5>
+            <div>
+               <a class="btn btn-primary" href="employee_add_page">+ Add Employee</a>
+            </div>
+         </div>
+         <div class="card-body">
+            <div class="accordion accordion-primary mb-3" id="filterAccordion">
+               <div class="accordion-item material-shadow">
+                   <h2 class="accordion-header" id="flush-headingFilters">
+                       <button class="accordion-button collapsed d-flex align-items-center" type="button" data-bs-toggle="collapse"
+                           data-bs-target="#flush-collapseFilters" aria-expanded="false" aria-controls="flush-collapseFilters">
+                           <i class="ri-filter-3-line me-2"></i> Filters
+                       </button>
+                   </h2>
+                   <div id="flush-collapseFilters" class="accordion-collapse collapse" aria-labelledby="flush-headingFilters"
+                       data-bs-parent="#filterAccordion">
+                       <div class="accordion-body">
+                           <div class="row mb-3">
+                               <!-- Employee Code Filter -->
+                               <div class="col-md-2">
+                                   <label class="form-label">Employee Code</label>
+                                   <input type="text" class="form-control" id="employee-code-filter" placeholder="Enter EmpCode">
+                               </div>
+           
+                               <!-- Employee Name Filter -->
+                               <div class="col-md-3">
+                                   <label class="form-label">Employee Name</label>
+                                   <input type="text" class="form-control" id="employee-name-filter" placeholder="Enter EmpName">
+                               </div>
+           
+                              <!-- Work Location Filter -->
+                            <div class="col-md-2">
+                                <label class="form-label">Location</label>
+                                <select class="form-control select2" id="work-location-filter">
+                                    <option value="">Select Location</option>
+                                </select>
+                            </div>
+
+                              <!-- Submit, Reset & Generate PDF Buttons -->
+                            <div class="col-md-3 d-flex align-items-end ">
+                                <button class="btn btn-primary me-2 w-50" id="apply-filters">Submit</button>
+                                <button class="btn btn-warning me-2 w-50" id="reset-filters">Reset</button>
+                                <button class="btn btn-danger w-50 me-2" id="generate-pdf">
+                                     PDF
+                                </button>
+                                <button class="btn btn-secondary w-50 me-2" id="generate-csv">CSV</button>
+                                <button class="btn btn-success w-50" id="generate-excel">Excel</button>
+                            </div>
+
+                               
+                           </div>
+                       </div>
+                   </div>
+               </div>
+           </div>
+           
+           
+            <table id="employee" class="table table-bordered nowrap table-striped align-middle" style="width:100%">
+               <thead>
+                  <tr>
+                     <th>ID</th>
+                     <th>EMPCode</th>
+                     <th>Name</th>
+                     <th>Designation</th>
+                     <th>Mobile Number</th>
+                     <th>Email</th>
+                     <th>Location</th>
+                     <th>Action</th>
+                  </tr>
+               </thead>
+               <tbody>
+               </tbody>
+            </table>
+         </div>
+      </div>
+   </div>
+</div>
+ 
+ <!-- Delete Confirmation Modal -->
+ <div id="deleteEmployeeConfirmationModal" class="modal fade zoomIn" aria-labelledby="deleteEmployeeConfirmationModalLabel" tabindex="-1" aria-hidden="true">
+     <div class="modal-dialog modal-dialog-centered">
+         <div class="modal-content">
+             <div class="modal-header">
+                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" id="NotificationModalbtn-close"></button>
+             </div>
+             <div class="modal-body">
+                 <div class="mt-2 text-center">
+                     <div id="delete_employee_alert_message" class="alert alert-danger" style="display: none;">
+                         <span class="alert-message"></span>
+                     </div>
+                     <lord-icon src="https://cdn.lordicon.com/gsqxdxog.json" trigger="loop" colors="primary:#f7b84b,secondary:#f06548" style="width:100px;height:100px"></lord-icon>
+                     <div class="mt-4 pt-2 fs-15 mx-4 mx-sm-5">
+                         <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+                         <p>Are you sure you want to delete the employee with ID: <span id="employeeIdDisplay" class="text-danger"></span>?</p>
+                     </div>
+                     <div class="d-flex gap-2 justify-content-center mt-4 mb-2">
+                         <button type="button" class="btn w-sm btn-light" data-bs-dismiss="modal">Close</button>
+                         <button type="button" class="btn w-sm btn-danger" id="confirmDeleteEmployeeButton">Yes, Delete It!</button>
+                     </div>
+                 </div>
+             </div>
+         </div><!-- /.modal-content -->
+     </div><!-- /.modal-dialog -->
+ </div><!-- /.modal -->
+ 
+ <script>
+
+   $(document).ready(function () {
+
+      // Load Work Locations
+        function loadWorkLocations() {
+            $.getJSON("{% url 'get_work_locations' %}", function (data) {
+                $('#work-location-filter').empty().append('<option value="">Select Location</option>'); // Clear existing options
+
+                $.each(data.work_locations, function (index, item) {  
+                    $('#work-location-filter').append(`<option value="${item.id}">${item.name}</option>`);
+                });
+
+                // Reinitialize Select2 after populating the dropdown
+                $('#work-location-filter').select2();
+            });
+        }
+
+
+      // Initialize DataTable
+      var employee_datatable = $('#employee').DataTable({
+          pagingType: "full_numbers",
+          hover: true,
+          ordering: true,
+          searching: true,
+          order: [[0, 'asc']], // Order by Employee Code
+          lengthMenu: [[5, 10, 25, 50, -1], [5, 10, 25, 50, "All"]],
+          pageLength: 5,
+          ajax: {
+              url: "/employee-list/",
+              data: function (d) {
+                  d.employee_code = $('#employee-code-filter').val().trim(); 
+                  d.employee_name = $('#employee-name-filter').val().trim();
+                  d.work_location = $('#work-location-filter').val();
+              },
+              dataSrc: "employees"
+          },
+          columns: [
+              { data: 'id' },
+              { data: 'employee_code' },  // Changed from 'id'
+              { data: 'name' },
+              { data: 'designation' },
+              { data: 'mobile_number' },
+              { data: 'email' },
+              { data: 'work_location' },
+              {
+                data: null,
+                render: function (data, type, row) {
+                   return `
+                      <div class="dropdown d-inline-block">
+                         <button class="btn btn-soft-secondary btn-sm dropdown" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="ri-more-fill align-middle"></i>
+                         </button>
+                         <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                               <a href="/view-employee/${row.id}" class="dropdown-item">
+                                  <i class="ri-eye-fill align-bottom me-2 text-muted"></i> View
+                               </a>
+                            </li>
+                            <li>
+                               <a href="/update-employee/${row.id}" class="dropdown-item">
+                                  <i class="ri-pencil-fill align-bottom me-2 text-muted"></i> Edit
+                               </a>
+                            </li>
+                            <li>
+                               <button type="button" class="dropdown-item" onclick="showDeleteModal('${row.id}')">
+                                  <i class="ri-delete-bin-fill align-bottom me-2 text-muted"></i> Delete
+                               </button>
+                            </li>
+                         </ul>
+                      </div>
+                   `;
+                }
+             }
+          ]
+      });
+
+      // Load employee data with filters
+      function load_employee_data() {
+          $('#spinner-container').show();
+          employee_datatable.ajax.reload(null, false); // Reload without resetting pagination
+          $('#spinner-container').hide();
+      }
+
+      // Apply filters
+      $('#apply-filters').click(function () {
+          load_employee_data();
+      });
+
+      // Reset filters
+      $('#reset-filters').click(function () {
+        // Reset text input fields
+        $('#employee-code-filter, #employee-name-filter').val('');
+    
+        // Reset Select2 dropdown
+        $('#work-location-filter').val(null).trigger('change'); // Correctly reset Select2
+    
+        // Reload DataTable with default filters
+        load_employee_data();
+    });
+    
+  
+      loadWorkLocations(); 
+      load_employee_data();
+  });
+
+   // Generate PDF when button is clicked
+    $('#generate-pdf').click(function () {
+        let filters = {
+            employee_code: $('#employee-code-filter').val().trim(),
+            employee_name: $('#employee-name-filter').val().trim(),
+            work_location: $('#work-location-filter').val(),
+        };
+
+        // Send request to generate PDF with filters
+        window.location.href = `/generate-employee-pdf/?` + $.param(filters);
+    });
+
+    // Generate CSV when button is clicked
+    $('#generate-csv').click(function () {
+        let filters = {
+            employee_code: $('#employee-code-filter').val().trim(),
+            employee_name: $('#employee-name-filter').val().trim(),
+            work_location: $('#work-location-filter').val(),
+        };
+
+        // Send request to generate CSV with filters
+        window.location.href = `/generate-employee-csv/?` + $.param(filters);
+    });
+
+    // Generate Excel when button is clicked
+    $('#generate-excel').click(function () {
+        let filters = {
+            employee_code: $('#employee-code-filter').val().trim(),
+            employee_name: $('#employee-name-filter').val().trim(),
+            work_location: $('#work-location-filter').val(),
+        };
+
+        // Redirect to Excel generation URL with filters
+        window.location.href = `/generate-employee-excel/?` + $.param(filters);
+    });
+
+
+
+
+     let employeeIdToDelete = null;
+ 
+     function showDeleteModal(employeeId) {
+         employeeIdToDelete = employeeId;
+         $('#employeeIdDisplay').text(employeeId);
+         $('#deleteEmployeeConfirmationModal').modal('show');
+     }
+ 
+     let csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+ 
+     // Handle the delete confirmation
+     $('#confirmDeleteEmployeeButton').one('click', function () {
+         if (employeeIdToDelete !== null) {
+             $.ajax({
+                 url: `/delete-employee/${employeeIdToDelete}/`, 
+                 method: 'POST',
+                 data: {
+                     csrfmiddlewaretoken: csrfToken 
+                 },
+                 success: function (response) {
+                     const alertDiv = $('#delete_employee_alert_message');
+                     const alertMessageDiv = alertDiv.find('.alert-message');
+ 
+                     if (response.success) {
+                         alertMessageDiv.text("Employee deleted successfully.");
+                         alertDiv.removeClass('alert-danger').addClass('alert-success').show();
+ 
+                         var deletedRow = $('#employee').find(`tr[data-id="${employeeIdToDelete}"]`);
+ 
+                         setTimeout(function () {
+                             deletedRow.fadeOut(400, function () {
+                                 $(this).remove();
+                             });
+ 
+                             $('#deleteEmployeeConfirmationModal').modal('hide');
+ 
+                             setTimeout(function () {
+                                 window.location.reload();
+                             }, 400);
+ 
+                         }, 1500);
+                     } else {
+                         alertMessageDiv.text(response.error || "Failed to delete employee.");
+                         alertDiv.removeClass('alert-success').addClass('alert-danger').show();
+ 
+                         setTimeout(() => {
+                             alertDiv.hide();
+                         }, 2000);
+                     }
+                 },
+                 error: function (xhr, textStatus, errorThrown) {
+                     console.error("Error deleting employee:", textStatus, errorThrown);
+ 
+                     const alertDiv = $('#delete_employee_alert_message');
+                     const alertMessageDiv = alertDiv.find('.alert-message');
+ 
+                     alertMessageDiv.text("An error occurred while deleting the employee.");
+                     alertDiv.removeClass('alert-success').addClass('alert-danger').show();
+ 
+                     setTimeout(() => {
+                         alertDiv.hide();
+                     }, 2000);
+                 },
+             });
+         }
+     });
+ </script>
+ 
+<!-- end page title -->
+{% endblock %}
+{% block custom_script %}
+{% endblock %}

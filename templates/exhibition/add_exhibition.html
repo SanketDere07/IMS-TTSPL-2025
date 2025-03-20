@@ -1,0 +1,172 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %} Exhibition | TTSPL IMS - Trisnota Technical Services Pvt. Ltd.{% endblock %}
+{% block content %}
+<!-- start page title -->
+
+<div class="row">
+    <div class="col-12">
+        <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
+            <h4 class="mb-sm-0">Add Exhibition</h4>
+            <div class="page-title-right">
+                <ol class="breadcrumb m-0">
+                    <li class="breadcrumb-item"><a href="#">Dashboard</a></li>
+                    <li class="breadcrumb-item active">Exhibition List</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header align-items-center d-flex">
+                <h4 class="card-title mb-0 flex-grow-1">Add New Exhibition</h4>
+                <div class="flex-shrink-0">
+                    <a class="btn btn-secondary" href="exhibition_list_page">< Back</a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="alertContainer"></div>
+                <form id="exhibitionForm" method="post">
+                    {% csrf_token %}
+                    <div class="row gy-3">
+                        <!-- Exhibition Name -->
+                        <div class="col-md-6">
+                            <label class="form-label">Exhibition Name</label>
+                            <input type="text" id="exhibition_name" class="form-control" name="exhibition_name" required>
+                        </div>
+                        <!-- Location -->
+                        <div class="col-md-6">
+                            <label class="form-label">Location</label>
+                            <input type="text" id="location" class="form-control" name="location" required>
+                        </div>
+                        <!-- Address -->
+                        <div class="col-md-12">
+                            <label class="form-label">Address</label>
+                            <textarea id="address" class="form-control" name="address" rows="2" required></textarea>
+                        </div>
+                        <!-- City -->
+                        <div class="col-md-4">
+                            <label class="form-label">City</label>
+                            <input type="text" id="city" class="form-control" name="city" required>
+                        </div>
+                        <!-- Pincode -->
+                        <div class="col-md-4">
+                            <label class="form-label">Pincode</label>
+                            <input type="text" id="pincode" class="form-control" name="pincode" required>
+                        </div>
+                       <!-- State Dropdown -->
+                        <div class="col-md-4">
+                            <label class="form-label">State</label>
+                            <select id="state" class="form-control" name="state" required>
+                                <option value="" disabled selected>Select State</option>
+                                <!-- States will be populated dynamically -->
+                            </select>
+                        </div>
+                        <!-- Start Date -->
+                        <div class="col-md-6">
+                            <label class="form-label">Start Date</label>
+                            <input type="date" id="start_date" class="form-control" name="start_date" required>
+                        </div>
+                        <!-- End Date -->
+                        <div class="col-md-6">
+                            <label class="form-label">End Date</label>
+                            <input type="date" id="end_date" class="form-control" name="end_date" required>
+                        </div>
+                        <!-- Details -->
+                        <div class="col-md-12">
+                            <label class="form-label">Details</label>
+                            <textarea id="details" class="form-control" name="details" rows="3" required></textarea>
+                        </div>
+                    </div>
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-success">Add Exhibition</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+     // JSON data for all Indian states
+     const indianStates = [
+        "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", 
+        "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", 
+        "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram", 
+        "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", 
+        "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal", 
+        "Andaman and Nicobar Islands", "Chandigarh", "Dadra and Nagar Haveli and Daman and Diu", 
+        "Delhi", "Jammu and Kashmir", "Ladakh", "Lakshadweep", "Puducherry"
+    ];
+
+    // Populate the state dropdown
+    const stateDropdown = document.getElementById('state');
+    indianStates.forEach(state => {
+        const option = document.createElement('option');
+        option.value = state;
+        option.textContent = state;
+        stateDropdown.appendChild(option);
+    });
+    document.getElementById('exhibitionForm').addEventListener('submit', function(event) {
+        event.preventDefault();
+        
+        // Collect form data
+        const exhibition_name = document.getElementById('exhibition_name').value;
+        const location = document.getElementById('location').value;
+        const address = document.getElementById('address').value;
+        const city = document.getElementById('city').value;
+        const pincode = document.getElementById('pincode').value;
+        const state = document.getElementById('state').value;
+        const start_date = document.getElementById('start_date').value;
+        const end_date = document.getElementById('end_date').value;
+        const details = document.getElementById('details').value;
+
+        // AJAX POST request
+        fetch('/add-exhibition/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}',
+            },
+            body: JSON.stringify({
+                exhibition_name,
+                location,
+                address,
+                city,
+                pincode,
+                state,
+                start_date,
+                end_date,
+                details,
+            }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            const alertContainer = document.getElementById('alertContainer');
+            alertContainer.innerHTML = '';
+            const alertDiv = document.createElement('div');
+            alertDiv.className = data.success ? 'alert alert-success' : 'alert alert-danger';
+            alertDiv.innerHTML = data.message || `<strong>Error:</strong> ${data.error}`;
+            alertContainer.appendChild(alertDiv);
+
+            if (data.success) {
+                setTimeout(() => {
+                    alertContainer.innerHTML = '';
+                    window.location.href = '/exhibition_list_page';
+                }, 3000);
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    });
+</script>
+
+
+<!-- end page title -->
+{% endblock %}
+{% block custom_script %}
+{% endblock %}

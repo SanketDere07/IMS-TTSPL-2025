@@ -1,0 +1,382 @@
+{% extends 'base.html' %}
+{% block title %} Master Reports | TTSPL IMS - Trisnota Technical Services Pvt. Ltd.{% endblock %}
+{% block content %}
+<style>
+   /* Ensure select2 elements have uniform height */
+   .select2-container--default .select2-selection--single .select2-selection__rendered {
+   color: #444;
+   line-height: 34px;
+   }
+   .select2-container--default .select2-selection--single {
+   background-color: #fff;
+   border: 1px solid #aaa;
+   border-radius: 4px;
+   height: 38px; /* Match input height */
+   }
+   /* Style for quantity input and buttons */
+   .input-group .btn {
+   height: 38px !important; /* Ensure buttons match select2 height */
+   line-height: auto;
+   }
+   .input-group input[type="number"] {
+   height: 38px !important; /* Match select2 height */
+   }
+   .select2-container--default .select2-selection--single .select2-selection__arrow {
+   height: 34px !important;
+   position: absolute;
+   top: 1px;
+   right: 1px;
+   width: 20px;
+   }
+   .checkbox-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 200px;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    margin: 5px;
+    background-color: #f9f9f9;
+    }
+    .checkbox-container input {
+        transform: scale(1.2);
+        margin: 0 10px;
+    }
+    .checkbox-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr); /* 2 columns */
+        gap: 10px; /* Space between checkboxes */
+    }
+    
+    .checkbox-container {
+        display: flex;
+        align-items: center;
+        gap: 8px; /* Space between checkbox and label text */
+        align-items: center;
+        justify-content: space-between;
+        width: auto;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        margin: 5px;
+        background-color: #f9f9f9;
+    }
+    .select-all-container {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+</style>
+<div class="row">
+   <div class="col-12">
+      <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
+         <h4 class="mb-sm-0">Master Reports </h4>
+         <div class="page-title-right">
+            <ol class="breadcrumb m-0">
+               <li class="breadcrumb-item"><a href="#">Dashboards</a></li>
+               <li class="breadcrumb-item active">Master Reports</li>
+            </ol>
+         </div>
+      </div>
+   </div>
+</div>
+<div class="row">
+   <div class="col-lg-6">
+      <div class="card">
+         <div class="card-header d-flex align-items-center">
+            <h5 class="card-title mb-0 flex-grow-1">Employee Master</h5>
+            <div>
+               <a class="btn btn-primary" href="employee_list_page">Employee List</a>
+            </div>
+         </div>
+         <div class="card-body">
+            <div class="accordion accordion-primary mb-3" id="filterAccordion">
+               <div class="accordion-item material-shadow">
+                  <h2 class="accordion-header" id="flush-headingFilters">
+                     <button class="accordion-button collapsed d-flex align-items-center" type="button" data-bs-toggle="collapse"
+                        data-bs-target="#flush-collapseFilters" aria-expanded="false" aria-controls="flush-collapseFilters">
+                     <i class="ri-filter-3-line me-2"></i> Filters
+                     </button>
+                  </h2>
+                  <div id="flush-collapseFilters" class="accordion-collapse collapse" aria-labelledby="flush-headingFilters"
+                     data-bs-parent="#filterAccordion">
+                     <div class="accordion-body">
+                        <div class="row mb-3">
+                           <div class="col-md-6">
+                              <label for="from_date" class="form-label">From Date</label>
+                              <input type="date" class="form-control" id="from_date">
+                           </div>
+                           <div class="col-md-6">
+                              <label for="to_date" class="form-label">To Date</label>
+                              <input type="date" class="form-control" id="to_date">
+                           </div>
+                        </div>
+                        <div class="row mb-3">
+                           <!-- Employee Name Filter -->
+                        <div class="col-md-6">
+                            <label class="form-label">Employee Name</label>
+                            <select class="form-control select2" id="employee-name-filter">
+                                <option value="" disabled selected>Select Employee</option>
+                            </select>
+                        </div>
+
+                        <!-- Work Location Filter -->
+                        <div class="col-md-6">
+                            <label class="form-label">Location</label>
+                            <select class="form-control select2" id="work-location-filter">
+                                <option value="" disabled selected>Select Location</option>
+                            </select>
+                        </div>
+                        </div>
+                        <div class="container mt-4">
+                            <div class="row mb-3">
+                                <div class="col-md-12">
+                                    <label class="form-label fw-bold">Select Columns</label>
+                                    <div class="select-all-container">
+                                        <input type="checkbox" id="select-all-columns"> 
+                                        <label for="select-all-columns"  style="margin-top:8px"><strong>Select All</strong></label>
+                                    </div>
+                                    <div id="column-selection" class="checkbox-grid">
+                                        <label class="checkbox-container">
+                                            Employee ID <input type="checkbox" class="column-checkbox" value="employee_id">
+                                        </label>
+                                        <label class="checkbox-container">
+                                            Employee Code <input type="checkbox" class="column-checkbox" value="employee_code">
+                                        </label>
+                                        <label class="checkbox-container">
+                                            Name <input type="checkbox" class="column-checkbox" value="name">
+                                        </label>
+                                        <label class="checkbox-container">
+                                            Designation <input type="checkbox" class="column-checkbox" value="designation">
+                                        </label>
+                                        <label class="checkbox-container">
+                                            Location <input type="checkbox" class="column-checkbox" value="location">
+                                        </label>
+                                        <label class="checkbox-container">
+                                            Work Location <input type="checkbox" class="column-checkbox" value="work_location">
+                                        </label>
+                                        <label class="checkbox-container">
+                                            Date of Birth <input type="checkbox" class="column-checkbox" value="date_of_birth">
+                                        </label>
+                                        <label class="checkbox-container">
+                                            Mobile Number <input type="checkbox" class="column-checkbox" value="mobile_number">
+                                        </label>
+                                        <label class="checkbox-container">
+                                            Email <input type="checkbox" class="column-checkbox" value="email">
+                                        </label>
+                                        <label class="checkbox-container">
+                                            Aadhaar Card <input type="checkbox" class="column-checkbox" value="aadhaar_card">
+                                        </label>
+                                        <label class="checkbox-container">
+                                            PAN Card <input type="checkbox" class="column-checkbox" value="pan_card">
+                                        </label>
+                                        <label class="checkbox-container">
+                                            Created At <input type="checkbox" class="column-checkbox" value="created_at">
+                                        </label>
+                                        <label class="checkbox-container">
+                                            Updated At <input type="checkbox" class="column-checkbox" value="updated_at">
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        
+                        <div class="row mb-3">
+                           <!-- Submit, Reset & Generate PDF Buttons -->
+                           <div class="col-md-6 d-flex align-items-end ">
+                              <button class="btn btn-warning me-2 w-50" id="reset-filters">Reset</button>
+                              <button class="btn btn-danger w-50 me-2" id="report-generate-pdf">
+                              PDF
+                              </button>
+                              <button class="btn btn-secondary w-50 me-2" id="report-generate-csv">CSV</button>
+                              <button class="btn btn-success w-50" id="report-generate-excel">Excel</button>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+            </div>
+         </div>
+      </div>
+   </div>
+</div>
+<script>
+    $(document).ready(function () {
+        // Function to load Employee Names
+        function loadEmployees() {
+            $.getJSON("{% url 'get_employees' %}", function (data) {
+                $('#employee-name-filter').empty()
+                    .append('<option value="" disabled selected>Select Employee</option>'); // Keep default option disabled
+    
+                $.each(data.employees, function (index, item) {  
+                    $('#employee-name-filter').append(`<option value="${item.employee_id}">${item.name} - ${item.designation}</option>`);
+                });
+    
+                // Reinitialize Select2 after populating the dropdown
+                $('#employee-name-filter').select2();
+            });
+        }
+    
+        // Function to load Work Locations
+        function loadWorkLocations() {
+            $.getJSON("{% url 'get_work_locations' %}", function (data) {
+                $('#work-location-filter').empty()
+                    .append('<option value="" disabled selected>Select Location</option>'); // Keep default option disabled
+    
+                $.each(data.work_locations, function (index, item) {  
+                    $('#work-location-filter').append(`<option value="${item.id}">${item.name}</option>`);
+                });
+    
+                // Reinitialize Select2 after populating the dropdown
+                $('#work-location-filter').select2();
+            });
+        }
+    
+        // Reset Filters
+        $('#reset-filters').click(function () {
+            // Reset dropdowns to default
+            $('#employee-name-filter, #work-location-filter').val(null).trigger('change');
+        
+            // Reset date inputs
+            $('#from_date, #to_date').val('');
+        
+            // Uncheck all checkboxes
+            $('.column-checkbox, #select-all-columns').prop('checked', false);
+        });
+        
+    
+        // Load Data
+        loadEmployees();
+        loadWorkLocations();
+
+        const selectAllCheckbox = document.getElementById("select-all-columns");
+        const columnCheckboxes = document.querySelectorAll(".column-checkbox");
+
+        // Function to check/uncheck all checkboxes
+        selectAllCheckbox.addEventListener("change", function () {
+            columnCheckboxes.forEach(checkbox => {
+                checkbox.checked = selectAllCheckbox.checked;
+            });
+        });
+
+        // Function to update "Select All" state when any checkbox is clicked
+        columnCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener("change", function () {
+                const allChecked = [...columnCheckboxes].every(checkbox => checkbox.checked);
+                selectAllCheckbox.checked = allChecked;
+            });
+        });
+
+        // Generate PDF with selected columns
+        $('#report-generate-pdf').click(function () {
+            let filters = {
+                employee_name: $('#employee-name-filter').val(),
+                work_location: $('#work-location-filter').val(),
+                from_date: $('#from_date').val(),  // Get From Date
+                to_date: $('#to_date').val(),      // Get To Date
+                columns: []  // Array to store selected columns
+            };
+
+            // Get selected columns
+            $('.column-checkbox:checked').each(function () {
+                filters.columns.push($(this).val());
+            });
+
+            // Convert columns array to a comma-separated string
+            filters.columns = filters.columns.join(',');
+
+            // Redirect to PDF generation URL with filters
+            window.location.href = `/report-generate-employee-pdf/?` + $.param(filters);
+        });
+        // Generate CSV with selected columns
+        $('#report-generate-csv').click(function () {
+            let filters = {
+                employee_name: $('#employee-name-filter').val(),
+                work_location: $('#work-location-filter').val(),
+                from_date: $('#from_date').val(),  // Get From Date
+                to_date: $('#to_date').val(),      // Get To Date
+                columns: []  // Array to store selected columns
+            };
+        
+            // Get selected columns
+            $('.column-checkbox:checked').each(function () {
+                filters.columns.push($(this).val());
+            });
+        
+            // Convert columns array to a comma-separated string
+            filters.columns = filters.columns.join(',');
+        
+            // Redirect to CSV generation URL with filters
+            window.location.href = `/report-generate-employee-csv/?` + $.param(filters);
+        });       
+        
+        // Generate Excel when button is clicked
+        $('#report-generate-excel').click(function () {
+            let filters = {
+                employee_name: $('#employee-name-filter').val(),
+                work_location: $('#work-location-filter').val(),
+                from_date: $('#from_date').val(),
+                to_date: $('#to_date').val(),
+                columns: []  
+            };
+
+            // Get selected columns
+            $('.column-checkbox:checked').each(function () {
+                filters.columns.push($(this).val());
+            });
+
+            // Convert columns array to a comma-separated string
+            filters.columns = filters.columns.join(',');
+
+            // Redirect to Excel generation URL with filters
+            window.location.href = `/report-generate-employee-excel/?` + $.param(filters);
+        });
+
+        
+    });
+    
+   
+   // Generate PDF when button is clicked
+    $('#generate-pdf').click(function () {
+        let filters = {
+            employee_code: $('#employee-code-filter').val().trim(),
+            employee_name: $('#employee-name-filter').val().trim(),
+            work_location: $('#work-location-filter').val(),
+        };
+   
+        // Send request to generate PDF with filters
+        window.location.href = `/generate-employee-pdf/?` + $.param(filters);
+    });
+   
+    // Generate CSV when button is clicked
+    $('#generate-csv').click(function () {
+        let filters = {
+            employee_code: $('#employee-code-filter').val().trim(),
+            employee_name: $('#employee-name-filter').val().trim(),
+            work_location: $('#work-location-filter').val(),
+        };
+   
+        // Send request to generate CSV with filters
+        window.location.href = `/generate-employee-csv/?` + $.param(filters);
+    });
+   
+    // Generate Excel when button is clicked
+    $('#generate-excel').click(function () {
+        let filters = {
+            employee_code: $('#employee-code-filter').val().trim(),
+            employee_name: $('#employee-name-filter').val().trim(),
+            work_location: $('#work-location-filter').val(),
+        };
+   
+        // Redirect to Excel generation URL with filters
+        window.location.href = `/generate-employee-excel/?` + $.param(filters);
+    });
+   
+</script>
+<!-- end page title -->
+{% endblock %}
+{% block custom_script %}
+{% endblock %}

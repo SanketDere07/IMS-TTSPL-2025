@@ -1,0 +1,444 @@
+{% extends 'base.html' %}
+{% block title %} Audit Logs | TTSPL IMS - Trisnota Technical Services Pvt. Ltd.{% endblock %}
+{% block content %}
+<div class="row">
+   {% load permissions_filters %}
+   <div class="col-12">
+      <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
+         <h4 class="mb-sm-0">Audit Logs for Tracking Activity</h4>
+         <div class="page-title-right">
+            <ol class="breadcrumb m-0">
+               <li class="breadcrumb-item"><a href="#">Dashboards</a></li>
+               <li class="breadcrumb-item active">Audit Logs</li>
+            </ol>
+         </div>
+      </div>
+   </div>
+</div>
+<div class="row">
+   <div class="col-md-12">
+      <div class="card">
+         <div class="card-header d-flex align-items-center">
+            <h5 class="card-title mb-0 flex-grow-1">User Logs
+            </h5>
+            <div>
+               <a class="btn btn-primary" href="create_user_page">+ Add Users</a>
+            </div>
+         </div>
+         <div class="card-body">
+            <div class="accordion accordion-primary mb-3" id="auditLogFilterAccordion">
+               <div class="accordion-item material-shadow">
+                  <h2 class="accordion-header" id="headingFilters">
+                     <button class="accordion-button collapsed d-flex align-items-center" type="button" data-bs-toggle="collapse"
+                        data-bs-target="#collapseFilters" aria-expanded="false" aria-controls="collapseFilters">
+                     <i class="ri-filter-3-line me-2"></i> Filters
+                     </button>
+                  </h2>
+                  <div id="collapseFilters" class="accordion-collapse collapse" aria-labelledby="headingFilters" data-bs-parent="#auditLogFilterAccordion">
+                     <div class="accordion-body">
+                        <form id="filterFormUser">
+                           <div class="row mb-3">
+                              <!-- Start Date -->
+                              <div class="col-md-3">
+                                 <label class="form-label">Start Date</label>
+                                 <input type="date" class="form-control" id="start_date_user">
+                              </div>
+                              <!-- End Date -->
+                              <div class="col-md-3">
+                                 <label class="form-label">End Date</label>
+                                 <input type="date" class="form-control" id="end_date_user">
+                              </div>
+                              <!-- Username -->
+                              <div class="col-md-3">
+                                 <label class="form-label">Username</label>
+                                 <select class="form-control" id="username_user">
+                                    <option value="" disabled selected>Select Username</option>
+                                 </select>
+                              </div>
+                              <!-- Action -->
+                              <div class="col-md-3">
+                                 <label class="form-label">Action</label>
+                                 <select class="form-control" id="action_user">
+                                    <option value="" disabled selected>Select Action</option>
+                                 </select>
+                              </div>
+                           </div>
+                           <!-- Buttons -->
+                           <div class="row">
+                              <div class="col-md-3 d-flex align-items-end">
+                                 <button class="btn btn-primary me-2 w-50" onclick="filterDataUser(event)">Submit</button>
+                                 <button class="btn btn-warning me-2 w-50" onclick="resetFormUser(event)">Reset</button>
+                                 <button class="btn btn-danger w-50 me-2" id="generate-user-audit-pdf">PDF</button>
+                                 <button class="btn btn-secondary me-2 w-50" id="generate-audit-csv">CSV</button>
+                                 <button class="btn btn-success me-2 w-50" id="generate-audit-excel">Excel</button>
+                              </div>
+                           </div>
+                        </form>
+                     </div>
+                  </div>
+               </div>
+            </div>
+            <table id="userAuditLogsTable" class="table table-bordered table-responsive align-middle" style="width:100%">
+               <thead>
+                  <tr>
+                     <th>Date</th>
+                     <th>Username</th>
+                     <th>Action</th>
+                     <th>Details</th>
+                     <th>Last Login</th>
+                  </tr>
+               </thead>
+               <tbody>
+               </tbody>
+            </table>
+         </div>
+      </div>
+      <script>
+         document.addEventListener("DOMContentLoaded", function() {
+             function populateDropdownsUser() {
+                 $.ajax({
+                     url: '{% url "get_filter_options_users" %}',
+                     method: 'GET',
+                     success: function(response) {
+                         var usernameSelect = $('#username_user');
+                         var actionSelect = $('#action_user');
+                         
+                         usernameSelect.empty().append('<option value="" disabled selected>Select Username</option>');
+                         actionSelect.empty().append('<option value="" disabled selected>Select Action</option>');
+         
+                         $.each(response.usernames, function(index, value) {
+                             usernameSelect.append('<option value="' + value + '">' + value + '</option>');
+                         });
+         
+                         $.each(response.actions, function(index, value) {
+                             actionSelect.append('<option value="' + value + '">' + value + '</option>');
+                         });
+                     },
+                     error: function(xhr, textStatus, errorThrown) {
+                         console.log("Error fetching filter options: ", textStatus, errorThrown);
+                     }
+                 });
+             }
+         
+             var userAuditLogsTable = $('#userAuditLogsTable').DataTable({
+                 pagingType: "full_numbers",
+                 hover: true,
+                 ordering: true,
+                 searching: true,
+                 responsive: true,
+                 order: [[0, 'desc']],
+                 lengthMenu: [[5, 10, 25, 50, -1], [5, 10, 25, 50, "All"]],
+                 pageLength: 5,
+                 ajax: {
+                     url: '{% url "get_user_audit_logs" %}',
+                     dataSrc: 'data',
+                     data: function(d) {
+                         return {
+                             start_date: $('#start_date_user').val(),
+                             end_date: $('#end_date_user').val(),
+                             username: $('#username_user').val(),
+                             action: $('#action_user').val()
+                         };
+                     }
+                 },
+                 columns: [
+                     { data: 'timestamp' },
+                     { data: 'username' },
+                     { data: 'action' },
+                     { data: 'details' },
+                     { data: 'last_login' },
+                 ]
+             });
+         
+             window.filterDataUser = function(event) {
+                event.preventDefault();  // Prevent page reload
+                $('#userAuditLogsTable').DataTable().ajax.reload();
+            };
+
+         
+            window.resetFormUser = function(event) {
+                event.preventDefault(); // Prevent page reload
+                $('#filterFormUser')[0].reset();
+                $('#userAuditLogsTable').DataTable().ajax.reload();
+            };
+
+
+            $('#generate-audit-csv').click(function (event) {
+                event.preventDefault(); // Prevents page reload
+                console.log("CSV button clicked!");
+                let filters = {
+                    start_date: $('#start_date_user').val()?.trim() || '',
+                    end_date: $('#end_date_user').val()?.trim() || '',
+                    username: $('#username_user').val()?.trim() || '',
+                    action: $('#action_user').val()?.trim() || ''
+                };
+
+                console.log("Filters applied:", filters);
+                window.location.href = `/generate-audit-log-csv/?` + $.param(filters);
+            });
+
+            $('#generate-audit-excel').click(function (event) {
+                event.preventDefault(); // Prevents page reload
+                let filters = {
+                    start_date: $('#start_date_user').val()?.trim() || '',
+                    end_date: $('#end_date_user').val()?.trim() || '',
+                    username: $('#username_user').val()?.trim() || '',
+                    action: $('#action_user').val()?.trim() || ''
+                };
+
+                // Redirect to Excel download URL with filters
+                window.location.href = `/generate-audit-log-excel/?` + $.param(filters);
+            });
+
+            $('#generate-user-audit-pdf').click(function (event) {  
+                event.preventDefault();  // Prevent page reload
+
+                let filters = {
+                    start_date: $('#start_date_user').val()?.trim() || '',
+                    end_date: $('#end_date_user').val()?.trim() || '',
+                    username: $('#username_user').val()?.trim() || '',
+                    action: $('#action_user').val()?.trim() || '',
+                };
+
+                let pdfUrl = `/generate-user-audit-pdf/?` + $.param(filters);
+                
+                window.open(pdfUrl, '_blank');  // Open in a new tab
+            });
+
+
+
+         
+             populateDropdownsUser();
+         });
+      </script>
+   </div>
+
+
+   <div class="col-md-12">
+    <div class="card">
+        <div class="card-header d-flex align-items-center">
+            <h5 class="card-title mb-0 flex-grow-1">Role Permission Logs
+            </h5>
+            <div>
+               <a class="btn btn-primary" href="create_user_page">+ Add Role & Permission</a>
+            </div>
+         </div>
+       <div class="card-body">
+        <div class="accordion accordion-primary mb-3" id="rolePermissionAuditAccordion">
+            <div class="accordion-item material-shadow">
+                <h2 class="accordion-header" id="headingRolePermissionFilters">
+                    <button class="accordion-button collapsed d-flex align-items-center" type="button" data-bs-toggle="collapse"
+                        data-bs-target="#collapseRolePermissionFilters" aria-expanded="false" aria-controls="collapseRolePermissionFilters">
+                        <i class="ri-filter-3-line me-2"></i> Role Permission Filters
+                    </button>
+                </h2>
+                <div id="collapseRolePermissionFilters" class="accordion-collapse collapse" aria-labelledby="headingRolePermissionFilters"
+                    data-bs-parent="#rolePermissionAuditAccordion">
+                    <div class="accordion-body">
+                        <form id="filterFormRolePermission">
+                            <div class="row mb-3">
+                                <!-- Action -->
+                                <div class="col-md-3">
+                                    <label class="form-label" for="action_role_permission">Action</label>
+                                    <select id="action_role_permission" name="action_role_permission" class="form-select">
+                                        <option value="" disabled selected>Select Action</option>
+                                    </select>
+                                </div>
+                                <!-- Role -->
+                                <div class="col-md-3">
+                                    <label class="form-label" for="role_role_permission">Role</label>
+                                    <select id="role_role_permission" name="role_role_permission" class="form-select">
+                                        <option value="" disabled selected>Select Role</option>
+                                    </select>
+                                </div>
+                                <!-- Permission -->
+                                <!-- <div class="col-md-3">
+                                    <label class="form-label" for="permission_role_permission">Permission</label>
+                                    <select id="permission_role_permission" name="permission_role_permission" class="form-select">
+                                        <option value="" disabled selected>Select Permission</option>
+                                    </select>
+                                </div> -->
+                                <!-- Start Date -->
+                                <div class="col-md-3">
+                                    <label class="form-label" for="start_date_role_permission">Start Date</label>
+                                    <input type="date" id="start_date_role_permission" name="start_date_role_permission" class="form-control">
+                                </div>
+                              <!-- End Date -->
+                              <div class="col-md-3">
+                                <label class="form-label" for="end_date_role_permission">End Date</label>
+                                <input type="date" id="end_date_role_permission" name="end_date_role_permission" class="form-control">
+                            </div>
+                            </div>
+                            <div class="row mb-3">
+                                <!-- Buttons -->
+                                <div class="col-md-4 d-flex align-items-end">
+                                    <button type="button" class="btn btn-primary me-2 w-25" onclick="filterDataRolePermission(event)">Submit</button>
+                                    <button type="button" class="btn btn-warning me-2 w-25" onclick="resetFormRolePermission(event)">Reset</button>
+                                    <button type="button" class="btn btn-danger me-2 w-25" id="generate-role-audit-pdf">PDF</button>
+                                    <button type="button" class="btn btn-secondary me-2 w-25" id="generate-role-audit-csv">CSV</button>
+                                    <button type="button" class="btn btn-success me-2 w-25" id="generate-role-audit-excel">Excel</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="mt-4 table-responsive-sm">
+            <table id="rolePermissionAuditLogsTable" class="table table-bordered table-responsive align-middle" style="width:100%">
+               <thead>
+                  <tr>
+                     <th>Date</th>
+                     <th>Role</th>
+                     <th>Action</th>
+                     <th>Details</th>
+                     <th>Permission</th>
+                  </tr>
+               </thead>
+               <tbody></tbody>
+            </table>
+         </div>
+        
+          </div>
+       </div>
+       <script>
+        document.addEventListener("DOMContentLoaded", function() {
+        
+            function populateDropdownsRolePermission() {
+                $.ajax({
+                    url: '{% url "get_filter_options_role_permissions" %}',
+                    method: 'GET',
+                    success: function(response) {
+                        var actions = response.actions;
+                        var roles = response.roles;
+                        var permissions = response.permissions;
+        
+                        var actionSelect = $('#action_role_permission');
+                        var roleSelect = $('#role_role_permission');
+                        var permissionSelect = $('#permission_role_permission');
+        
+                        actionSelect.empty().append('<option value="" disabled selected>Select Action</option>');
+                        roleSelect.empty().append('<option value="" disabled selected>Select Role</option>');
+                        permissionSelect.empty().append('<option value="" disabled selected>Select Permission</option>');
+        
+                        $.each(actions, function(index, value) {
+                            actionSelect.append('<option value="' + value + '">' + value + '</option>');
+                        });
+        
+                        $.each(roles, function(index, value) {
+                            roleSelect.append('<option value="' + value + '">' + value + '</option>');
+                        });
+        
+                        $.each(permissions, function(index, value) {
+                            permissionSelect.append('<option value="' + value + '">' + value + '</option>');
+                        });
+                    },
+                    error: function(xhr, textStatus, errorThrown) {
+                        console.log("Error fetching filter options: ", textStatus, errorThrown);
+                    }
+                });
+            }
+        
+            var rolePermissionAuditLogsTable = $('#rolePermissionAuditLogsTable').DataTable({
+                pagingType: "full_numbers",
+                hover: true,
+                ordering: true,
+                searching: true,
+                responsive: true,
+                order: [[0, 'desc']],
+                lengthMenu: [[5, 10, 25, 50, -1], [5, 10, 25, 50, "All"]],
+                pageLength: 5,
+                ajax: {
+                    url: '{% url "get_role_permission_audit_logs" %}',
+                    dataSrc: 'data',
+                    data: function(d) {
+                        return {
+                            start_date: $('#start_date_role_permission').val(),
+                            end_date: $('#end_date_role_permission').val(),
+                            action: $('#action_role_permission').val(),
+                            role: $('#role_role_permission').val(),
+                            permission: $('#permission_role_permission').val()
+                        };
+                    }
+                },
+                columns: [
+                    { data: 'date' },
+                    { data: 'role' },
+                    { data: 'action' },
+                    { data: 'details' },
+                    { data: 'permission' }
+                ]
+            });
+        
+                window.filterDataRolePermission = function(event) {
+                if (event) event.preventDefault();  // Prevent page reload
+                rolePermissionAuditLogsTable.ajax.reload();
+            };
+
+            
+                window.resetFormRolePermission = function() {
+                    $('#filterFormRolePermission')[0].reset();
+                    rolePermissionAuditLogsTable.ajax.reload();
+                };
+        
+            $('#generate-role-audit-csv').click(function (event) {  // Correct ID
+                event.preventDefault(); // Prevents page reload
+                let filters = {
+                    start_date: $('#start_date_role_permission').val()?.trim() || '',
+                    end_date: $('#end_date_role_permission').val()?.trim() || '',
+                    action: $('#action_role_permission').val()?.trim() || '',
+                    role: $('#role_role_permission').val()?.trim() || '',
+                    permission: $('#permission_role_permission').val()?.trim() || ''
+                };
+
+                window.location.href = `/generate-role-permission-audit-csv/?` + $.param(filters);
+            });
+
+        
+            // Export Role Permission Audit Logs as Excel
+            $('#generate-role-audit-excel').click(function (event) {
+                event.preventDefault(); // Prevents page reload
+                let filters = {
+                    start_date: $('#start_date_role_permission').val()?.trim() || '',
+                    end_date: $('#end_date_role_permission').val()?.trim() || '',
+                    action: $('#action_role_permission').val()?.trim() || '',
+                    role: $('#role_role_permission').val()?.trim() || '',
+                    permission: $('#permission_role_permission').val()?.trim() || ''
+                };
+        
+                window.location.href = `/generate-role-permission-audit-excel/?` + $.param(filters);
+            });
+        
+            // Export Role Permission Audit Logs as PDF
+            $('#generate-role-audit-pdf').click(function (event) {
+                event.preventDefault();  // Prevent page reload
+        
+                let filters = {
+                    start_date: $('#start_date_role_permission').val()?.trim() || '',
+                    end_date: $('#end_date_role_permission').val()?.trim() || '',
+                    action: $('#action_role_permission').val()?.trim() || '',
+                    role: $('#role_role_permission').val()?.trim() || '',
+                    permission: $('#permission_role_permission').val()?.trim() || ''
+                };
+        
+                let pdfUrl = `/generate-role-permission-audit-pdf/?` + $.param(filters);
+        
+                window.open(pdfUrl, '_blank');  // Open in a new tab
+            });
+        
+            // Populate dropdowns on page load
+            populateDropdownsRolePermission();
+        });
+        </script>
+        
+    </div>
+ </div>
+
+ 
+</div>
+</div>
+<script></script>
+<!-- end page title -->
+{% endblock %}
+{% block custom_script %}
+{% endblock %}

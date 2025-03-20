@@ -1,0 +1,527 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %} User | TTSPL IMS - Trisnota Technical Services Pvt. Ltd.{% endblock %}
+{% block content %}
+<!-- start page title -->
+
+<div class="row">
+    {% load permissions_filters %}
+
+    <div class="col-12">
+        <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
+            <h4 class="mb-sm-0">Role & Permissions</h4>
+            <div class="page-title-right">
+                <ol class="breadcrumb m-0">
+                    <li class="breadcrumb-item"><a href="#">Dashboard</a></li>
+                    <li class="breadcrumb-item active">Role & Permissions</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header align-items-center d-flex">
+                <h4 class="card-title mb-0 flex-grow-1">Create Role & Permissions</h4>
+                <div class="flex-shrink-0">
+                   <a class="btn btn-secondary" href="rol_permission_list_page">< Back</a>
+                </div>
+             </div>
+            <div class="card-body">
+                <div id="alertContainerForm"></div>
+                <form id="roleForm" method="post" onsubmit="submitRoleForm(); return false;">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="mb-3 col-md-4">
+                            <label class="form-label" for="role_name">Role Name</label>
+                            <input type="text" id="role_name" name="role_name" class="form-control" placeholder="Role Name" minlength="2" maxlength="30" required data-error-message="Role name must be between 2 and 30 characters long.">
+                        </div>
+                        <div class="mb-3 col-md-8">
+                            <label class="form-label" for="role_description">Role Description</label>
+                            <textarea id="role_description" name="role_description" class="form-control" placeholder="Role Description" rows="2" required data-error-message="Role description is required."></textarea>
+                        </div>
+                    </div>
+                    <div class="row">
+                     <div class="d-flex justify-content-between">
+                         <h5 class="card-title" style="color: #433c50; padding-top: 1vw; margin-left: 0.5vw;">Select Permissions</h5>
+                         <div class="form-check">
+                             <input class="form-check-input" type="checkbox" id="selectAll" />
+                             <label class="form-check-label" for="selectAll">Select All Permissions</label>
+                         </div>
+                     </div>
+                        <div class="col-md-4">
+                            <div class="table-responsive mt-2">
+                                <table class="table table-flush-spacing">
+                                    <tbody>
+                                        <tr>
+                                         <td class="text-nowrap font-weight-bold">
+                                             <div class="form-check">
+                                                 <input class="form-check-input" type="checkbox" id="dashboard_permission" name="dashboard_permission" />
+                                                 <label class="form-check-label" for="dashboard_permission"><strong>Dashboard</strong></label>
+                                             </div>
+                                         </td>
+                                     </tr>
+                                     <tr>
+                                         <td class="text-nowrap pl-4">
+                                             <div style="margin-left: 25px;">
+                                                 <div class="form-check">
+                                                     <input class="form-check-input" type="checkbox" id="dashboard_analytics_permission" name="dashboard_analytics_permission" />
+                                                     <label class="form-check-label" for="dashboard_analytics_permission">Analytics Page</label>
+                                                 </div>
+                                             </div>
+                                         </td>
+                                     </tr>
+                                     <tr>
+                                         <td class="text-nowrap font-weight-bold">
+                                             <div class="form-check">
+                                                 <input class="form-check-input" type="checkbox" id="masters_permission" name="masters_permission" />
+                                                 <label class="form-check-label" for="masters_permission"><strong>Masters</strong></label>
+                                             </div>
+                                         </td>
+                                     </tr>
+                             
+                                     <!-- Masters Pages -->
+                                     <tr>
+                                        <td class="text-nowrap pl-4">
+                                            <div style="margin-left: 25px;">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="employee_page_permission" name="employee_page_permission" />
+                                                    <label class="form-check-label" for="employee_page_permission">Employee Page</label>
+                                                </div>
+                                            </div>
+                                            <div style="margin-left: 25px;">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="location_page_permission" name="location_page_permission" />
+                                                    <label class="form-check-label" for="location_page_permission">Location Page</label>
+                                                </div>
+                                            </div>
+                                            <div style="margin-left: 25px;">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="company_page_permission" name="company_page_permission" />
+                                                    <label class="form-check-label" for="company_page_permission">Company Page</label>
+                                                </div>
+                                            </div>
+                                            <div style="margin-left: 25px;">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="category_page_permission" name="category_page_permission" />
+                                                    <label class="form-check-label" for="category_page_permission">Category Page</label>
+                                                </div>
+                                            </div>
+                                            <div style="margin-left: 25px;">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="subcategory_page_permission" name="subcategory_page_permission" />
+                                                    <label class="form-check-label" for="subcategory_page_permission">SubCategory Page</label>
+                                                </div>
+                                            </div>
+                                            <div style="margin-left: 25px;">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="box_page_permission" name="box_page_permission" />
+                                                    <label class="form-check-label" for="box_page_permission">Box Page</label>
+                                                </div>
+                                            </div>
+                                            <div style="margin-left: 25px;">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="rack_page_permission" name="rack_page_permission" />
+                                                    <label class="form-check-label" for="rack_page_permission">Rack Page</label>
+                                                </div>
+                                            </div>
+                                            <div style="margin-left: 25px;">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="product_page_permission" name="product_page_permission" />
+                                                    <label class="form-check-label" for="product_page_permission">Product Page</label>
+                                                </div>
+                                            </div>
+                                            <div style="margin-left: 25px;">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="customer_page_permission" name="customer_page_permission" />
+                                                    <label class="form-check-label" for="customer_page_permission">Customer Page</label>
+                                                </div>
+                                            </div>
+                                            <div style="margin-left: 25px;">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="supplier_page_permission" name="supplier_page_permission" />
+                                                    <label class="form-check-label" for="supplier_page_permission">Supplier Page</label>
+                                                </div>
+                                            </div>
+                                            <div style="margin-left: 25px;">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="exhibition_page_permission" name="exhibition_page_permission" />
+                                                    <label class="form-check-label" for="exhibition_page_permission">Exhibition Page</label>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-nowrap font-weight-bold">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="exhibition_permission" name="exhibition_permission" />
+                                                <label class="form-check-label" for="exhibition_permission"><strong>Exhibition</strong></label>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-nowrap pl-4">
+                                            <div style="margin-left: 25px;">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="exhibition_entry_permission" name="exhibition_entry_permission" />
+                                                    <label class="form-check-label" for="exhibition_entry_permission">Exhibition Entry Page</label>
+                                                </div>
+                                            </div>
+                                            <div style="margin-left: 25px;">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="exhibition_return_page_permission" name="exhibition_return_page_permission" />
+                                                    <label class="form-check-label" for="exhibition_return_page_permission">Exhibition Stock Return Page</label>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                         <div class="d-flex justify-content-between mt-2">
+                             <!-- <div class="form-check">
+                                 <input class="form-check-input" type="checkbox" id="selectAll" />
+                                 <label class="form-check-label" for="selectAll">Select All Permissions</label>
+                             </div> -->
+                         </div>
+                         <div class="table-responsive">
+                             <table class="table table-flush-spacing">
+                                 <tbody>
+                                    <tr>
+                                        <td class="text-nowrap font-weight-bold">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="operations_permission" name="operations_permission" />
+                                                <label class="form-check-label" for="operations_permission"><strong>Operations</strong></label>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-nowrap pl-4">
+                                            <div style="margin-left: 25px;">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="stock_entry_permission" name="stock_entry_permission" />
+                                                    <label class="form-check-label" for="stock_entry_permission">Stock Entry Page</label>
+                                                </div>
+                                            </div>
+                                            <div style="margin-left: 25px;">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="scan_stock_page_permission" name="scan_stock_page_permission" />
+                                                    <label class="form-check-label" for="scan_stock_page_permission">Scan Stock Page</label>
+                                                </div>
+                                            </div>
+                                            <div style="margin-left: 25px;">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="assign_stock_page_permission" name="assign_stock_page_permission" />
+                                                    <label class="form-check-label" for="assign_stock_page_permission">Stock Assign Page</label>
+                                                </div>
+                                            </div>
+                                            <div style="margin-left: 25px;">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="process_stock_page_permission" name="process_stock_page_permission" />
+                                                    <label class="form-check-label" for="process_stock_page_permission">Stock Process Page</label>
+                                                </div>
+                                            </div>
+                                            <div style="margin-left: 25px;">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="print_barcode_page_permission" name="print_barcode_page_permission" />
+                                                    <label class="form-check-label" for="print_barcode_page_permission">Print Barcode Page</label>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                               
+ 
+                                     <tr>
+                                         <td class="text-nowrap font-weight-bold">
+                                             <div class="form-check">
+                                                 <input class="form-check-input" type="checkbox" id="users_permission" name="users_permission" />
+                                                 <label class="form-check-label" for="users_permission"><strong>Users</strong></label>
+                                             </div>
+                                         </td>
+                                     </tr>
+                                     <tr>
+                                         <td class="text-nowrap pl-4">
+                                             <div style="margin-left: 25px;">
+                                             <div class="form-check">
+                                                 <input class="form-check-input" type="checkbox" id="create_users_page_permission" name="create_users_page_permission" />
+                                                 <label class="form-check-label" for="create_users_page_permission"><strong>Create Users Page</strong></label>
+                                             </div>
+                                         </div>
+                                             <div style="margin-left: 40px;">
+                                                 <div class="form-check">
+                                                     <input class="form-check-input" type="checkbox" id="create_users_add_permission" name="create_users_add_permission" />
+                                                     <label class="form-check-label" for="create_users_add_permission">Add Users Button</label>
+                                                 </div>
+                                                 <div class="form-check">
+                                                     <input class="form-check-input" type="checkbox" id="create_users_view_permission" name="create_users_view_permission" />
+                                                     <label class="form-check-label" for="create_users_view_permission">View Users Button</label>
+                                                 </div>
+                                                 <div class="form-check">
+                                                     <input class="form-check-input" type="checkbox" id="create_users_update_permission" name="create_users_update_permission" />
+                                                     <label class="form-check-label" for="create_users_update_permission">Update Users Button</label>
+                                                 </div>
+                                                 <div class="form-check">
+                                                     <input class="form-check-input" type="checkbox" id="create_users_delete_permission" name="create_users_delete_permission" />
+                                                     <label class="form-check-label" for="create_users_delete_permission">Delete Users Button</label>
+                                                 </div>
+                                             </div>
+                                             <div style="margin-left: 25px; margin-top:10px;">
+                                             <div class="form-check">
+                                                 <input class="form-check-input" type="checkbox" id="create_role_page_permission" name="create_role_page_permission" />
+                                                 <label class="form-check-label " for="create_role_page_permission"><strong>Role & Permission Page</strong></label>
+                                             </div>
+                                         </div>
+    
+                                             <div style="margin-left: 40px;">
+                                                 <div class="form-check">
+                                                     <input class="form-check-input" type="checkbox" id="create_role_add_permission" name="create_role_add_permission" />
+                                                     <label class="form-check-label" for="create_role_add_permission">Add Users Button</label>
+                                                 </div>
+                                                 <div class="form-check">
+                                                     <input class="form-check-input" type="checkbox" id="create_role_view_permission" name="create_role_view_permission" />
+                                                     <label class="form-check-label" for="create_role_view_permission">View Users Button</label>
+                                                 </div>
+                                                 <div class="form-check">
+                                                     <input class="form-check-input" type="checkbox" id="create_role_update_permission" name="create_role_update_permission" />
+                                                     <label class="form-check-label" for="create_role_update_permission">Update Users Button</label>
+                                                 </div>
+                                                 <div class="form-check">
+                                                     <input class="form-check-input" type="checkbox" id="create_role_delete_permission" name="create_role_delete_permission" />
+                                                     <label class="form-check-label" for="create_role_delete_permission">Delete Users Button</label>
+                                                 </div>
+                                             </div>
+                                             <div style="margin-left: 25px; margin-top:10px;">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="users_audit_log_permission" name="users_audit_log_permission" />
+                                                    <label class="form-check-label" for="users_audit_log_permission"><strong>Audit Log Page</strong></label>
+                                                </div>
+                                            </div>
+                                         </td>
+                                     </tr>
+                                 </tbody>
+                             </table>
+                         </div>
+                     </div>
+                     <div class="col-md-4">
+                         <div class="d-flex justify-content-between mt-2">
+                             <!-- <h5 class="card-title" style="color: #433c50; padding-top: 1vw; margin-left: 0.5vw;">Select Permissions</h5> -->
+                             <!-- <div class="form-check">
+                                 <input class="form-check-input" type="checkbox" id="selectAll" />
+                                 <label class="form-check-label" for="selectAll">Select All Permissions</label>
+                             </div> -->
+                         </div>
+                         <div class="table-responsive">
+                             <table class="table table-flush-spacing">
+                                 <tbody>
+                                    <tr>
+                                        <td class="text-nowrap font-weight-bold">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="expense_permission" name="expense_permission" />
+                                                <label class="form-check-label" for="expense_permission"><strong>Expense</strong></label>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-nowrap pl-4">
+                                            <div style="margin-left: 25px;">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="add_expense_permission" name="add_expense_permission" />
+                                                    <label class="form-check-label" for="add_expense_permission">Add Expense Page</label>
+                                                </div>
+                                            </div>
+                                            <div style="margin-left: 25px;">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="track_expense_permission" name="track_expense_permission" />
+                                                    <label class="form-check-label" for="track_expense_permission">Track Status Page</label>
+                                                </div>
+                                            </div>
+                                            <div style="margin-left: 25px;">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="verify_process_expense_permission" name="verify_process_expense_permission" />
+                                                    <label class="form-check-label" for="verify_process_expense_permission">Verify & Process Status Page</label>
+                                                </div>
+                                            </div>
+                                            <div style="margin-left: 25px;">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="finance_process_expense_permission" name="finance_process_expense_permission" />
+                                                    <label class="form-check-label" for="finance_process_expense_permission">Finance Process Page</label>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-nowrap font-weight-bold">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="report_permission" name="report_permission" />
+                                                <label class="form-check-label" for="report_permission"><strong>Report</strong></label>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                 
+                                     <tr>
+                                         <td class="text-nowrap">
+                                             <div style="margin-left: 15px;">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="masters_report_permission" name="masters_report_permission" />
+                                                    <label class="form-check-label" for="masters_report_permission">Master Reports</label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="operations_report_permission" name="operations_report_permission" />
+                                                    <label class="form-check-label" for="operations_report_permission">Operations Reports</label>
+                                                </div>
+                                            </div>
+
+                                         </td>
+                                     </tr>
+                                     <tr>
+                                         <td class="text-nowrap font-weight-bold">
+                                             <div class="form-check">
+                                                 <input class="form-check-input" type="checkbox" id="settings_permission" name="settings_permission" />
+                                                 <label class="form-check-label" for="settings_permission"><strong>Settings</strong></label>
+                                             </div>
+                                         </td>
+                                     </tr>
+                                     <tr>
+                                         <td class="text-nowrap pl-4">
+                                             <div style="margin-left: 25px;">
+                                             <div class="form-check">
+                                                 <input class="form-check-input" type="checkbox" id="general_setting_page_permission" name="general_setting_page_permission" />
+                                                 <label class="form-check-label" for="general_setting_page_permission"><strong>General Setings Page</strong></label>
+                                             </div>
+                                         </div>
+                                         <div style="margin-left: 25px;">
+                                             <div class="form-check">
+                                                 <input class="form-check-input" type="checkbox" id="backup_recovery_page_permission" name="backup_recovery_page_permission" />
+                                                 <label class="form-check-label" for="backup_recovery_page_permission"><strong>Backup & Recovery Page</strong></label>
+                                             </div>
+                                         </div>
+                                             <div style="margin-left: 40px;">
+                                                 <div class="form-check">
+                                                     <input class="form-check-input" type="checkbox" id="backup_recovery_import_permission" name="backup_recovery_import_permission" />
+                                                     <label class="form-check-label" for="backup_recovery_import_permission">Import Database</label>
+                                                 </div>
+                                                 <div class="form-check">
+                                                     <input class="form-check-input" type="checkbox" id="backup_recovery_export_permission" name="backup_recovery_export_permission" />
+                                                     <label class="form-check-label" for="backup_recovery_export_permission">Export Database</label>
+                                                 </div>
+                                                 <div class="form-check">
+                                                     <input class="form-check-input" type="checkbox" id="backup_recovery_scheduled_database_permission" name="backup_recovery_scheduled_database_permission" />
+                                                     <label class="form-check-label" for="backup_recovery_scheduled_database_permission">View Scheduled Database</label>
+                                                 </div>
+                                                 <div class="form-check">
+                                                     <input class="form-check-input" type="checkbox" id="backup_recovery_add_scheduled_database_permission" name="backup_recovery_add_scheduled_database_permission" />
+                                                     <label class="form-check-label" for="backup_recovery_add_scheduled_database_permission">Add Scheduled Database</label>
+                                                 </div>
+                                             </div>
+                                     
+                                         </td>
+                                     </tr>
+                                    
+                                 </tbody>
+                             </table>
+                         </div>
+                     </div>
+                     <div class="row mt-2">
+                        <div class="mb-3 col-md-4">
+                            <button type="button" class="btn btn-success" onclick="submitRoleForm()">Add Role & Permissions</button>
+                            <button type="button" class="btn btn-danger" onclick="clearFormData()">Clear</button>
+                        </div>
+                    </div>
+                    </div>
+                    
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Handle the 'Select All' checkbox
+    document.getElementById('selectAll').addEventListener('click', function(e) {
+        const checkboxes = document.querySelectorAll('input[name$="_permission"]');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = e.target.checked;
+        });
+    });
+
+     // Submit the role form via AJAX
+     function submitRoleForm() {
+        var form = $('#roleForm');
+        $('.invalid-feedback').text('');
+        $('.form-control').removeClass('is-invalid');
+    
+        $.ajax({
+            type: 'POST',
+            url: "{% url 'add_role' %}",
+            data: form.serialize(),
+            success: function(response) {
+                if (response.success) {
+                    showAlert('Role and permissions created successfully', 'success', 'alertContainerForm');
+                    setTimeout(function() {
+                        window.location.href = '/rol_permission_list_page'; // Redirect to role list page
+                    }, 2000); // Redirect after 2 seconds
+                } else {
+                    // Create a Set to collect unique field names with errors
+                    var errorFields = new Set();
+    
+                    // Collect error messages for the alert
+                    $.each(response.errors, function(field, errorMsg) {
+                        errorFields.add(field.charAt(0).toUpperCase() + field.slice(1)); // Capitalize field names
+                    });
+    
+                    // Create a concatenated error message for the alert
+                    var errorMessage = '<strong>Failed to add role:&nbsp;</strong>' + Array.from(errorFields).join(', ') + ' are required.';
+                    showAlert(errorMessage, 'danger', 'alertContainerForm');
+    
+                    // Display field-specific validation errors
+                    $.each(response.errors, function(field, errorMsg) {
+                        var errorDiv = $('#' + field + 'Error');
+                        errorDiv.text(errorMsg); // Set the error message
+                        $('#' + field).addClass('is-invalid'); // Add 'is-invalid' class for styling
+                    });
+                }
+            },
+            error: function(response) {
+                showAlert('Failed to add role: ' + response.responseText, 'danger', 'alertContainerForm');
+                console.log('Error:', response);
+            }
+        });
+    }
+    
+    // Show alert messages
+    function showAlert(message, type, containerId) {
+        var alertHtml = `<div class="alert alert-${type} alert-dismissible fade show p-2" role="alert">
+                           ${message}
+                           <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>`;
+        $('#' + containerId).html(alertHtml);
+    }
+    
+ 
+    // Clear form data
+    function clearFormData() {
+       // Reset the form fields
+       $('#roleForm')[0].reset();
+   
+       // Clear any custom error messages
+       $('.invalid-feedback').text('');
+   
+       // Remove 'is-invalid' class from form controls
+       $('.form-control').removeClass('is-invalid');
+   
+       // Uncheck 'Select All' checkbox
+       $('#selectAll').prop('checked', false);
+   
+       // Uncheck all individual permission checkboxes
+       $('input[type="checkbox"]').not('#selectAll').prop('checked', false);
+   }
+   
+</script>
+
+<!-- end page title -->
+{% endblock %}
+{% block custom_script %}
+{% endblock %}

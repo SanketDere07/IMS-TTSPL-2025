@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% load static %}
+   {% block title %} View Location | TTSPL IMS - Trisnota Technical Services Pvt. Ltd.{% endblock %}
+   
+   {% block content %}
+     <!-- start page title -->
+     <div class="row">
+      <div class="col-12">
+          <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
+              <h4 class="mb-sm-0">View Location </h4>
+
+              <div class="page-title-right">
+                  <ol class="breadcrumb m-0">
+                      <li class="breadcrumb-item"><a href="#">Dashboards</a></li>
+                      <li class="breadcrumb-item active">Location List</li>
+                  </ol>
+              </div>
+
+          </div>
+      </div>
+  </div>
+
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header align-items-center d-flex">
+                <h4 class="card-title mb-0 flex-grow-1">View Location Details</h4>
+                <div class="flex-shrink-0">
+                    <a class="btn btn-secondary" href="/location_list_page">< Back</a>
+                </div>
+            </div><!-- end card header -->
+            <div class="card-body">
+                <div class="live-preview">
+                    <form>
+                        <div class="row gy-4">
+                            <!-- ID -->
+                            <div class="col-xxl-3 col-md-2">
+                                <div>
+                                    <label for="locationId" class="form-label">ID</label>
+                                    <input type="text" class="form-control" id="locationId" value="{{ location.id }}" readonly>
+                                </div>
+                            </div>
+                            <!-- Location Name -->
+                            <div class="col-xxl-3 col-md-4">
+                                <div>
+                                    <label for="locationName" class="form-label">Location Name</label>
+                                    <input type="text" class="form-control" id="locationName" value="{{ location.name }}" readonly>
+                                </div>
+                            </div>
+                             <!-- Location Shortcode -->
+                             <div class="col-xxl-3 col-md-3">
+                                <div>
+                                    <label for="locationShortcode" class="form-label">Shortcode</label>
+                                    <input type="text" class="form-control" id="locationShortcode" value="{{ location.shortcode }}" readonly>
+                                </div>
+                            </div>
+                            <!-- Status -->
+                            <div class="col-xxl-3 col-md-3">
+                                <div>
+                                    <label for="statusInput" class="form-label">Status</label>
+                                    <select class="form-select" id="statusInput" disabled>
+                                        <option value="active" {% if location.status == 'active' %}selected{% endif %}>Active</option>
+                                        <option value="inactive" {% if location.status == 'inactive' %}selected{% endif %}>Inactive</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <!-- Location Details -->
+                            <div class="col-xxl-6 col-md-12">
+                                <div>
+                                    <label for="locationDetails" class="form-label">Details</label>
+                                    <textarea class="form-control" id="locationDetails" rows="3" readonly>{{ location.details }}</textarea>
+                                </div>
+                            </div>
+                        </div>
+                      
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!--end col-->
+</div>
+
+
+
+  <!-- end page title -->
+   {% endblock %}
+
+   {% block custom_script %}
+   {% endblock %}

@@ -1,0 +1,200 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %} Add Supplier | TTSPL IMS - Trisnota Technical Services Pvt. Ltd.{% endblock %}
+{% block content %}
+<!-- start page title -->
+
+<div class="row">
+    <div class="col-12">
+        <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
+            <h4 class="mb-sm-0">Add Supplier</h4>
+            <div class="page-title-right">
+                <ol class="breadcrumb m-0">
+                    <li class="breadcrumb-item"><a href="#">Dashboard</a></li>
+                    <li class="breadcrumb-item active">Supplier List</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header align-items-center d-flex">
+                <h4 class="card-title mb-0 flex-grow-1">Add New Supplier</h4>
+                <div class="flex-shrink-0">
+                   <a class="btn btn-secondary" href="supplier_list_page">< Back</a>
+                </div>
+             </div>
+            <div class="card-body">
+                <div id="alertContainer"></div>
+                <form id="supplierForm" method="post">
+                    {% csrf_token %}
+                    
+                    <div class="row gy-3">
+                        <!-- Supplier Name -->
+                        <div class="col-md-6">
+                            <label class="form-label">Supplier Name</label>
+                            <input type="text" id="supplier_name" class="form-control" name="supplier_name" required>
+                        </div>
+                        <!-- Email -->
+                        <div class="col-md-6">
+                            <label class="form-label">Email</label>
+                            <input type="email" id="supplier_email" class="form-control" name="email" required>
+                        </div>
+                        <!-- Company Name Dropdown -->
+                        <div class="col-md-6">
+                            <label class="form-label">Company Name</label>
+                            <select id="company_name" class="form-control" name="company_name" required>
+                                <option value="" disabled selected>Select Company</option>
+                                <!-- Companies will be populated dynamically -->
+                            </select>
+                        </div>
+                        <!-- Phone Number -->
+                        <div class="col-md-6">
+                            <label class="form-label">Phone Number</label>
+                            <input type="text" id="supplier_phone_number" class="form-control" name="phone_number" required>
+                        </div>
+                        <!-- Address -->
+                        <div class="col-md-12">
+                            <label class="form-label">Address</label>
+                            <textarea id="supplier_address" class="form-control" name="address" rows="2" required></textarea>
+                        </div>
+                        <!-- City -->
+                        <div class="col-md-3">
+                            <label class="form-label">City</label>
+                            <input type="text" id="supplier_city" class="form-control" name="city" required>
+                        </div>
+                        <!-- State Dropdown -->
+                        <div class="col-md-3">
+                            <label class="form-label">State</label>
+                            <select id="state" class="form-control" name="state" required>
+                                <option value="" disabled selected>Select State</option>
+                                <!-- States will be populated dynamically -->
+                            </select>
+                        </div>
+                        <!-- Zip Code -->
+                        <div class="col-md-3">
+                            <label class="form-label">Zip Code</label>
+                            <input type="text" id="supplier_zip_code" class="form-control" name="zip_code" required>
+                        </div>
+                        <!-- Country -->
+                        <div class="col-md-3">
+                            <label class="form-label">Country</label>
+                            <input type="text" id="supplier_country" class="form-control" name="country" required>
+                        </div>
+                        <!-- Details -->
+                        <div class="col-md-12">
+                            <label class="form-label">Details</label>
+                            <textarea id="supplier_details" class="form-control" name="details" rows="2" required></textarea>
+                        </div>
+                    </div>
+                    <!-- Submit Button -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-success">Add Supplier</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // JSON data for all Indian states
+    const indianStates = [
+        "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", 
+        "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", 
+        "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram", 
+        "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", 
+        "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal", 
+        "Andaman and Nicobar Islands", "Chandigarh", "Dadra and Nagar Haveli and Daman and Diu", 
+        "Delhi", "Jammu and Kashmir", "Ladakh", "Lakshadweep", "Puducherry"
+    ];
+
+    // Populate the state dropdown
+    const stateDropdown = document.getElementById('state');
+    indianStates.forEach(state => {
+        const option = document.createElement('option');
+        option.value = state;
+        option.textContent = state;
+        stateDropdown.appendChild(option);
+    });
+
+    fetch('/get-companies/')
+    .then(response => response.json())
+    .then(data => {
+        const companyDropdown = document.getElementById('company_name');
+        companyDropdown.innerHTML = '<option value="" disabled selected>Select Company</option>'; // Reset dropdown
+
+        data.companies.forEach(company => {  // Access "companies" key
+            const option = document.createElement('option');
+            option.value = company.company_id;
+            option.textContent = company.company_name;
+            companyDropdown.appendChild(option);
+        });
+    })
+    .catch(error => console.error('Error fetching companies:', error));
+
+    // Form submission handling with AJAX
+    document.getElementById('supplierForm').addEventListener('submit', function(event) {
+        event.preventDefault();
+    
+        const supplier_name = document.getElementById('supplier_name').value;
+        const email = document.getElementById('supplier_email').value;
+        const company_name = document.getElementById('company_name').value;
+        const phone_number = document.getElementById('supplier_phone_number').value;
+        const address = document.getElementById('supplier_address').value;
+        const city = document.getElementById('supplier_city').value;
+        const state = document.getElementById('state').value;
+        const zip_code = document.getElementById('supplier_zip_code').value;
+        const country = document.getElementById('supplier_country').value;
+        const details = document.getElementById('supplier_details').value;
+    
+        fetch('/add-supplier/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}',
+            },
+            body: JSON.stringify({
+                supplier_name,
+                email,
+                company_name,
+                phone_number,
+                address,
+                city,
+                state,
+                zip_code,
+                country,
+                details
+            }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            const alertContainer = document.getElementById('alertContainer');
+            alertContainer.innerHTML = '';
+            const alertDiv = document.createElement('div');
+            alertDiv.className = data.success ? 'alert alert-success' : 'alert alert-danger';
+            alertDiv.innerHTML = data.message || `<strong>Error:</strong> ${data.error}`;
+            alertContainer.appendChild(alertDiv);
+    
+            if (data.success) {
+                setTimeout(() => {
+                    alertContainer.innerHTML = '';
+                    window.location.href = '/supplier_list_page';
+                }, 3000);
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    });
+</script>
+
+
+
+
+<!-- end page title -->
+{% endblock %}
+{% block custom_script %}
+{% endblock %}

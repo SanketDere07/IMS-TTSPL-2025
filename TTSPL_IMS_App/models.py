@@ -1,251 +1,18 @@
 from django.db import models
 from django.utils.timezone import now
-from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
-from django.contrib.auth.signals import user_logged_in, user_logged_out
-from django.dispatch import receiver
-from django.utils import timezone
+import uuid
 
 # Create your models here.
-
-# ----------------------- User, Role, Permission ------------------------------------------------------------------------------------------------
-
-class UserManager(BaseUserManager):
-    def create_user(self, email, username, password=None, **extra_fields):
-        if not email:
-            raise ValueError('The Email field must be set')
-        email = self.normalize_email(email)
-        user = self.model(email=email,
-                          username=username, **extra_fields)
-        user.set_password(password)
-        user.save(using=self._db)
-        return user
-
-    def create_superuser(self, email, username, password=None, **extra_fields):
-        extra_fields.setdefault('is_superuser', True)
-        extra_fields.setdefault('is_staff', True)
-
-        if extra_fields.get('is_superuser') is not True:
-            raise ValueError('Superuser must have is_superuser=True.')
-        if extra_fields.get('is_staff') is not True:
-            raise ValueError('Superuser must have is_staff=True.')
-
-        return self.create_user(email, username, password, **extra_fields)
-
-
-class User(AbstractBaseUser):
-    email = models.EmailField(unique=True)
-    username = models.CharField(max_length=150, unique=True)
-    is_superuser = models.BooleanField(default=False)
-    is_active = models.BooleanField(default=True)
-    is_staff = models.BooleanField(default=False)
-    last_login = models.DateTimeField(null=True, blank=True)
-    created_by = models.ForeignKey(
-        'self', null=True, blank=True, on_delete=models.SET_NULL, related_name='created_users')
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    deleted_at = models.DateTimeField(null=True, blank=True)
-    otp = models.CharField(max_length=6, null=True, blank=True)  # Store OTP
-    otp_generated_time = models.DateTimeField(
-        null=True, blank=True)  # Store OTP generation time
-
-    objects = UserManager()
-
-    USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['username']  # Add any additional required fields here
-
-    def __str__(self):
-        return self.email
-
-    def has_permission(self, permission_name):
-        """Check if the user has a specific permission."""
-        if self.is_superuser:
-            return True
-
-        # Get all roles for this user
-        user_roles = self.userrole_set.values_list('role_id', flat=True)
-
-        # Check if any of the user's roles have the permission
-        return DefaultRolePermission.objects.filter(
-            role_id__in=user_roles,
-            permission__permission_name=permission_name
-        ).exists()
-
-    def has_role(self, role_name):
-        """Check if the user has a specific role."""
-        return self.userrole_set.filter(role__role_name=role_name).exists()
-
-# ------------------------------UserLog----------------------------------------------------------#
-
-
-class UserAuditLog(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    action = models.CharField(max_length=255)
-    timestamp = models.DateTimeField(auto_now_add=True)
-    details = models.TextField()
-    username = models.CharField(max_length=150)
-    date = models.DateField(auto_now_add=True)
-    last_login = models.DateTimeField(null=True, blank=True)
-    created_at = models.DateTimeField(default=timezone.now, editable=False)
-
-
-@receiver(user_logged_in)
-def log_user_login(sender, request, user, **kwargs):
-    # Update last_login and log the login action
-    user_audit_log = UserAuditLog.objects.create(
-        user=user,
-        action='Login',
-        details='User logged in',
-        username=user.username,
-        last_login=user.last_login,
+PRODUCT_STATUS_CHOICES = (
+        ('ASSIGN', 'assign'),
+        ('FIXED_ASSET','fixed_asset'),
+        ('RETURN', 'return'),
+        ('SELL','sell'),
+        ('DEMO', 'demo'),
+        ('INSPECTION', 'inspection'),
+        ('INSTOCK','instock'),
     )
-    user_audit_log.save()
 
-
-@receiver(user_logged_out)
-def log_user_logout(sender, request, user, **kwargs):
-    # Log the logout action
-    user_audit_log = UserAuditLog.objects.create(
-        user=user,
-        action='Logout',
-        details='User logged out',
-        username=user.username,
-        last_login=user.last_login,
-    )
-    user_audit_log.save()
-
-
-class Permission(models.Model):
-    module_name = models.CharField(max_length=255, null=True, blank=True)
-    permission_name = models.CharField(max_length=255)
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(default=timezone.now, editable=False)
-    created_by = models.ForeignKey(
-        User, null=True, blank=True, on_delete=models.SET_NULL, related_name='created_permissions')
-
-    def __str__(self):
-        return self.permission_name
-
-    def save(self, *args, **kwargs):
-        if not self.permission_name and self.module_name:
-            self.permission_name = f"View {self.module_name}"
-        super().save(*args, **kwargs)
-
-    def has_perm(self, perm, obj=None):
-        return self.is_superuser
-
-    def has_module_perms(self, app_label):
-        return self.is_superuser
-
-
-class Role(models.Model):
-    role_name = models.CharField(max_length=255)
-    role_description = models.CharField(max_length=255, null=True, blank=True)
-    is_active = models.BooleanField(default=True)
-    created_by = models.ForeignKey(
-        User, null=True, blank=True, on_delete=models.SET_NULL, related_name='created_roles')
-    permissions = models.ManyToManyField(Permission, related_name='roles')
-    created_at = models.DateTimeField(default=timezone.now, editable=False)
-
-    def __str__(self):
-        return self.role_name
-
-
-class Profile(models.Model):
-    user = models.OneToOneField(
-        'User', on_delete=models.CASCADE, related_name='profile')
-    name = models.CharField(max_length=255)
-    mobile_no = models.CharField(max_length=15, null=True, blank=True)
-    company = models.CharField(max_length=255, null=True, blank=True)
-    location = models.CharField(max_length=255, null=True, blank=True)
-    bio = models.TextField(blank=True)
-    profile_picture = models.ImageField(upload_to='profile_pics/', blank=True)
-    role = models.ForeignKey(
-        Role, on_delete=models.SET_NULL, null=True, related_name='profiles')
-    created_at = models.DateTimeField(default=timezone.now, editable=False)
-
-    def __str__(self):
-        return self.user.email
-
-
-class UserAddress(models.Model):
-    user = models.OneToOneField(
-        'User', on_delete=models.CASCADE, related_name='addresses')
-    address1 = models.CharField(max_length=255)
-    address2 = models.CharField(max_length=255, blank=True, null=True)
-    city = models.CharField(max_length=100)
-    state = models.CharField(max_length=100)
-    zip_code = models.CharField(max_length=20)
-
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return f"{self.address1}, {self.city}, {self.state}, {self.zip_code}"
-
-
-class UserSession(models.Model):
-    user = models.OneToOneField(
-        'User', on_delete=models.CASCADE, related_name='user_session')
-    session_key = models.CharField(max_length=40, unique=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f'{self.user.email} - {self.session_key}'
-
-
-class UserRole(models.Model):
-    user = models.ForeignKey('User', on_delete=models.CASCADE)
-    role = models.ForeignKey(Role, on_delete=models.CASCADE)
-    created_at = models.DateTimeField(default=timezone.now, editable=False)
-
-    def __str__(self):
-        return f'{self.user.email} - {self.role.name}'
-
-
-class UserPermission(models.Model):
-    user = models.ForeignKey('User', on_delete=models.CASCADE)
-    permission = models.ForeignKey(Permission, on_delete=models.CASCADE)
-    created_at = models.DateTimeField(default=timezone.now, editable=False)
-
-    def __str__(self):
-        return f'{self.user.email} - {self.permission.name}'
-
-
-class DefaultRolePermission(models.Model):
-    permission = models.ForeignKey(Permission, on_delete=models.CASCADE)
-    role = models.ForeignKey(Role, on_delete=models.CASCADE)
-    created_at = models.DateTimeField(default=timezone.now, editable=False)
-
-
-class RolePermissionAuditLog(models.Model):
-    user = models.ForeignKey('User', on_delete=models.CASCADE)
-    action = models.CharField(max_length=255)
-    timestamp = models.DateTimeField(auto_now_add=True)
-    details = models.TextField()
-    date = models.DateField(auto_now_add=True)
-    role = models.CharField(max_length=255, null=True, blank=True)
-    permission = models.CharField(max_length=4024, null=True, blank=True)
-    created_at = models.DateTimeField(default=timezone.now, editable=False)
-
-    def __str__(self):
-        return f'{self.user.username} - {self.action} - {self.role or ""} - {self.permission or ""} - {self.timestamp}'
-    
-
-class SecondaryEmailConfig(models.Model):
-    host = models.CharField(max_length=255)
-    port = models.PositiveIntegerField()
-    use_tls = models.BooleanField(default=False)
-    host_user = models.EmailField()
-    host_password = models.CharField(max_length=255)
-    default_from_email = models.EmailField()
-    created_at = models.DateTimeField(default=timezone.now, editable=False)
-
-
-    def __str__(self):
-        return f'Secondary Email Config: {self.host_user}'
-    
-
-    
 class Location(models.Model):
     STATUS_CHOICES = (
         ('active', 'Active'),
@@ -433,6 +200,7 @@ class StockEntry(models.Model):
     rack = models.ForeignKey('Rank', on_delete=models.CASCADE)  
     box = models.ForeignKey('Box', on_delete=models.CASCADE)  
     quantity = models.PositiveIntegerField(default=1)
+    product_status = models.CharField(max_length=30, choices=PRODUCT_STATUS_CHOICES, default='INSTOCK')
     serial_number = models.CharField(max_length=255, blank=True, null=True)  
     created_on = models.DateTimeField(auto_now_add=True)
 
@@ -460,37 +228,33 @@ class TempStockBarcode(models.Model):
 
     def __str__(self):
         return f"Temp Barcode: {self.barcode_text}"
-    
 
-class ScheduledBackup(models.Model):
-    BACKUP_CHOICES = [
-        ('backup', 'Backup'),
-        ('cleanup', 'Cleanup'),
-        ('backup_cleanup', 'Backup & Cleanup'),
-        ('never', 'Never')
-    ]
+class AssignProduct(models.Model):
+    stock_id = models.ForeignKey('StockEntry', on_delete=models.CASCADE, null=True, blank=True)
+    assign_id = models.CharField(max_length=100, unique=True)
+    assign_product = models.ForeignKey('Product', on_delete=models.CASCADE, null=True, blank=True)
+    assign_employee = models.ForeignKey('Employee', on_delete=models.CASCADE, null=True, blank=True)
+    assign_company = models.ForeignKey('Company', on_delete=models.CASCADE, null=True, blank=True)
+    assign_exhibition = models.ForeignKey('Exhibition', on_delete=models.CASCADE, null=True, blank=True)
+    assign_customer = models.ForeignKey('Customer', on_delete=models.CASCADE, null=True, blank=True)
+    assign_mode = models.CharField(max_length=30)
+    assign_quantity = models.IntegerField(default=0)
+    assign_customer_details = models.CharField(max_length=200)
+    assign_at = models.DateTimeField(auto_now_add=True)
 
-    table_name = models.CharField(max_length=1000)
-    backup_interval_days = models.IntegerField()
-    next_backup = models.DateTimeField(default=timezone.now)
-    last_backup = models.DateTimeField(null=True, blank=True)
-    user = models.ForeignKey(
-        'User', on_delete=models.CASCADE, related_name='scheduledbackup'
-    )
-    operation = models.CharField(max_length=20, choices=BACKUP_CHOICES, default='backup')
-
-    def __str__(self):
-        return f"{self.table_name} - every {self.backup_interval_days} days ({self.operation})"
-    
-
-class ScheduledBackupDetails(models.Model):
-    backup_name = models.CharField(max_length=255)
-    sql_file_name = models.CharField(max_length=255)
-    txt_file_name = models.CharField(max_length=255)
-    from_date = models.DateTimeField()
-    to_date = models.DateTimeField()
-    scheduled_operation = models.CharField(max_length=50)
-    file_size = models.DecimalField(max_digits=10, decimal_places=2)
-    
-    def __str__(self):
-        return f"Backup: {self.backup_name} - {self.scheduled_operation}"
+class ReturnProductHistory(models.Model):
+    return_stock_id = models.ForeignKey('StockEntry', on_delete=models.CASCADE, null=True, blank=True)
+    return_id = models.CharField(max_length=100,null=True)
+    assign_return_id = models.CharField(max_length=100)
+    return_product = models.ForeignKey('Product', on_delete=models.CASCADE, null=True, blank=True)
+    return_employee = models.ForeignKey('Employee', on_delete=models.CASCADE, null=True, blank=True)
+    return_company = models.ForeignKey('Company', on_delete=models.CASCADE, null=True, blank=True)
+    return_exhibition = models.ForeignKey('Exhibition', on_delete=models.CASCADE, null=True, blank=True)
+    return_customer = models.ForeignKey('Customer', on_delete=models.CASCADE, null=True, blank=True)
+    return_mode = models.CharField(max_length=30)
+    return_quantity = models.IntegerField(default=0)
+    return_customer_details = models.CharField(max_length=200)
+    return_product_status = models.CharField(max_length=255, blank=True, null=True)
+    reuturn_assign_at = models.CharField(max_length=255, blank=True, null=True)
+    return_at = models.DateTimeField(auto_now_add=True, blank=True, null=True)
+    reuturn_status = models.CharField(max_length=255, blank=True, null=True)

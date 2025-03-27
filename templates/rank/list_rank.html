@@ -25,43 +25,6 @@
                 </div>
             </div>
             <div class="card-body">
-                <div class="accordion accordion-primary mb-3" id="filterAccordion">
-                    <div class="accordion-item material-shadow">
-                        <h2 class="accordion-header" id="flush-headingFilters">
-                            <button class="accordion-button collapsed d-flex align-items-center" type="button" data-bs-toggle="collapse"
-                                data-bs-target="#flush-collapseFilters" aria-expanded="false" aria-controls="flush-collapseFilters">
-                                <i class="ri-filter-3-line me-2"></i> Filters
-                            </button>
-                        </h2>
-                        <div id="flush-collapseFilters" class="accordion-collapse collapse" aria-labelledby="flush-headingFilters"
-                            data-bs-parent="#filterAccordion">
-                            <div class="accordion-body">
-                            <div class="row mb-3">
-                                   <!-- Rack ID Filter -->
-                                <div class="col-md-2">
-                                    <label class="form-label">Rack ID</label>
-                                    <input type="text" class="form-control" id="rack-id-filter" placeholder="Enter Rack ID">
-                                </div>
-
-                                <!-- Rack Name Filter -->
-                                <div class="col-md-3">
-                                    <label class="form-label">Rack Name</label>
-                                    <input type="text" class="form-control" id="rack-name-filter" placeholder="Enter Rack Name">
-                                </div>
-
-                                <!-- Submit, Reset Buttons -->
-                                <div class="col-md-3 d-flex align-items-end">
-                                    <button class="btn btn-primary me-2 w-50" id="apply-rack-filters">Submit</button>
-                                    <button class="btn btn-warning w-50 me-2" id="reset-rack-filters">Reset</button>
-                                    <button class="btn btn-danger w-50 me-2" id="generate-rank-pdf">PDF</button>
-                                    <button class="btn btn-secondary w-50 me-2" id="generate-rank-csv">CSV</button>
-                                    <button class="btn btn-success w-50" id="generate-rank-excel">Excel</button>
-                                </div>               
-                            </div>
-                       </div>
-                        </div>
-                    </div>
-                </div>
                 <table id="rank" class="table table-bordered table-responsive align-middle" style="width:100%">
                     <thead>
                         <tr>
@@ -150,12 +113,11 @@
                 }
             ]
         });
-
-        function show_rank_datatable_data(filters = {}) {
+    
+        function show_rank_datatable_data() {
             $.ajax({
                 url: "/rank-list/",
                 method: "GET",
-                data: filters,
                 success: function (response) {
                     rank_datatable.clear().rows.add(response.ranks || []).draw(false);
                 },
@@ -164,69 +126,10 @@
                 },
             });
         }
-
-        // Load initial data
+    
         show_rank_datatable_data();
-
-        // Apply filters
-        $('#apply-rack-filters').click(function () {
-            var filters = {
-                rack_id: $('#rack-id-filter').val(),
-                rack_name: $('#rack-name-filter').val()
-            };
-            show_rank_datatable_data(filters);
-        });
-
-        // Reset filters
-        $('#reset-rack-filters').click(function () {
-            $('#rack-id-filter').val('');
-            $('#rack-name-filter').val('');
-            show_rank_datatable_data();
-        });
     });
     
-
-        $('#generate-rank-pdf').click(function () {
-        let filters = {
-            rank_id: $('#rank-id-filter').val()?.trim() || '',
-            rank_name: $('#rank-name-filter').val()?.trim() || '',
-        };
-
-        // Debugging: Check if filters are being applied
-        console.log("Applying Filters:", filters);
-
-        window.location.href = `/generate-rank-pdf/?` + $.param(filters);
-    });
-
-
-        $('#generate-rank-csv').click(function () {
-        let filters = {
-            rank_id: $('#rank-id-filter').val()?.trim() || '',
-            rank_name: $('#rank-name-filter').val()?.trim() || ''
-        };
-
-        console.log("CSV Filters Sent:", filters);
-        console.log("CSV URL:", `/generate-rank-csv/?` + $.param(filters));
-
-        window.open(`/generate-rank-csv/?` + $.param(filters), '_blank');
-    });
-
-    $('#generate-rank-excel').click(function () {
-        let filters = {
-            rank_id: $('#rank-id-filter').val()?.trim() || '',
-            rank_name: $('#rank-name-filter').val()?.trim() || ''
-        };
-
-        console.log("Excel Filters Sent:", filters);
-        console.log("Excel URL:", `/generate-rank-excel/?` + $.param(filters));
-
-        window.open(`/generate-rank-excel/?` + $.param(filters), '_blank');
-    });
-
-
-
-
-
     let rankIdToDelete = null;
 
     function showDeleteRankModal(rankId) {

@@ -3,48 +3,46 @@
 {% block title %} Assign Stock | TTSPL IMS - Trisnota Technical Services Pvt. Ltd.{% endblock %}
 {% block content %}
 <!-- start page title -->
-
 <style>
     /* Ensure select2 elements have uniform height */
-.select2-container--default .select2-selection--single .select2-selection__rendered {
-    color: #444;
-    line-height: 34px;
-}
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        color: #444;
+        line-height: 34px;
+    }
 
-.select2-container--default .select2-selection--single {
-    background-color: #fff;
-    border: 1px solid #aaa;
-    border-radius: 4px;
-    height: 38px; /* Match input height */
-}
+    .select2-container--default .select2-selection--single {
+        background-color: #fff;
+        border: 1px solid #aaa;
+        border-radius: 4px;
+        height: 38px; /* Match input height */
+    }
 
-/* Style for quantity input and buttons */
-.input-group .btn {
-    height: 38px !important; /* Ensure buttons match select2 height */
-    line-height: auto;
-}
+    /* Style for quantity input and buttons */
+    .input-group .btn {
+        height: 38px !important; /* Ensure buttons match select2 height */
+        line-height: auto;
+    }
 
-.input-group input[type="number"] {
-    height: 38px !important; /* Match select2 height */
-}
+    .input-group input[type="number"] {
+        height: 38px !important; /* Match select2 height */
+    }
 
-.select2-container--default .select2-selection--single .select2-selection__arrow {
-    height: 34px !important;
-    position: absolute;
-    top: 1px;
-    right: 1px;
-    width: 20px;
-}
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 34px !important;
+        position: absolute;
+        top: 1px;
+        right: 1px;
+        width: 20px;
+    }
 
-.select2-container {
-    margin-bottom: 10px !important;
-}
+    .select2-container {
+        margin-bottom: 10px !important;
+    }
 
-/* Add margin-bottom to input fields */
-.company-details, .customer-details {
-    margin-bottom: 10px !important;
-}
-
+    /* Add margin-bottom to input fields */
+    .company-details, .customer-details {
+        margin-bottom: 10px !important;
+    }
 </style>
 
 <div class="row">
@@ -66,10 +64,10 @@
             <div class="card-header align-items-center d-flex">
                 <h4 class="card-title mb-0 flex-grow-1">Assign Stock</h4>
                 <div class="flex-shrink-0">
-                   <a class="btn btn-secondary" href="assign_list_page">< Back</a>
+                    <a class="btn btn-secondary" href="assign_list_page">< Back</a>
                 </div>
-             </div>
-             <div class="card-body">
+            </div>
+            <div class="card-body">
                 <div id="alertContainer"></div>
                 <form id="stockForm" method="post">
                     {% csrf_token %}
@@ -78,11 +76,11 @@
                         <!-- Category -->
                         <div class="col-md-3">
                             <label class="form-label">Category</label>
-                            <select id="category" class="form-control select2 " name="category_id" required>
+                            <select id="category" class="form-control select2" name="category_id" required>
                                 <option value="">Select Category</option>
                             </select>
                         </div>
-            
+
                         <!-- SubCategory -->
                         <div class="col-md-3">
                             <label class="form-label">SubCategory</label>
@@ -90,7 +88,7 @@
                                 <option value="">Select SubCategory</option>
                             </select>
                         </div>
-            
+
                         <!-- Product Name -->
                         <div class="col-md-3">
                             <label class="form-label">Product Name</label>
@@ -99,16 +97,15 @@
                             </select>
                         </div>
 
-                          <!-- Product Barcode Display -->
-                          <div class="col-md-3">
+                        <!-- Product Barcode Display -->
+                        <div class="col-md-3">
                             <label class="form-label">Product Barcode</label>
                             <div id="barcodeImageContainer">
                                 <img id="barcodeImage" src="/static/assets/images/placeholder.jpg" class="img-thumbnail" style="width:150px; height: 60px;" />
-                            </div> 
+                            </div>
                         </div>
-                        
 
-                         <!-- Location -->
+                        <!-- Location -->
                         <div class="col-md-3">
                             <label class="form-label">Location</label>
                             <select id="location" class="js-example-basic-single" name="location_id" required>
@@ -119,7 +116,7 @@
                             <label for="available_quantity" class="form-label">Available Quantity:</label>
                             <input type="text" id="available_quantity" class="form-control" readonly>
                         </div>
-                        
+
                         <div class="col-md-3">
                             <label for="quantity_input" class="form-label">Select Quantity:</label>
                             <div class="input-group">
@@ -128,7 +125,6 @@
                                 <button type="button" id="increment_quantity" class="btn btn-outline-secondary">+</button>
                             </div>
                         </div>
-                        
 
                         <!-- Mode Selection -->
                         <div class="col-md-3">
@@ -142,76 +138,72 @@
                             </select>
                         </div>
 
-                    <div class="col-md-2 d-flex justify-content-start align-items-center" style="margin-top: 2rem;">
-                        <button type="button" id="showassignstockbutton" class="btn btn-success">Show</button>
+                        <!-- <div class="col-md-2 d-flex justify-content-start align-items-center" style="margin-top: 2rem;">
+                            <button type="button" id="showassignstockbutton" class="btn btn-success">Show</button>
+                        </div>-->
+                    </div>
+
+                    <!-- Barcode List Display -->
+                    <div class="row mt-4" id="barcodeListContainer" style="display: none;">
+                        <div class="col-12">
+                            <h5>Assign Stock Entry</h5>
+                            <table class="table table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Stock Id</th>
+                                        <th>Barcode</th>
+                                        <th>Barcode Label</th>
+                                        <th>Product Name</th>
+                                        <th>Location</th>
+                                        <th>Rack</th>
+                                        <th>Box</th>
+                                        <th>Mode</th>
+                                        <th>Related Fields</th>
+                                        <th>Status</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="barcodeList">
+                                    <!-- Barcodes will be dynamically added here -->
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                    </div>
+
+                    
+                </form>
+                <div class="row">
+                    <div class="col-12 d-flex justify-content-start">
+                        <button class="btn btn-primary" id="saveButton" style="display:none;">Submit product</button>
                     </div>
                 </div>
-
-                   <!-- Barcode List Display -->
-                   <div class="row mt-4" id="barcodeListContainer" style="display: none;">
-                    <div class="col-12">
-                        <h5>Assign Stock Entry</h5>
-                        <table class="table table-bordered">
+                <div class="col-lg-12 pt-4">
+                    <div class="card-header d-flex align-items-center">
+                        <h5 class="card-title mb-0 flex-grow-1">Selected Assign Stock Entry</h5>
+                    </div>
+                    <div class="card-body">
+                        <table id="assign_list_all" class="table table-bordered">
                             <thead>
                                 <tr>
-                                    <th>Stock Id</th>
-                                    <th>Barcode</th>
-                                    <th>Barcode Label</th>
+                                    <th>Assign ID</th>
                                     <th>Product Name</th>
-                                    <th>Location</th>
-                                    <th>Rack</th>
-                                    <th>Box</th>
-                                    <th>Mode</th>
-                                    <th>Related Fields</th>
-                                    <th>Action</th>
+                                    <th>Product Category</th>
+                                    <th>Product Sub Category</th>
+                                    <th>Assign Mode</th>
+                                    <th>Assign At</th>
                                 </tr>
                             </thead>
-                            <tbody id="barcodeList">
-                                <!-- Barcodes will be dynamically added here -->
+                            <tbody id="assign_list_all_body">
+                                <!-- Rows will be inserted here by JavaScript -->
                             </tbody>
                         </table>
                     </div>
                 </div>
-
-                    <div class="row">
-                        <div class="col-12 d-flex justify-content-end">
-                            <button type="submit" class="btn btn-primary" id="submitStockBtn" style="display:none;">Submit Stock</button>
-                        </div>
-                    </div>
-                    
-                </form>
-            
-                    <div class="col-lg-12 pt-4">
-                          <div class="card-header d-flex align-items-center">
-                             <h5 class="card-title mb-0 flex-grow-1">Selected Stock Entry</h5>
-                          </div>
-                          <div class="card-body">
-                             <table id="barcode_table" class="table table-bordered table-responsive align-start" style="width:100%">
-                                <thead>
-                                   <tr>
-                                     <th>Stock Id</th>
-                                      <th>Barcode</th>
-                                      <th>Barcode Label</th>
-                                      <th>Product Name</th>
-                                      <th>Location</th>
-                                      <th>Rack</th>
-                                      <th>Box</th>
-                                   </tr>
-                                </thead>
-                                <tbody>
-                                   <tr>
-                                      <td colspan="6" class="text-center">Select filters to load barcodes</td>
-                                   </tr>
-                                </tbody>
-                             </table>
-                          </div>
-                    </div>
             </div>
 
             <!-- Toast container (make sure this is somewhere in your HTML body) -->
             <div id="toast-container" class="position-fixed bottom-0 end-0 p-3" style="z-index: 9999;"></div>
-
-
         </div>
     </div>
 </div>
@@ -240,26 +232,23 @@
         </div>
     </div>
 </div>
-
-
-
 <script>
-    
     document.addEventListener('DOMContentLoaded', function() {
         // Initialize Select2
         $('.select2').select2();
-    
+
+        // Fetch categories
         $.getJSON("{% url 'get_categories' %}", function(data) {
             $('#category').append(data.categories.map(cat => 
                 `<option value="${cat.category_id}">${cat.category_name} (${cat.shortcode})</option>`
             ));
         });
-    
+
         // Load Subcategories on Category Change
         $('#category').change(function() {
             let category_id = $(this).val();
             $('#subcategory').html('<option value="">Select SubCategory</option>');
-        
+
             if (category_id) {
                 $.getJSON(`/get-subcategories/${category_id}/`, function(data) {
                     $('#subcategory').append(data.subcategories.map(sub => 
@@ -268,12 +257,12 @@
                 });
             }
         });
-    
+
         // Load Products on Subcategory Change
         $('#subcategory').change(function() {
             let subcategory_id = $(this).val();
             $('#product').html('<option value="">Select Product</option>');
-    
+
             if (subcategory_id) {
                 $.getJSON(`/get-products-stock/${subcategory_id}/`, function(data) {
                     $('#product').append(data.products.map(prod => 
@@ -282,354 +271,423 @@
                 });
             }
         });
-    
+
         // Load locations for Select2
         $.getJSON("{% url 'get_locations' %}", function (data) {
             $.each(data.locations, function (index, item) {
                 $('#location').append($('<option>', { value: item.id, text: `${item.name} (${item.shortcode})` }));
             });
         });
-    
+
         // Show Barcode Image on Product Selection
         $('#product').change(function() {
-        let selectedProduct = $(this).find(':selected');
-        let barcodeImage = selectedProduct.data('image');
+            let selectedProduct = $(this).find(':selected');
+            let barcodeImage = selectedProduct.data('image');
 
-        if (barcodeImage) {
-            $('#barcodeImage').attr('src', `/media/${barcodeImage}`).show();
-        } else {
-            $('#barcodeImage').attr('src', '/static/assets/images/placeholder.jpg').show(); // Show placeholder if no image
+            if (barcodeImage) {
+                $('#barcodeImage').attr('src', `/media/${barcodeImage}`).show();
+            } else {
+                $('#barcodeImage').attr('src', '/static/assets/images/placeholder.jpg').show(); // Show placeholder if no image
+            }
+        });
+
+        // Function to fetch all employees when "Users" mode is selected
+        function fetchEmployees(employeeDropdown) {
+            fetch("{% url 'get_employees' %}")  // Fetch all employees
+                .then(response => response.json())
+                .then(data => {
+                    employeeDropdown.innerHTML = `<option value="" disabled selected>Select Employee</option>`; // Default option
+                    data.employees.forEach(emp => {
+                        let option = `<option value="${emp.employee_id}">${emp.name} (${emp.designation})</option>`;
+                        employeeDropdown.innerHTML += option;
+                    });
+
+                    // Initialize Select2 only when "Users" mode is selected
+                    $(employeeDropdown).select2({ width: '100%' });  
+                })
+                .catch(error => console.error("Error fetching employees:", error));
         }
-    });
 
-   // Function to fetch all employees when "Users" mode is selected
-    function fetchEmployees(employeeDropdown) {
-        fetch("{% url 'get_employees' %}")  // Fetch all employees
-            .then(response => response.json())
-            .then(data => {
-                employeeDropdown.innerHTML = `<option value="" disabled selected>Select Employee</option>`; // Default option
-                data.employees.forEach(emp => {
-                    let option = `<option value="${emp.employee_id}">${emp.name} (${emp.designation})</option>`;
-                    employeeDropdown.innerHTML += option;
-                });
+        // Function to fetch all exhibitions
+        function fetchExhibitions(exhibitionDropdown, employeeDropdown) {
+            fetch("{% url 'get_exhibitions' %}")  // Fetch all exhibitions
+                .then(response => response.json())
+                .then(data => {
+                    exhibitionDropdown.innerHTML = `<option value="" disabled selected>Select Exhibition</option>`; // Default option
+                    data.exhibitions.forEach(exhibit => {
+                        let option = `<option value="${exhibit.exhibition_id}">${exhibit.exhibition_name} (${exhibit.city})</option>`;
+                        exhibitionDropdown.innerHTML += option;
+                    });
 
-                // Initialize Select2 only when "Users" mode is selected
-                $(employeeDropdown).select2({ width: '100%' });  
-            })
-            .catch(error => console.error("Error fetching employees:", error));
-    }
+                    // Initialize Select2 for exhibitions
+                    $(exhibitionDropdown).select2({ width: '100%' });
 
-
-    // Function to fetch all exhibitions
-    function fetchExhibitions(exhibitionDropdown, employeeDropdown) {
-        fetch("{% url 'get_exhibitions' %}")  // Fetch all exhibitions
-            .then(response => response.json())
-            .then(data => {
-                exhibitionDropdown.innerHTML = `<option value="" disabled selected>Select Exhibition</option>`; // Default option
-                data.exhibitions.forEach(exhibit => {
-                    let option = `<option value="${exhibit.exhibition_id}">${exhibit.exhibition_name} (${exhibit.city})</option>`;
-                    exhibitionDropdown.innerHTML += option;
-                });
-
-                // Initialize Select2 for exhibitions
-                $(exhibitionDropdown).select2({ width: '100%' });
-
-                // When an exhibition is selected, fetch employees
-                $(exhibitionDropdown).on('change', function () {
-                    fetchEmployees(employeeDropdown);
-                    employeeDropdown.classList.remove("d-none"); // Show employee dropdown
-                    employeeDropdown.disabled = false;
-                });
-            })
-            .catch(error => console.error("Error fetching exhibitions:", error));
-    }
-
-    // Function to fetch all companies and populate the dropdown
-    function fetchCompanies(companyDropdown, companyDetails) {
-        fetch("{% url 'get_companies' %}")  // Fetch all companies
-            .then(response => response.json())
-            .then(data => {
-                companyDropdown.innerHTML = `<option value="" disabled selected>Select Company</option>`; // Default option
-                data.companies.forEach(company => {
-                    let option = `<option value="${company.company_id}">${company.company_name}</option>`;
-                    companyDropdown.innerHTML += option;
-                });
-
-                // Initialize Select2 for better UI experience
-                $(companyDropdown).select2({ width: '100%' });
-
-                // Show company details input field when a company is selected
-                companyDropdown.addEventListener("change", function () {
-                    if (this.value) {
-                        companyDetails.classList.remove("d-none");
-                        companyDetails.placeholder = "Enter additional details for " + this.options[this.selectedIndex].text;
-                    } else {
-                        companyDetails.classList.add("d-none");
-                    }
-                });
-            })
-            .catch(error => console.error("Error fetching companies:", error));
-    }
-
-
-    // Function to fetch all customers and populate the dropdown
-    function fetchCustomers(customerDropdown, customerDetails) {
-        fetch("{% url 'get_customers' %}")  // Fetch all customers
-            .then(response => response.json())
-            .then(data => {
-                customerDropdown.innerHTML = `<option value="" disabled selected>Select Customer</option>`; // Default option
-                data.customers.forEach(customer => {
-                    let option = `<option value="${customer.customer_id}">${customer.customer_name}</option>`;
-                    customerDropdown.innerHTML += option;
-                });
-
-                // Initialize Select2 for better UI experience
-                $(customerDropdown).select2({ width: '100%' });
-
-                // Show customer details input field when a customer is selected
-                customerDropdown.addEventListener("change", function () {
-                    if (this.value) {
-                        customerDetails.classList.remove("d-none");
-                        customerDetails.placeholder = "Enter additional details for " + this.options[this.selectedIndex].text;
-                    } else {
-                        customerDetails.classList.add("d-none");
-                    }
-                });
-            })
-            .catch(error => console.error("Error fetching customers:", error));
-    }
-
-    $(document).ready(function () { 
-    function fetchAvailableQuantity() {
-        let category = $("#category").val();
-        let subcategory = $("#subcategory").val();
-        let product = $("#product").val();
-        let location = $("#location").val();
-
-        if (category && subcategory && product && location) {
-            $.ajax({
-                url: "{% url 'fetch_barcode' %}",
-                type: "GET",
-                data: {
-                    category: category,
-                    subcategory: subcategory,
-                    product: product,
-                    location: location,
-                },
-                success: function (response) {
-                    let availableQuantity = response.available_quantity || 0;
-                    $("#available_quantity").val(availableQuantity);
-                    
-                    if (response.barcodes.length > 0) {
-                        let barcode = response.barcodes[0];
-                        $("#barcodeImage").attr("src", barcode.barcode_image);
-                    } else {
-                        $("#barcodeImage").attr("src", "/static/assets/images/placeholder.jpg");
-                    }
-
-                    // Reset quantity input and update available quantity display
-                    $("#quantity_input").val(1);
-                    updateAvailableQuantity();
-                },
-                error: function () {
-                    console.log("Error fetching stock details.");
-                },
-            });
+                    // When an exhibition is selected, fetch employees
+                    $(exhibitionDropdown).on('change', function () {
+                        fetchEmployees(employeeDropdown);
+                        employeeDropdown.classList.remove("d-none"); // Show employee dropdown
+                        employeeDropdown.disabled = false;
+                    });
+                })
+                .catch(error => console.error("Error fetching exhibitions:", error));
         }
-    }
 
-    // Function to update available quantity dynamically
-    function updateAvailableQuantity() {
-        let availableQuantity = parseInt($("#available_quantity").val()) || 0;
-        let selectedQuantity = parseInt($("#quantity_input").val()) || 0;
-        let updatedQuantity = availableQuantity - selectedQuantity;
+        function fetchCompanies(companyDropdown, companyDetails) {
+            fetch("{% url 'get_companies' %}")  
+                .then(response => response.json())
+                .then(data => {
+                    companyDropdown.innerHTML = `<option value="" disabled selected>Select Company</option>`; // Default option
+                    data.companies.forEach(company => {
+                        let option = `<option value="${company.company_id}">${company.company_name}</option>`;
+                        companyDropdown.innerHTML += option;
+                    });
+                    $(companyDropdown).select2({ width: '100%' });
+                    companyDropdown.addEventListener("change", function () {
+                        if (this.value) {
+                            companyDetails.classList.remove("d-none");
+                            companyDetails.placeholder = "Enter additional details for " + this.options[this.selectedIndex].text;
+                        } else {
+                            companyDetails.classList.add("d-none");
+                        }
+                    });
+                })
+                .catch(error => console.error("Error fetching companies:", error));
+        }
 
-        // Ensure it doesn't go below zero
-        updatedQuantity = updatedQuantity < 0 ? 0 : updatedQuantity;
+        // Function to fetch all customers and populate the dropdown
+        function fetchCustomers(customerDropdown, customerDetails) {
+            fetch("{% url 'get_customers' %}")  // Fetch all customers
+                .then(response => response.json())
+                .then(data => {
+                    customerDropdown.innerHTML = `<option value="" disabled selected>Select Customer</option>`; // Default option
+                    data.customers.forEach(customer => {
+                        let option = `<option value="${customer.customer_id}">${customer.customer_name}</option>`;
+                        customerDropdown.innerHTML += option;
+                    });
+                    $(customerDropdown).select2({ width: '100%' });
+                    customerDropdown.addEventListener("change", function () {
+                        if (this.value) {
+                            customerDetails.classList.remove("d-none");
+                            customerDetails.placeholder = "Enter additional details for " + this.options[this.selectedIndex].text;
+                        } else {
+                            customerDetails.classList.add("d-none");
+                        }
+                    });
+                })
+                .catch(error => console.error("Error fetching customers:", error));
+        }
 
-        $("#updated_available_quantity").text(updatedQuantity);
-        
-        // Debugging: Log values to console
-        console.log("Available Quantity:", availableQuantity);
-        console.log("Selected Quantity:", selectedQuantity);
-        console.log("Updated Available Quantity:", updatedQuantity);
-    }
+        // Function to fetch available quantity
+        function fetchAvailableQuantity() {
+            let category = $("#category").val();
+            let subcategory = $("#subcategory").val();
+            let product = $("#product").val();
+            let location = $("#location").val();
 
-    // Attach event listener to dropdowns
-    $("#category, #subcategory, #product, #location").change(function () {
-        fetchAvailableQuantity();
-    });
+            if (category && subcategory && product && location) {
+                $.ajax({
+                    url: "{% url 'fetch_barcode' %}",
+                    type: "GET",
+                    data: {
+                        category: category,
+                        subcategory: subcategory,
+                        product: product,
+                        location: location,
+                    },
+                    success: function (response) {
+                        let availableQuantity = response.available_quantity || 0;
+                        $("#available_quantity").val(availableQuantity);
 
-    // Increment Quantity
-    $("#increment_quantity").click(function () {
-        let quantityInput = $("#quantity_input");
-        let availableQuantity = parseInt($("#available_quantity").val()) || 0;
-        let currentQuantity = parseInt(quantityInput.val()) || 1;
+                        if (response.barcodes.length > 0) {
+                            let barcode = response.barcodes[0];
+                            $("#barcodeImage").attr("src", barcode.barcode_image);
+                        } else {
+                            $("#barcodeImage").attr("src", "/static/assets/images/placeholder.jpg");
+                        }
+                        $("#quantity_input").val(1);
+                        updateAvailableQuantity();
+                    },
+                    error: function () {
+                        console.log("Error fetching stock details.");
+                    },
+                });
+            }
+        }
 
-        if (currentQuantity < availableQuantity) {
-            quantityInput.val(currentQuantity + 1);
+        // Function to update available quantity dynamically
+        function updateAvailableQuantity() {
+            let availableQuantity = parseInt($("#available_quantity").val()) || 0;
+            let selectedQuantity = parseInt($("#quantity_input").val()) || 0;
+            let updatedQuantity = availableQuantity - selectedQuantity;
+            updatedQuantity = updatedQuantity < 0 ? 0 : updatedQuantity;
+            $("#updated_available_quantity").text(updatedQuantity);
+            console.log("Available Quantity:", availableQuantity);
+            console.log("Selected Quantity:", selectedQuantity);
+            console.log("Updated Available Quantity:", updatedQuantity);
+        }
+        $("#category, #subcategory, #product, #location").change(function () {
+            fetchAvailableQuantity();
+        });
+        $("#increment_quantity").click(function () {
+            let quantityInput = $("#quantity_input");
+            let availableQuantity = parseInt($("#available_quantity").val()) || 0;
+            let currentQuantity = parseInt(quantityInput.val()) || 1;
+
+            if (currentQuantity < availableQuantity) {
+                quantityInput.val(currentQuantity + 1);
+                updateAvailableQuantity();
+            }
+        });
+        $("#decrement_quantity").click(function () {
+            let quantityInput = $("#quantity_input");
+            let currentQuantity = parseInt(quantityInput.val()) || 1;
+            if (currentQuantity > 1) {
+                quantityInput.val(currentQuantity - 1);
+                updateAvailableQuantity();
+            }
+        });
+        $("#quantity_input").on("input", function () {
             updateAvailableQuantity();
-        }
-    });
+        });
+let savedProducts = JSON.parse(localStorage.getItem("selectedProducts")) || [];
 
-    // Decrement Quantity
-    $("#decrement_quantity").click(function () {
-        let quantityInput = $("#quantity_input");
-        let currentQuantity = parseInt(quantityInput.val()) || 1;
 
-        if (currentQuantity > 1) {
-            quantityInput.val(currentQuantity - 1);
-            updateAvailableQuantity();
-        }
-    });
-
-    // Update available quantity when input changes
-    $("#quantity_input").on("input", function () {
-        updateAvailableQuantity();
-    });
-
-    // Show Assigned Stock Button Click Event
-    document.getElementById("showassignstockbutton").addEventListener("click", function () {    
-        let category = document.getElementById("category").value;
-        let subcategory = document.getElementById("subcategory").value;
-        let product = document.getElementById("product").value;
-        let location = document.getElementById("location").value;
-        let mode = document.getElementById("mode").value;
-
-        if (!category || !subcategory || !product || !location || !mode) {
-            alert("Please select all required fields.");
-            return;
-        }
-
-        fetch("{% url 'fetch_barcode' %}?category=" + category + "&subcategory=" + subcategory + "&product=" + product + "&location=" + location)
-            .then(response => response.json())
-            .then(data => {
-                console.log("Fetched Data:", data);
-
-                let barcodeList = document.getElementById("barcodeList");
+$('#mode').change(function() {
+    let category = document.getElementById("category").value;
+    let subcategory = document.getElementById("subcategory").value;
+    let product = document.getElementById("product").value;
+    let location = document.getElementById("location").value;
+    let mode = document.getElementById("mode").value;
+    let selectedQuantity = parseInt(document.getElementById("quantity_input").value) || 0;
+    console.log("=====================",mode)
+    if (!category || !subcategory || !product || !location || !mode) {
+        alert("Please select all required fields.");
+        return;
+    }
+    
+    fetch("{% url 'fetch_barcode' %}?category=" + category + "&subcategory=" + subcategory + "&product=" + product + "&location=" + location)
+        .then(response => response.json())
+        .then(data => {
+            console.log("Fetched Data:", data);
+            fetchAssignData(category,subcategory,product,location,mode)
+            if (data.barcodes.length > 0) {
+                document.getElementById("barcodeListContainer").style.display = "block";
                 let availableQuantityField = document.getElementById("available_quantity");
-                let quantityInput = document.getElementById("quantity_input");
-
-                barcodeList.innerHTML = "";
-
-                if (data.barcodes.length > 0) {
-                    document.getElementById("barcodeListContainer").style.display = "block";
-
-                    availableQuantityField.value = data.available_quantity; // Set available quantity
-                    quantityInput.value = 1; // Reset quantity input
-                    updateAvailableQuantity();
-
-                    data.barcodes.forEach(barcode => {
-                        let relatedFields = "";
-
-                        if (mode === "Users") {
-                            relatedFields = `<select class="form-select employee-dropdown select2">
-                                                <option value="" disabled selected>Select Employee</option>
-                                            </select>`;
-                        } 
-                        else if (mode === "Exhibition") {
-                            relatedFields = `<select class="form-select exhibition-dropdown select2">
-                                                <option value="" disabled selected>Select Exhibition</option>
-                                            </select>
-                                            <select class="form-select employee-dropdown select2">
-                                                <option value="" disabled selected>Select Employee</option>
-                                            </select>`;
-                        } 
-                        else if (mode === "Company") {
-                            relatedFields = `<select class="form-select company-name select2">
-                                                <option value="" disabled selected>Select Company</option>
-                                            </select>
-                                             <input type="text" class="form-control company-details" placeholder="Enter Company Details">`;
-                        } 
-                        else if (mode === "Customers") {
-                            relatedFields = `<select class="form-select customer-name select2">
-                                                <option value="" disabled selected>Select Customer</option>
-                                            </select>
-                                             <input type="text" class="form-control customer-details" placeholder="Enter Customer Details">`;
-                        }
-
-                        let row = `<tr>
-                            <td>${barcode.stock_id}</td>
-                            <td><img src="${barcode.barcode_image}" width="100" height="40" /></td>
-                            <td>${barcode.barcode_text}</td>
-                            <td>${barcode.product_name}</td>
-                            <td>${barcode.location}</td>
-                            <td>${barcode.rank}</td>
-                            <td>${barcode.box}</td>
-                            <td><input type="text" class="form-control mode-input" value="${mode}" readonly /></td>
-                            <td>${relatedFields}</td>
-                            <td><button class="btn btn-danger btn-sm remove-row">Remove</button></td>
-                        </tr>`;
-
-                        barcodeList.innerHTML += row;
-                    });
-
-                    // Attach event listeners to Remove buttons
-                    document.querySelectorAll(".remove-row").forEach(button => {
-                        button.addEventListener("click", function () {
-                            this.closest("tr").remove();
-                            updateAvailableQuantity();
-                        });
-                    });
-
-                    // Increment/Decrement Buttons
-                    document.getElementById("increment_quantity").addEventListener("click", function () {
-                        let availableQuantity = parseInt(document.getElementById("available_quantity").value);
-                        let quantityInput = document.getElementById("quantity_input");
-
-                        let currentQuantity = parseInt(quantityInput.value);
-                        if (currentQuantity < availableQuantity) {
-                            quantityInput.value = currentQuantity + 1;
-                            updateAvailableQuantity();
-                        }
-                    });
-
-                    document.getElementById("decrement_quantity").addEventListener("click", function () {
-                        let quantityInput = document.getElementById("quantity_input");
-
-                        let currentQuantity = parseInt(quantityInput.value);
-                        if (currentQuantity > 1) {
-                            quantityInput.value = currentQuantity - 1;
-                            updateAvailableQuantity();
-                        }
-                    });
-
-                    // Populate dropdowns dynamically
-                    document.querySelectorAll(".mode-input").forEach((input, index) => {
-                        let selectedMode = input.value;
-                        let exhibitionDropdown = document.querySelectorAll(".exhibition-dropdown")[index];
-                        let employeeDropdown = document.querySelectorAll(".employee-dropdown")[index];
-                        let companyDropdown = document.querySelectorAll(".company-name")[index];
-                        let customerDropdown = document.querySelectorAll(".customer-name")[index];
-
-                        if (selectedMode === "Users" || selectedMode === "Exhibition") {
-                            fetchEmployees(employeeDropdown);
-                        }
-                        if (selectedMode === "Exhibition") {
-                            fetchExhibitions(exhibitionDropdown);
-                        }
-                        if (selectedMode === "Company") {
-                            fetchCompanies(companyDropdown);
-                        }
-                        if (selectedMode === "Customers") {
-                            fetchCustomers(customerDropdown);
-                        }
-                    });
-
-                } else {
-                    alert("No stock entries found!");
-                }
-            })
-            .catch(error => console.error("Error fetching stock data:", error));
-    });
+                availableQuantityField.value = data.available_quantity;
+                let barcodesToShow = data.barcodes.slice(0, selectedQuantity);
+                barcodesToShow.forEach(barcode => {
+                    let selectedProduct = {
+                        stock_id: barcode.stock_id,
+                        barcode_image: barcode.barcode_image,
+                        barcode_text: barcode.barcode_text,
+                        product_name: barcode.product_name,
+                        category: category,
+                        subcategory: subcategory,
+                        location: barcode.location,
+                        rank: barcode.rank,
+                        box: barcode.box,
+                        mode: mode
+                    };
+                    savedProducts.push(selectedProduct);
+                });
+                localStorage.setItem("selectedProducts", JSON.stringify(savedProducts));
+                updateTable();
+            } else {
+                showToast("No stock entries found..!!", "Error", "error");
+            }
+        })
+        .catch(error => console.error("Error fetching stock data:", error));
 });
 
-
-
+// Function to update the table with saved products
+function updateTable() {
+    let barcodeList = document.getElementById("barcodeList");
+    barcodeList.innerHTML = ""; // Clear existing table
+    savedProducts.forEach((product, index) => {
+        let relatedFields = "";
+        if (product.mode === "Users") {
+            relatedFields = `<select class="form-select employee-dropdown select2">
+                                <option value="" disabled selected>Select Employee</option>
+                            </select>`;
+        } 
+        else if (product.mode === "Exhibition") {
+            relatedFields = `<select class="form-select exhibition-dropdown select2">
+                                <option value="" disabled selected>Select Exhibition</option>
+                            </select>
+                            <select class="form-select employee-dropdown select2">
+                                <option value="" disabled selected>Select Employee</option>
+                            </select>`;
+        } 
+        else if (product.mode === "Company") {
+            relatedFields = `<select class="form-select company-name select2">
+                                <option value="" disabled selected>Select Company</option>
+                            </select>
+                            <input type="text" class="form-control company-details" placeholder="Enter Company Details">`;
+        } 
+        else if (product.mode === "Customers") {
+            relatedFields = `<select class="form-select customer-name select2">
+                                <option value="" disabled selected>Select Customer</option>
+                            </select>
+                            <input type="text" class="form-control customer-details" placeholder="Enter Customer Details">`;
+        }
+        let row = `<tr data-index="${index}">
+            <td>${product.stock_id}</td>
+            <td><img src="${product.barcode_image}" width="100" height="40" /></td>
+            <td>${product.barcode_text}</td>
+            <td>${product.product_name}</td>
+            <td>${product.location}</td>
+            <td>${product.rank}</td>
+            <td>${product.box}</td>
+            <td><input type="text" class="form-control mode-input" value="${product.mode}" readonly /></td>
+            <td>${relatedFields}</td>
+            <td>
+                <select class="form-control assign_mode-dropdown">
+                    <option value="ASSIGN" ${product.mode === 'ASSIGN' ? 'selected' : ''}>ASSIGN</option>
+                    <option value="RETURN" ${product.mode === 'RETURN' ? 'selected' : ''}>RETURN</option>
+                    <option value="SELL" ${product.mode === 'SELL' ? 'selected' : ''}>SELL</option>
+                    <option value="DEMO" ${product.mode === 'DEMO' ? 'selected' : ''}>DEMO</option>
+                    <option value="INSPECTION" ${product.mode === 'INSPECTION' ? 'selected' : ''}>INSPECTION</option>
+                    <option value="INSTOCK" ${product.mode === 'INSTOCK' ? 'selected' : ''}>INSTOCK</option>
+                </select>
+            </td>
+            <td><button class="btn btn-danger btn-sm remove-row">Remove</button></td>
+        </tr>`;
+        barcodeList.innerHTML += row;
     });
-    
-</script>
 
+    // Attach event listeners to Remove buttons
+    document.querySelectorAll(".remove-row").forEach(button => {
+        button.addEventListener("click", function () {
+            let index = this.closest("tr").dataset.index;
+            savedProducts.splice(index, 1);
+            localStorage.setItem("selectedProducts", JSON.stringify(savedProducts));
+            updateTable();
+        });
+    });
+    document.querySelectorAll(".mode-input").forEach((input, index) => {
+        let selectedMode = input.value;
+        let exhibitionDropdown = document.querySelectorAll(".exhibition-dropdown")[index];
+        let employeeDropdown = document.querySelectorAll(".employee-dropdown")[index];
+        let companyDropdown = document.querySelectorAll(".company-name")[index];
+        let customerDropdown = document.querySelectorAll(".customer-name")[index];
+        if (selectedMode === "Users" || selectedMode === "Exhibition") {
+            fetchEmployees(employeeDropdown);
+        }
+        if (selectedMode === "Exhibition") {
+            fetchExhibitions(exhibitionDropdown);
+        }
+        if (selectedMode === "Company") {
+            fetchCompanies(companyDropdown);
+        }
+        if (selectedMode === "Customers") {
+            fetchCustomers(customerDropdown);
+        }
+    });
+    document.getElementById("saveButton").style.display = savedProducts.length > 0 ? "block" : "none";
+}
+
+// Function to load data on page load
+document.addEventListener("DOMContentLoaded", function () {
+    updateTable();
+});
+
+// Function to clear localStorage when the form is submitted
+document.getElementById("saveButton").addEventListener("click", function () {
+    localStorage.removeItem("selectedProducts");
+    savedProducts = [];
+    updateTable();
+});
+});
+
+document.getElementById("saveButton").addEventListener("click", function () {
+        let rows = document.querySelectorAll("#barcodeList tr");
+        let dataToSave = [];
+        rows.forEach(row => {
+            let stockId = row.querySelector("td:nth-child(1)").innerText;
+            let barcodeText = row.querySelector("td:nth-child(3)").innerText;
+            let mode = row.querySelector(".mode-input").value;
+            let assign_product_mode = row.querySelector(".assign_mode-dropdown").value;
+            let relatedFields = {};
+            console.log("===========================",assign_product_mode)
+            if (mode === "Users") {
+                relatedFields.employee = row.querySelector(".employee-dropdown").value;
+            } else if (mode === "Exhibition") {
+                relatedFields.exhibition = row.querySelector(".exhibition-dropdown").value;
+                relatedFields.employee = row.querySelector(".employee-dropdown").value;
+            } else if (mode === "Company") {
+                relatedFields.company = row.querySelector(".company-name").value;
+                relatedFields.companyDetails = row.querySelector(".company-details").value;
+            } else if (mode === "Customers") {
+                relatedFields.customer = row.querySelector(".customer-name").value;
+                relatedFields.customerDetails = row.querySelector(".customer-details").value;
+            }
+    
+            dataToSave.push({
+                stockId: stockId,
+                barcodeText: barcodeText,
+                mode: mode,
+                relatedFields: relatedFields,
+                assign_product_mode : assign_product_mode
+            });
+        });
+        console.log("The data is :",dataToSave)
+        fetch("{% url 'save_assigned_stock' %}", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": "{{ csrf_token }}"  // Include CSRF token for Django
+            },
+            body: JSON.stringify(dataToSave)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast("Prducts Assign Successfully..!!" ,"Success", "success");
+                document.getElementById("barcodeList").innerHTML = "";
+                document.getElementById("saveButton").style.display = "none";
+            } else {
+                showToast("Failed to Assign Prducts..!!" ,"Error", "error");
+            }
+        })
+        .catch(error => console.error("Error saving data:", error));
+    });
+
+function fetchAssignData(category, subcategory, product, location, mode) {
+        fetch("{% url 'get_all_assigned_data' %}?category=" + category + "&subcategory=" + subcategory + "&product=" + product + "&location=" + location + "&mode=" + mode)
+            .then(response => response.json())
+            .then(data => {
+                if ($.fn.DataTable.isDataTable('#assign_list_all')) {
+                    $('#assign_list_all').DataTable().destroy();
+                }
+                $('#assign_list_all').empty();
+                data.forEach((item, index) => {
+                    item.count = index + 1; // Add a count field to each item
+                });
+                const table = $('#assign_list_all').DataTable({
+                    paging: true, // Enable pagination
+                    searching: true, // Enable search functionality
+                    ordering: true, // Enable sorting
+                    lengthMenu: [[5, 10, 25, 50, -1], [5, 10, 25, 50, "All"]], // Page length options
+                    pageLength: 10, // Default page length
+                    data: data, // Use the fetched data
+                    columns: [
+                        { data: 'count', title: 'S.No' }, // Count column
+                        { data: 'assign_id', title: 'Assign ID' },
+                        { data: 'product_name', title: 'Product Name' },
+                        { data: 'category_name', title: 'Product Category' },
+                        { data: 'subcategory_name', title: 'Product Sub Category' },
+                        { data: 'assign_mode', title: 'Assign Mode' },
+                        { data: 'product_status', title: 'Status' },
+                    ],
+                    initComplete: function () {
+                        console.log("DataTable initialized successfully!");
+                    }
+                });
+            })
+            .catch(error => console.error("Error fetching assigned products:", error));
+    }
+
+</script>
 
 <!-- end page title -->
 {% endblock %}

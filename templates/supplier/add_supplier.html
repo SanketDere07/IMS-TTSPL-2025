@@ -123,19 +123,17 @@
     });
 
     fetch('/get-companies/')
-    .then(response => response.json())
-    .then(data => {
-        const companyDropdown = document.getElementById('company_name');
-        companyDropdown.innerHTML = '<option value="" disabled selected>Select Company</option>'; // Reset dropdown
-
-        data.companies.forEach(company => {  // Access "companies" key
-            const option = document.createElement('option');
-            option.value = company.company_id;
-            option.textContent = company.company_name;
-            companyDropdown.appendChild(option);
-        });
-    })
-    .catch(error => console.error('Error fetching companies:', error));
+        .then(response => response.json())
+        .then(data => {
+            const companyDropdown = document.getElementById('company_name');
+            data.forEach(company => {
+                const option = document.createElement('option');
+                option.value = company.company_id;  // company_id is used here
+                option.textContent = company.company_name;
+                companyDropdown.appendChild(option);
+            });
+        })
+        .catch(error => console.error('Error fetching companies:', error));
 
     // Form submission handling with AJAX
     document.getElementById('supplierForm').addEventListener('submit', function(event) {

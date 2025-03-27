@@ -1,7 +1,7 @@
 from django.shortcuts import render,get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from .models import Location,Employee,Company,Category,SubCategory, Box, Rank,Product,ProductImage, Exhibition,Customer,Supplier,StockEntry,StockBarcode,TempStockBarcode
+from .models import *
 import json
 from django.shortcuts import render, redirect
 import random
@@ -21,13 +21,14 @@ import shutil
 from django.core.files.storage import default_storage
 from django.db.models import Sum
 from django.utils.timezone import now
-from reportlab.lib.pagesizes import A3, A4, A5
+from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.units import inch
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image, PageTemplate, Frame
 from datetime import datetime
-
+from django.utils import timezone
+import time
 import os
 from django.conf import settings
 from datetime import datetime
@@ -35,383 +36,8 @@ from django.http import HttpResponse
 import csv
 import openpyxl
 from openpyxl.styles import Font
-from django.utils.dateparse import parse_date
-from reportlab.pdfgen import canvas
-from reportlab.lib.utils import ImageReader
-
-from django.http import JsonResponse
-from django.contrib.auth.hashers import make_password
-from django.core.validators import EmailValidator, RegexValidator, MinLengthValidator, MaxLengthValidator, ValidationError
-from django.db import IntegrityError
-from django.contrib import messages
 from django.core.mail import send_mail
-from .models import User, Profile, Role, UserRole, UserAuditLog,Permission,RolePermissionAuditLog,UserSession,SecondaryEmailConfig, DefaultRolePermission,ScheduledBackup, ScheduledBackupDetails
-from .forms import RoleForm, UserForm, ProfileForm, UserRoleForm, UserPermissionForm
 
-from TTSPL_IMS.custom_email_backend import CustomEmailBackend
-from django.contrib.auth import get_user_model
-from django.contrib.auth import authenticate, login
-from django.contrib.auth.decorators import login_required
-from django.views.decorators.cache import cache_control
-from django.contrib.auth import logout
-from django.contrib.sessions.models import Session
-from django.utils import timezone
-from django.db.models import Q
-from reportlab.lib.pagesizes import letter
-from reportlab.platypus import LongTable, KeepTogether
-import qrcode
-from PIL import Image, ImageDraw, ImageFont
-from reportlab.lib.enums import TA_CENTER
-from reportlab.platypus.flowables import Image
-from django.utils.timezone import localtime
-from django.db import connection
-import psycopg2
-import io
-from datetime import timedelta
-from django.http import FileResponse, Http404
-
-
-import json
-
-User = get_user_model()
-
-
-def login_view(request):
-    if request.user.is_authenticated:
-        # Redirect to dashboard if user is already authenticated
-        return redirect('dashboard')
-    if request.method == 'POST':
-        username = request.POST.get('username')
-        password = request.POST.get('password')
-        if not username:
-            return render(request, 'auth/login.html', {'error_message': 'Please enter your email'})
-        elif not password:
-            return render(request, 'auth/login.html', {'error_message': 'Please enter your password'})
-        else:
-            user = authenticate(request, email=username, password=password)
-            if user is not None:
-                # Invalidate previous sessions
-                try:
-                    user_session = UserSession.objects.get(user=user.id)
-                    session = Session.objects.get(
-                        session_key=user_session.session_key)
-                    session.delete()
-                    user_session.delete()
-                except UserSession.DoesNotExist:
-                    pass
-                except Session.DoesNotExist:
-                    pass
-
-                # Log in the user and create a new session
-                login(request, user)
-                UserSession.objects.create(
-                    user=user, session_key=request.session.session_key)
-                return redirect('/dashboard_page')
-            else:
-                # Check if username exists
-                if User.objects.filter(email=username).exists():
-                    return render(request, 'auth/login.html', {'error_message': 'Incorrect password'})
-                else:
-                    return render(request, 'auth/login.html', {'error_message': 'Invalid email'})
-    else:
-        return render(request, 'auth/login.html')
-
-
-def logout_view(request):
-    try:
-        user_session = UserSession.objects.get(user=request.user.id)
-        session = Session.objects.get(session_key=user_session.session_key)
-        session.delete()
-        user_session.delete()
-    except UserSession.DoesNotExist:
-        pass
-    except Session.DoesNotExist:
-        pass
-    logout(request)
-    return redirect('login')  # Redirect to the login page after logout
-    
-
-def send_reset_otp(request):
-    if request.method == 'POST':
-        email = request.POST['email']
-        try:
-            user = User.objects.get(email=email)
-            otp = random.randint(100000, 999999)  # Generate a 6-digit OTP
-            user.otp = otp
-            user.otp_generated_time = timezone.now()  # Set the OTP generation time
-            user.save()
-
-            # Send OTP via email using the custom email backend
-            connection = CustomEmailBackend(use_secondary=False)
-            connection.open()
-
-            # Create the HTML message
-            subject = 'Password Reset OTP'
-            html_message = f"""
-            <!DOCTYPE html>
-            <html>
-            <head></head>
-            <body style="font-family: Arial, sans-serif; line-height: 1.6;">
-                <p>
-                    Dear {user.username},  <!-- Optional: Add user's first name -->
-                </p>
-
-                <p>
-                    We have received a request to reset your password. Please use the One-Time Password (OTP) provided below to complete the process:
-                </p>
-
-                <p style="text-align: center; font-size: 1.5em; font-weight: bold;">
-                    {otp}
-                </p>
-
-                <p>
-                    <strong>Note:</strong> This OTP is valid for 3 minutes.
-                </p>
-
-                <p>
-                    If you did not request a password reset, please ignore this email or contact our support team for assistance.
-                </p>
-
-                <p>
-                    Best Regards,<br>
-                    Trisnota Technical Services Pvt. Ltd.<br>
-                    Website: <a href="https://ttspl.co.in">ttspl.co.in</a><br>
-                    Contact: +91&nbsp;22&nbsp;4605&nbsp;5448
-                </p>
-            </body>
-            </html>
-            """
-
-            from_email = 'noreply@example.com'  # Change to your email address
-            recipient_list = [email]
-
-            # Send the email with HTML content
-            send_mail(
-                subject,
-                '',  # Leave the plain text version empty
-                from_email,
-                recipient_list,
-                connection=connection,
-                html_message=html_message  # Use the HTML content for the email
-            )
-            connection.close()
-
-            # Store email in session and display success message
-            request.session['email'] = email
-            messages.success(
-                request, f"OTP sent to {email}. Please check your email.")
-            return redirect('auth/verify_otp')
-
-        except User.DoesNotExist:
-            messages.error(request, "Email does not exist!")
-            return redirect('send_reset_otp')
-
-    return render(request, 'auth/send_reset_otp.html')
-
-
-def verify_otp(request):
-    if request.method == 'POST':
-        email = request.session.get('email')
-        otp_parts = [request.POST.get(f'otp{i}') for i in range(6)]
-        otp = ''.join(otp_parts)
-
-        if not otp.isdigit() or len(otp) != 6:
-            messages.error(
-                request, "Invalid OTP format. Please enter a 6-digit OTP.")
-            return redirect('verify_otp')
-
-        try:
-            user = User.objects.get(email=email, otp=otp)
-
-            # Check OTP expiry
-            if user.otp_generated_time:
-                if timezone.now() - user.otp_generated_time > timedelta(minutes=3):
-                    messages.error(
-                        request, "OTP has expired. Please request a new one.")
-                    user.otp = None  # Clear expired OTP
-                    user.otp_generated_time = None  # Clear OTP generation time
-                    user.save()
-                    return redirect('verify_otp')
-            else:
-                messages.error(
-                    request, "OTP generation time is missing. Please request a new OTP.")
-                return redirect('verify_otp')
-
-            # OTP verified
-            user.otp = None  # Clear OTP after successful verification
-            user.otp_generated_time = None  # Clear OTP generation time
-            user.save()
-            messages.success(request, "OTP verified successfully!")
-            return redirect('reset_password')
-        except User.DoesNotExist:
-            messages.error(request, "Invalid OTP or OTP expired!")
-            return redirect('verify_otp')
-
-    return render(request, 'auth/verify_otp.html')
-
-
-def reset_password(request):
-    if request.method == 'POST':
-        password = request.POST.get('password')
-        confirm_password = request.POST.get('confirm_password')
-        email = request.session.get('email')
-
-        if not password or not confirm_password:
-            messages.error(request, "Password fields cannot be empty.")
-            return redirect('reset_password')
-
-        if password == confirm_password:
-            try:
-                user = User.objects.get(email=email)
-                user.set_password(password)
-                user.save()
-
-                # Send confirmation email after password reset
-                connection = CustomEmailBackend(use_secondary=False)
-                connection.open()
-
-                # Create a better-formatted confirmation message
-                subject = 'Password Reset Confirmation'
-                html_message = f"""
-                <!DOCTYPE html>
-                <html>
-                <head></head>
-                <body style="font-family: Arial, sans-serif; line-height: 1.6;">
-                    <p>Dear {user.username},</p>
-
-                    <p>
-                        We wanted to inform you that your password has been successfully reset.
-                        If you did not request this change or if you suspect unauthorized access to your account,
-                        please contact us immediately.
-                    </p>
-
-                    <p>
-                        <strong>Note:</strong> If you have any concerns, feel free to reach out to our support team at
-                        <a href="mailto:support@ttspl.co.in">support@ttspl.co.in</a> or call us at +91&nbsp;22&nbsp;4605&nbsp;5448.
-                    </p>
-
-                    <p>
-                        Thank you for using TTSPL IMS.<br>
-                        Best Regards,<br>
-                        Trisnota Technical Services Pvt. Ltd.<br>
-                        Website: <a href="https://ttspl.co.in">ttspl.co.in</a>
-                    </p>
-                </body>
-                </html>
-                """
-
-                from_email = 'noreply@example.com'  # Change to your "from" email address
-                recipient_list = [email]
-
-                send_mail(
-                    subject,
-                    '',  # Leave the plain text version empty
-                    from_email,
-                    recipient_list,
-                    connection=connection,
-                    fail_silently=False,
-                    html_message=html_message  # Use the HTML content for the email
-                )
-                connection.close()
-                messages.success(
-                    request, "Password has been reset successfully!")
-                return redirect('reset_password')
-            except User.DoesNotExist:
-                messages.error(request, "Something went wrong!")
-        else:
-            messages.error(request, "Passwords do not match!")
-
-    return render(request, 'auth/reset_password.html')
-
-
-def resend_otp(request):
-    if request.method == 'POST':
-        import json
-        data = json.loads(request.body)
-        email = data.get('email')
-        if not email:
-            return JsonResponse({'success': False, 'message': 'Email is required.'})
-
-        try:
-            user = User.objects.get(email=email)
-            otp = random.randint(100000, 999999)  # Generate a new 6-digit OTP
-            user.otp = otp
-            user.otp_generated_time = timezone.now()  # Set the current time
-            user.save()
-
-            # Send OTP via email using the custom email backend
-            # Or use True if you want to use secondary settings
-            connection = CustomEmailBackend(use_secondary=False)
-            connection.open()
-
-            # Create the HTML message
-            subject = 'Password Reset OTP - Resent'
-            html_message = f"""
-            <!DOCTYPE html>
-            <html>
-            <head></head>
-            <body style="font-family: Arial, sans-serif; line-height: 1.6;">
-                <p>
-                    Dear {user.username},  <!-- Optional: Add user's first name -->
-                </p>
-
-                <p>
-                    As requested, we have resent your One-Time Password (OTP) to reset your password. Please use the OTP provided below to complete the process:
-                </p>
-
-                <p style="text-align: center; font-size: 1.5em; font-weight: bold;">
-                    {otp}
-                </p>
-
-                <p>
-                    <strong>Note:</strong> This OTP is valid for 3 minutes.
-                </p>
-
-                <p>
-                    If you did not request this OTP, please ignore this email or contact our support team for assistance.
-                </p>
-
-                <p>
-                    Best Regards,<br>
-                    Trisnota Technical Services Pvt. Ltd.<br>
-                    Website: <a href="https://ttspl.co.in">ttspl.co.in</a><br>
-                    Contact: +91&nbsp;22&nbsp;4605&nbsp;5448
-                </p>
-            </body>
-            </html>
-            """
-
-            from_email = 'noreply@example.com'  # Change to your email address
-            recipient_list = [email]
-
-            # Send the email with HTML content
-            send_mail(
-                subject,
-                '',  # Leave the plain text version empty
-                from_email,
-                recipient_list,
-                connection=connection,
-                fail_silently=False,
-                html_message=html_message  # Use the HTML content for the email
-            )
-            connection.close()
-            return JsonResponse({'success': True})
-        except User.DoesNotExist:
-            return JsonResponse({'success': False, 'message': 'Email does not exist!'})
-    return JsonResponse({'success': False, 'message': 'Invalid request method.'})
-
-
-
-def login_page(request):
-    return render(request, "auth/login.html")
-
-
-
-def reset_password_page(request):
-    return render(request, "auth/reset_password.html")
-
-
-    
 def dashboard_page(request):
     return render(request, "dashboard.html")
 
@@ -897,31 +523,18 @@ def add_category(request):
 @csrf_exempt
 def category_list(request):
     if request.method == "GET":
-        category_name = request.GET.get("category_name", "")
-        shortcode = request.GET.get("shortcode", "")
-
         categories = Category.objects.all()
-
-        if category_name:
-            categories = categories.filter(category_name__icontains=category_name)
-
-        if shortcode:
-            categories = categories.filter(shortcode__iexact=shortcode)
-
         category_list = [
             {
-                "id": category.category_id,
-                "name": category.category_name,
-                "shortcode": category.shortcode,
-                "description": category.details,
-                "created_at": category.created_on.strftime('%Y-%m-%d %H:%M:%S')
+                'id': category.category_id,
+                'name': category.category_name,
+                'shortcode': category.shortcode,
+                'description': category.details, 
             }
             for category in categories
         ]
-
-        return JsonResponse({"categories": category_list}, status=200)
-
-    return JsonResponse({"error": "Invalid request method."}, status=405)
+        return JsonResponse({'categories': category_list}, status=200)
+    return JsonResponse({'error': 'Invalid request method.'}, status=405)
 
 
 def category_view_page(request, category_id):
@@ -1034,36 +647,19 @@ def get_categories(request):
 @csrf_exempt
 def subcategory_list(request):
     if request.method == "GET":
-        subcategory_name = request.GET.get("subcategory_name", "").strip()
-        shortcode = request.GET.get("shortcode", "").strip()
-        category_name = request.GET.get("category_name", "").strip()
-
         subcategories = SubCategory.objects.all()
-
-        if subcategory_name:
-            subcategories = subcategories.filter(subcategory_name__icontains=subcategory_name)
-
-        if shortcode:
-            subcategories = subcategories.filter(shortcode__iexact=shortcode)
-
-        if category_name:
-            subcategories = subcategories.filter(category__category_name__icontains=category_name)
-
         subcategory_list = [
             {
-                "id": subcategory.subcategory_id,
-                "name": subcategory.subcategory_name,
-                "shortcode": subcategory.shortcode,
-                "details": subcategory.details,
-                "category_name": subcategory.category.category_name,
-                "created_on": subcategory.created_on.strftime('%Y-%m-%d %H:%M:%S'),
+                'id': subcategory.subcategory_id,
+                'name': subcategory.subcategory_name,
+                'shortcode': subcategory.shortcode,
+                'details': subcategory.details,
+                'category_name': subcategory.category.category_name,
             }
             for subcategory in subcategories
         ]
-
-        return JsonResponse({"subcategories": subcategory_list}, status=200)
-
-    return JsonResponse({"error": "Invalid request method."}, status=405)
+        return JsonResponse({'subcategories': subcategory_list}, status=200)
+    return JsonResponse({'error': 'Invalid request method.'}, status=405)
 
 
 def subcategory_view_page(request, subcategory_id):
@@ -1148,32 +744,20 @@ def add_box(request):
             return JsonResponse({'success': False, 'error': str(e)})
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
 
-
 @csrf_exempt
 def box_list(request):
     if request.method == "GET":
-        box_id = request.GET.get('box_id', '')
-        box_name = request.GET.get('box_name', '')
-
-        # Filtering logic
         boxes = Box.objects.all()
-        if box_id:
-            boxes = boxes.filter(box_id__icontains=box_id)
-        if box_name:
-            boxes = boxes.filter(box_name__icontains=box_name)
-
         box_list = [
             {
                 'id': box.box_id,
                 'name': box.box_name,
-                'description': box.details,
+                'description': box.details,  # If applicable
             }
             for box in boxes
         ]
         return JsonResponse({'boxes': box_list}, status=200)
-    
     return JsonResponse({'error': 'Invalid request method.'}, status=405)
-
 
 def box_view_page(request, box_id):
     # Fetch the specific box by ID
@@ -1251,16 +835,7 @@ def add_rank(request):
 @csrf_exempt
 def rank_list(request):
     if request.method == "GET":
-        rack_id = request.GET.get('rack_id', '')
-        rack_name = request.GET.get('rack_name', '')
-
-        # Filtering logic
         ranks = Rank.objects.all()
-        if rack_id:
-            ranks = ranks.filter(rank_id__icontains=rack_id)
-        if rack_name:
-            ranks = ranks.filter(rank_name__icontains=rack_name)
-
         rank_list = [
             {
                 'id': rank.rank_id,
@@ -1270,7 +845,6 @@ def rank_list(request):
             for rank in ranks
         ]
         return JsonResponse({'ranks': rank_list}, status=200)
-
     return JsonResponse({'error': 'Invalid request method.'}, status=405)
 
 
@@ -1384,25 +958,16 @@ def get_companies(request):
     return JsonResponse(company_data, safe=False)
 
 
+# Customer List View
 def customer_list(request):
     if request.method == "GET":
-        customer_name = request.GET.get("customer_name", "")
-        company_id = request.GET.get("company_id", "")
-
         customers = Customer.objects.all()
-
-        if customer_name:
-            customers = customers.filter(customer_name__icontains=customer_name)
-
-        if company_id:
-            customers = customers.filter(company_id=company_id)
-
         customer_list = [
             {
                 'id': customer.customer_id,
                 'name': customer.customer_name,
                 'email': customer.email,
-                'company_name': customer.company.company_name if customer.company else None,
+                'company_name': customer.company.company_name,  # Getting the company name associated with the customer
                 'phone_number': customer.phone_number,
                 'address': customer.address,
                 'city': customer.city,
@@ -1414,9 +979,7 @@ def customer_list(request):
             for customer in customers
         ]
         return JsonResponse({'customers': customer_list}, status=200)
-
     return JsonResponse({'error': 'Invalid request method.'}, status=405)
-
 
 
 def customer_view_page(request, customer_id):
@@ -1527,24 +1090,16 @@ def add_supplier(request):
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
 
 
+# Supplier List View
 def supplier_list(request):
     if request.method == "GET":
-        supplier_name = request.GET.get('supplier_name', '').strip()
-        company_name = request.GET.get('company_name', '').strip()
-
-        suppliers = Supplier.objects.all()
-
-        if supplier_name:
-            suppliers = suppliers.filter(supplier_name__icontains=supplier_name)
-        if company_name:  
-            suppliers = suppliers.filter(company__company_id=company_name)  
-
+        suppliers = Supplier.objects.all()  # Assuming Supplier is the model for suppliers
         supplier_list = [
             {
                 'id': supplier.supplier_id,
                 'name': supplier.supplier_name,
                 'email': supplier.email,
-                'company_name': supplier.company.company_name if supplier.company else '',
+                'company_name': supplier.company.company_name,  # Getting the company name associated with the supplier
                 'phone_number': supplier.phone_number,
                 'address': supplier.address,
                 'city': supplier.city,
@@ -1556,10 +1111,7 @@ def supplier_list(request):
             for supplier in suppliers
         ]
         return JsonResponse({'suppliers': supplier_list}, status=200)
-
     return JsonResponse({'error': 'Invalid request method.'}, status=405)
-
-
 
 
 def supplier_view_page(request, supplier_id):
@@ -1683,39 +1235,20 @@ def generate_product_code():
     return f"PROD-{new_id:06d}"  # Formats as PROD-000001, PROD-000002, etc.
 
 
+def generate_barcode_image(barcode_text, product_id, category_shortcode):
+    """ Generate and save a barcode image """
+    barcode_class = barcode.get_barcode_class('code128')
+    barcode_instance = barcode_class(barcode_text, writer=ImageWriter())
 
-def generate_barcode_image(qr_text, product_id, category_shortcode):
-    """ Generate and save a QR code image """
+    # Create file path using product_id and category_shortcode
+    file_path = os.path.join(settings.MEDIA_ROOT, 'barcodes', f'barcode_{product_id}_{category_shortcode}')
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+    
+    # Save the barcode without the .png extension
+    barcode_instance.save(file_path)
 
-    # QR data to encode
-    qr_data = qr_text  # Encoding qr_text inside the QR
-
-    # Generate the QR code
-    qr = qrcode.QRCode(
-        version=1,
-        error_correction=qrcode.constants.ERROR_CORRECT_L,
-        box_size=10,
-        border=4,
-    )
-    qr.add_data(qr_data)
-    qr.make(fit=True)
-
-    # Create the image
-    img = qr.make_image(fill='black', back_color='white')
-
-    # Define the folder and file path (Same logic as barcode)
-    folder_path = os.path.join(settings.MEDIA_ROOT, 'barcodes')
-    os.makedirs(folder_path, exist_ok=True)
-
-    # File name format
-    file_name = f'qr_{product_id}_{category_shortcode}.png'
-    file_path = os.path.join(folder_path, file_name)
-
-    # Save the QR code image
-    img.save(file_path)
-
-    # Return the relative path for use in templates
-    return f'barcodes/{file_name}'
+    # Return relative path with .png extension
+    return f'barcodes/barcode_{product_id}_{category_shortcode}.png'
 
 
 def generate_barcode(product_code, product_name, category_shortcode):
@@ -1788,41 +1321,25 @@ def add_product(request):
     return render(request, 'add_product.html', {'categories': categories})
 
 
-
 def get_subcategories(request, category_id):
     subcategories = list(SubCategory.objects.filter(category_id=category_id).values('subcategory_id', 'subcategory_name','shortcode'))
     return JsonResponse({'subcategories': subcategories})
 
 
-@csrf_exempt
+@csrf_exempt 
 def get_products(request):
     if request.method == "GET":
         try:
-            name = request.GET.get('name', '').strip()
-            pcode = request.GET.get('pcode', '').strip()
-            category_id = request.GET.get('category', '').strip()
-            subcategory_id = request.GET.get('subcategory', '').strip()
-
+            # Fetch all products
             products = Product.objects.all()
 
-            if name:
-                products = products.filter(product_name__icontains=name)
-
-            if pcode:
-                products = products.filter(product_code__icontains=pcode)
-
-            if category_id:
-                products = products.filter(category_id=category_id)
-
-            if subcategory_id:
-                products = products.filter(subcategory_id=subcategory_id)
-
+            # Prepare the product data to return as JSON
             product_list = [
                 {
                     'id': product.product_id,
                     'product_code': product.product_code,
                     'name': product.product_name,
-                    'category': product.category.category_name if product.category else None,
+                    'category': product.category.category_name,  # Changed to category_name
                     'purchase_amount': product.purchase_amount,
                     'purchase_date': product.purchase_date.strftime('%Y-%m-%d'),
                     'image': product.product_images.first().image.url if product.product_images.exists() else None
@@ -1830,39 +1347,13 @@ def get_products(request):
                 for product in products
             ]
 
+            # Return the product list as JSON
             return JsonResponse({'products': product_list}, status=200)
 
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=400)
 
     return JsonResponse({'error': 'Invalid request method.'}, status=405)
-
-
-def search_products(request):
-    query = request.GET.get('q', '').strip()
-    product_code_query = request.GET.get('pcode', '').strip()
-    
-    if query or product_code_query:
-        products = Product.objects.all()
-
-        if query:
-            products = products.filter(product_name__icontains=query)
-        if product_code_query:
-            products = products.filter(product_code__icontains=product_code_query)
-        
-        product_list = [
-            {
-                'product_id': product.product_id,
-                'product_name': product.product_name,
-                'product_code': product.product_code,
-                'category_id': product.category.category_id if product.category else None,
-                'subcategory_id': product.subcategory.subcategory_id if product.subcategory else None
-            }
-            for product in products[:10]  # Limit to 10 results
-        ]
-        return JsonResponse({'products': product_list}, status=200)
-
-    return JsonResponse({'products': []}, status=200)
 
 
 def product_view_page(request, product_id):
@@ -2032,17 +1523,7 @@ def add_exhibition(request):
 
 def exhibition_list(request):
     if request.method == "GET":
-        exhibition_name = request.GET.get("exhibition_name", "").strip()
-        location = request.GET.get("location", "").strip()
-
         exhibitions = Exhibition.objects.all()
-
-        if exhibition_name:
-            exhibitions = exhibitions.filter(exhibition_name__icontains=exhibition_name)
-
-        if location:
-            exhibitions = exhibitions.filter(location__icontains=location)
-
         exhibition_list = [
             {
                 'id': exhibition.exhibition_id,
@@ -2055,11 +1536,8 @@ def exhibition_list(request):
             }
             for exhibition in exhibitions
         ]
-
         return JsonResponse({'exhibitions': exhibition_list}, status=200)
-
     return JsonResponse({'error': 'Invalid request method.'}, status=405)
-
 
 
 def exhibition_view_page(request, exhibition_id):
@@ -2155,101 +1633,67 @@ def get_locations_entry(request):
 
 
 
-def generate_barcode_stock_image(product_code, product_name, product_size_length, product_size_breadth, 
-                                 product_size_height, product_weight, manufacture_name, category_shortcode, 
-                                 location_shortcode, quantity_number):
-    """ Generate and save a QR code with barcode text displayed below. """
+import os
+import qrcode
+from django.conf import settings
 
-    # ✅ Encode full details inside the QR code (but not as visible text)
-    qr_data = (
-        f"Barcode Text: {product_code}\n"
-        f"Name: {product_name}\n"
-        f"Size: {product_size_length}x{product_size_breadth}x{product_size_height} cm\n"
-        f"Weight: {product_weight} kg\n"
-        f"Manufacturer: {manufacture_name}\n"
-        f"Category: {category_shortcode}\n"
-        f"Location: {location_shortcode}\n"
-        f"Quantity: {quantity_number}"
-    )
-
-    # ✅ Generate QR Code
-    qr = qrcode.QRCode(
-        version=1,
-        error_correction=qrcode.constants.ERROR_CORRECT_L,
-        box_size=10,
-        border=4,
-    )
-    qr.add_data(qr_data)
-    qr.make(fit=True)
-    qr_img = qr.make_image(fill='black', back_color='white')
-
-    # ✅ Load font
-    font_path = os.path.join(settings.BASE_DIR, 'static', 'assets', 'fonts', 'Arial.ttf')
+def generate_barcode_stock_image(barcode_text, product_code, category_shortcode, location_shortcode, quantity_number):
+    """ Generate and save a QR code image temporarily for preview """
     try:
-        font = ImageFont.truetype(font_path, 22)  # Slightly larger font for better readability
-    except IOError:
-        font = ImageFont.load_default()
+        # ✅ Encode barcode_text and product_code into the QR code
+        qr_data = f"Barcode: {barcode_text}\nProduct Code: {product_code}"
 
-    # ✅ Get QR code size
-    qr_width, qr_height = qr_img.size
+        # ✅ Generate QR Code
+        qr = qrcode.QRCode(
+            version=None,  # Let the library determine the version automatically
+            error_correction=qrcode.constants.ERROR_CORRECT_L,  # Error correction level
+            box_size=10,  # Size of each box in the QR code
+            border=4,  # Border size around the QR code
+        )
+        qr.add_data(qr_data)
+        qr.make(fit=True)  # Automatically adjust version based on data size
 
-    # ✅ Get text size (only barcode_text, not full details)
-    barcode_text = f"{product_code}-{category_shortcode}-{location_shortcode}-{str(quantity_number).zfill(2)}"
-    temp_img = Image.new("RGB", (1000, 1000))
-    draw = ImageDraw.Draw(temp_img)
-    bbox = draw.textbbox((0, 0), barcode_text, font=font)
-    text_width, text_height = bbox[2] - bbox[0], bbox[3] - bbox[1]
+        # Create the QR code image
+        qr_img = qr.make_image(fill='black', back_color='white')
 
-    # ✅ Create final image canvas (QR + text)
-    img_width = max(qr_width + 40, text_width + 40)  # Ensure space for text
-    img_height = qr_height + text_height + 50  # Extra space for text
-    final_img = Image.new("RGB", (img_width, img_height), "white")
+        # ✅ Temporary folder for QR code images
+        temp_folder = os.path.join(settings.MEDIA_ROOT, 'temp_barcodes')
+        os.makedirs(temp_folder, exist_ok=True)
 
-    # ✅ Center QR code
-    qr_x = (img_width - qr_width) // 2
-    qr_y = 10  # Padding from top
-    final_img.paste(qr_img, (qr_x, qr_y))
+        # ✅ Remove `.png` from filename because we'll add it manually
+        file_name = f"{product_code}_{category_shortcode}_{location_shortcode}_{str(quantity_number).zfill(2)}"
+        file_path = os.path.join(temp_folder, file_name + ".png")  # Add .png extension
 
-    # ✅ Draw barcode text centered below QR code
-    draw = ImageDraw.Draw(final_img)
-    text_x = (img_width - text_width) // 2
-    text_y = qr_y + qr_height + 10  # Space between QR and text
-    draw.text((text_x, text_y), barcode_text, font=font, fill="black")
+        # Save the QR code image
+        qr_img.save(file_path)
 
-    # ✅ Save barcode image
-    temp_folder = os.path.join(settings.MEDIA_ROOT, 'temp_barcodes')
-    os.makedirs(temp_folder, exist_ok=True)
+        # ✅ Explicitly return the correct file path
+        return f'temp_barcodes/{file_name}.png'
 
-    file_name = f"{barcode_text}.png"
-    file_path = os.path.join(temp_folder, file_name)
-
-    final_img.save(file_path)
-
-    return f'temp_barcodes/{file_name}'
-
-
+    except Exception as e:
+        print(f"Error generating QR code: {e}")
+        return None
 
 
 def move_barcode_to_stock(temp_image_url, stock_entry):
     """ Move barcode image from temporary folder to stock folder and delete it from temp_barcodes """
-    
-    # Resolve full path of the temporary image
-    temp_image_path = os.path.join(settings.MEDIA_ROOT, temp_image_url.replace(settings.MEDIA_URL, ""))
-    
-    # Ensure the file exists before proceeding
-    if not os.path.exists(temp_image_path):
-        print(f"Warning: Temp image {temp_image_path} not found!")
-        return None
-
-    # Define new folder for storing barcode images permanently
-    new_folder = os.path.join(settings.MEDIA_ROOT, 'stock_barcodes')
-    os.makedirs(new_folder, exist_ok=True)  # Create the folder if it doesn't exist
-
-    # Get the file name and define the new storage path
-    new_image_name = os.path.basename(temp_image_path)
-    new_image_path = os.path.join(new_folder, new_image_name)
-
     try:
+        # Resolve full path of the temporary image
+        temp_image_path = os.path.join(settings.MEDIA_ROOT, temp_image_url.replace(settings.MEDIA_URL, ""))
+        
+        # Ensure the file exists before proceeding
+        if not os.path.exists(temp_image_path):
+            print(f"Warning: Temp image {temp_image_path} not found!")
+            return None
+
+        # Define new folder for storing barcode images permanently
+        new_folder = os.path.join(settings.MEDIA_ROOT, 'stock_barcodes')
+        os.makedirs(new_folder, exist_ok=True)  # Create the folder if it doesn't exist
+
+        # Get the file name and define the new storage path
+        new_image_name = os.path.basename(temp_image_path)
+        new_image_path = os.path.join(new_folder, new_image_name)
+
         # Move the file from temp_barcodes to stock_barcodes
         shutil.move(temp_image_path, new_image_path)
 
@@ -2261,7 +1705,6 @@ def move_barcode_to_stock(temp_image_url, stock_entry):
     except Exception as e:
         print(f"Error moving barcode image: {e}")
         return None
-
 
 
 def add_stock(request):   
@@ -2338,16 +1781,11 @@ def add_stock(request):
 
                 # Generate barcode image
                 temp_barcode_path = generate_barcode_stock_image(
-                    barcode_text,
-                    product.product_name,  # ✅ Add missing product name
-                    product.product_size_length,  # ✅ Add missing size length
-                    product.product_size_breadth,  # ✅ Add missing size breadth
-                    product.product_size_height,  # ✅ Add missing size height
-                    product.product_weight,  # ✅ Product weight
-                    product.manufacture_name,  # ✅ Manufacture name
-                    category.shortcode,  # ✅ Category shortcode
-                    location.shortcode,  # ✅ Location shortcode
-                    quantity_number  # ✅ Quantity number
+                    barcode_text, 
+                    product.product_code, 
+                    category.shortcode, 
+                    location.shortcode, 
+                    quantity_number
                 )
 
                 # Get corresponding serial number from user input
@@ -2382,8 +1820,6 @@ def add_stock(request):
             return JsonResponse({"status": "error", "message": str(e)}, status=400)
 
     return JsonResponse({"status": "error", "message": "Invalid request"}, status=400)
-
-
 
 
 def get_existing_barcodes(request):
@@ -2433,7 +1869,7 @@ def submit_stock(request):
             category_id = request.POST.get('category_id')
             subcategory_id = request.POST.get('subcategory_id')
             quantity = int(request.POST.get('quantity', 1))
-
+            product_status_list = request.POST.getlist('product_status[]')  # Extract as list
             import ast
             barcodes_json = request.POST.get('barcodes', '[]')
             barcode_list = ast.literal_eval(barcodes_json) if isinstance(barcodes_json, str) else []
@@ -2444,21 +1880,20 @@ def submit_stock(request):
             # Debugging: Print extracted values
             print(f"Product ID: {product_id}, Location ID: {location_id}, Quantity: {quantity}, Barcodes: {barcode_list}")
 
-            
             product = Product.objects.get(product_id=product_id)
             location = Location.objects.get(id=location_id)
             category = Category.objects.get(category_id=category_id)
-            subcategory = SubCategory.objects.get(subcategory_id=subcategory_id)  # FIXED
+            subcategory = SubCategory.objects.get(subcategory_id=subcategory_id)
 
             # Process each barcode
-            for barcode in barcode_list:
+            for index, barcode in enumerate(barcode_list):
                 rank_id = barcode.get("rank_id")
                 box_id = barcode.get("box_id")
                 serial_number = barcode.get("serial_number", "")
+                product_status = product_status_list[index]  # Get product_status for this barcode
 
-                rack = Rank.objects.get(rank_id=rank_id)  # FIXED
-                box = Box.objects.get(box_id=box_id)  # FIXED
-               
+                rack = Rank.objects.get(rank_id=rank_id)
+                box = Box.objects.get(box_id=box_id)
 
                 stock_entry = StockEntry.objects.create(
                     product=product,
@@ -2468,7 +1903,8 @@ def submit_stock(request):
                     rack=rack,
                     box=box,
                     quantity=1,  # Each barcode corresponds to 1 quantity
-                    serial_number=serial_number
+                    serial_number=serial_number,
+                    product_status=product_status  # Pass product_status here
                 )
 
                 # Fetch the temp barcode object
@@ -2603,20 +2039,18 @@ def get_ranks(request):
 #         print("No Stock Entries Found!")
 #         return JsonResponse({"barcodes": []})
     
-def fetch_barcode(request):
+def stock_entry_fetch_barcode(request):
     category_id = request.GET.get("category")
     subcategory_id = request.GET.get("subcategory")
     product_id = request.GET.get("product")
     location_id = request.GET.get("location")
 
-    print(f"Received Parameters - Category: {category_id}, SubCategory: {subcategory_id}, Product: {product_id}, Location: {location_id}")
-
-    # Fetch matching stock entries
+    print(f"Stock Entry Received Parameters - Category: {category_id}, SubCategory: {subcategory_id}, Product: {product_id}, Location: {location_id}")
     stock_entries = StockEntry.objects.filter(
         category_id=category_id,
         subcategory_id=subcategory_id,
         product_id=product_id,
-        location_id=location_id
+        location_id=location_id,
     ).select_related("product", "location", "rack", "box")
 
     total_quantity = stock_entries.aggregate(total_quantity=Sum('quantity'))['total_quantity'] or 0
@@ -2638,7 +2072,58 @@ def fetch_barcode(request):
                     "product_name": stock_entry.product.product_name,
                     "location": stock_entry.location.name,
                     "rank": stock_entry.rack.rank_name,  
-                    "box": stock_entry.box.box_name
+                    "box": stock_entry.box.box_name,
+                    "product_status": stock_entry.product_status,
+                }
+                for barcode in barcodes
+            ]
+            barcode_list.extend(barcode_data)
+
+        print(f"Barcodes Found: {barcode_list}")  
+        return JsonResponse({"barcodes": barcode_list, "available_quantity": total_quantity})
+
+    else:
+        print("No Stock Entries Found!")
+        return JsonResponse({"barcodes": [], "available_quantity": 0})
+
+def fetch_barcode(request):
+    category_id = request.GET.get("category")
+    subcategory_id = request.GET.get("subcategory")
+    product_id = request.GET.get("product")
+    location_id = request.GET.get("location")
+
+    print(f"Received Parameters - Category: {category_id}, SubCategory: {subcategory_id}, Product: {product_id}, Location: {location_id}")
+
+    # Fetch matching stock entries
+    stock_entries = StockEntry.objects.filter(
+        category_id=category_id,
+        subcategory_id=subcategory_id,
+        product_id=product_id,
+        location_id=location_id,
+        product_status ="INSTOCK"
+    ).select_related("product", "location", "rack", "box")
+
+    total_quantity = stock_entries.aggregate(total_quantity=Sum('quantity'))['total_quantity'] or 0
+
+    if stock_entries.exists():
+        print(f"Stock Entries Found: {stock_entries.count()} | Total Quantity: {total_quantity}")
+
+        barcode_list = []
+
+        for stock_entry in stock_entries:
+            # Fetch all barcodes associated with each stock entry
+            barcodes = stock_entry.barcodes.all()  
+            barcode_data = [
+                {
+                    "barcode_text": barcode.barcode_text,
+                    "barcode_image": barcode.barcode_image.url,
+                    "stock_id": stock_entry.stock_id,
+                    "serial_number": stock_entry.serial_number,
+                    "product_name": stock_entry.product.product_name,
+                    "location": stock_entry.location.name,
+                    "rank": stock_entry.rack.rank_name,  
+                    "box": stock_entry.box.box_name,
+                    "product_status": stock_entry.product_status,
                 }
                 for barcode in barcodes
             ]
@@ -2731,11 +2216,9 @@ def fetch_stock_list(request):
         subcategory_id = request.GET.get("subcategory", None)
         product_id = request.GET.get("product", None)
         location_id = request.GET.get("location", None)
-        from_date = request.GET.get("from_date", None)
-        to_date = request.GET.get("to_date", None)
 
         stock_entries = StockEntry.objects.select_related(
-            "product", "category", "subcategory", "location", "rack", "box"
+            "product","category", "subcategory", "location", "rack", "box"
         ).all()
 
         # Apply filters only if values exist
@@ -2747,12 +2230,6 @@ def fetch_stock_list(request):
             stock_entries = stock_entries.filter(product_id=product_id)
         if location_id:
             stock_entries = stock_entries.filter(location_id=location_id)
-        if from_date:
-            from_date = parse_date(from_date)
-            stock_entries = stock_entries.filter(created_on__gte=from_date)
-        if to_date:
-            to_date = parse_date(to_date)
-            stock_entries = stock_entries.filter(created_on__lte=to_date)
 
         stock_list = [
             {
@@ -2765,17 +2242,15 @@ def fetch_stock_list(request):
                 "location": stock.location.name,
                 "rack": stock.rack.rank_name if stock.rack else "N/A",
                 "box": stock.box.box_name if stock.box else "N/A",
-                "created_on": stock.created_on.strftime("%Y-%m-%d"),
-
+                "product_status" : stock.product_status
             }
             for stock in stock_entries
-            for barcode in stock.barcodes.all()
+            for barcode in stock.barcodes.all()  # Assuming a ForeignKey or related_name="barcodes"
         ]
 
         return JsonResponse({"stocks": stock_list}, status=200)
 
     return JsonResponse({"error": "Invalid request method."}, status=405)
-
 
 
 
@@ -3556,3763 +3031,603 @@ def generate_company_pdf(request):
 
     return response
 
-
-def generate_category_csv(request):
-    # Get filter parameters from request
-    category_name = request.GET.get('category_name', '').strip()
-    shortcode = request.GET.get('shortcode', '').strip()
-    
-    # Filter Category data based on provided filters
-    categories = Category.objects.all()
-    
-    if category_name:
-        categories = categories.filter(category_name__icontains=category_name)
-    if shortcode:
-        categories = categories.filter(shortcode__icontains=shortcode)
-    
-    # Create CSV Response
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="category_details.csv"'
-    
-    writer = csv.writer(response)
-    
-    # Write CSV Header
-    writer.writerow(["Category ID", "Category Name", "Details", "Shortcode", "Created On"])
-    
-    # Write Category Data
-    for cat in categories:
-        writer.writerow([
-            cat.category_id, cat.category_name, cat.details, cat.shortcode,
-            cat.created_on.strftime('%Y-%m-%d %H:%M:%S')
-        ])
-    
-    return response
-
-def generate_category_excel(request):
-    # Get filter parameters from request
-    category_name = request.GET.get('category_name', '').strip()
-    shortcode = request.GET.get('shortcode', '').strip()
-    
-    # Filter Category data
-    categories = Category.objects.all()
-    
-    if category_name:
-        categories = categories.filter(category_name__icontains=category_name)
-    if shortcode:
-        categories = categories.filter(shortcode__icontains=shortcode)
-    
-    # Create an Excel workbook and sheet
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = "Category Details"
-    
-    # Define headers
-    headers = ["Category ID", "Category Name", "Details", "Shortcode", "Created On"]
-    
-    # Add headers to the first row (bold formatting)
-    for col_num, header in enumerate(headers, 1):
-        cell = ws.cell(row=1, column=col_num, value=header)
-        cell.font = openpyxl.styles.Font(bold=True)
-    
-    # Add Category Data
-    for row_num, cat in enumerate(categories, 2):
-        ws.cell(row=row_num, column=1, value=cat.category_id)
-        ws.cell(row=row_num, column=2, value=cat.category_name)
-        ws.cell(row=row_num, column=3, value=cat.details)
-        ws.cell(row=row_num, column=4, value=cat.shortcode)
-        ws.cell(row=row_num, column=5, value=cat.created_on.strftime('%Y-%m-%d %H:%M:%S'))
-    
-    # Create HTTP response
-    response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-    response["Content-Disposition"] = 'attachment; filename="category_details.xlsx"'
-    
-    # Save workbook to response
-    wb.save(response)
-    
-    return response
-
-def generate_category_pdf(request):
-    # Get filter parameters
-    name = request.GET.get('name', '').strip()
-    shortcode = request.GET.get('shortcode', '').strip()
-
-    # Filter categories based on query parameters
-    categories = Category.objects.all()
-    if name:
-        categories = categories.filter(category_name__icontains=name)
-    if shortcode:
-        categories = categories.filter(shortcode__icontains=shortcode)
-
-    # Create response object
-    response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename="category_details.pdf"'
-
-    # Define PDF document
-    doc = SimpleDocTemplate(
-        response,
-        pagesize=A4,
-        leftMargin=0.7 * inch,
-        rightMargin=0.7 * inch,
-        topMargin=1.5 * inch,
-        bottomMargin=1.5 * inch
-    )
-
-    elements = []
-    styles = getSampleStyleSheet()
-    custom_normal = ParagraphStyle('custom_normal', parent=styles['Normal'], fontName='Helvetica', fontSize=11, leading=14, spaceAfter=8)
-
-    # Load header image (if available)
-    header_path = os.path.join(settings.STATIC_ROOT, "assets/images/pdf/report_header.png")
-
-    # Get current date/time
-    report_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    def on_page(canvas, doc):
-        width, height = A4
-        if os.path.exists(header_path):
-            header_img = Image(header_path, width=width, height=1.5 * inch)
-            header_img.drawOn(canvas, 0, height - 1.5 * inch)
-
-        canvas.setFont("Helvetica", 9)
-        canvas.drawRightString(width - 0.8 * inch, height - 1.7 * inch, f"Generated On: {report_date}")
-
-    # Define Page Template
-    frame = Frame(x1=0.7 * inch, y1=1.5 * inch, width=A4[0] - 1.4 * inch, height=A4[1] - 3 * inch, id='normal')
-    template = PageTemplate(id='custom', frames=frame, onPage=on_page)
-    doc.addPageTemplates([template])
-
-    # Report Title
-    elements.append(Spacer(1, 45))
-    elements.append(Paragraph('<para align="center"><b><font size=16>CATEGORY DETAILS REPORT</font></b></para>', styles["Normal"]))
-    elements.append(Spacer(1, 30))
-
-    # Report Description
-    elements.append(Paragraph('<font size=11>This report contains the details of categories, including their names and shortcodes.</font>', custom_normal))
-    elements.append(Spacer(1, 10))
-
-    # Table Title
-    elements.append(Paragraph('<para align="center"><strong>Category Information Summary</strong></para>', styles["Heading3"]))
-    elements.append(Spacer(1, 10))
-
-    # Table Headers
-    data = [["Category Name", "Shortcode"]]
-
-    # Add category data to the table
-    if categories.exists():
-        for category in categories:
-            data.append([category.category_name, category.shortcode])
-    else:
-        data.append(["No Data", "-", "-"])
-
-    # Define Table
-    col_widths = [2.5 * inch, 1.5 * inch, 3.0 * inch]
-    row_height = 22
-    table = Table(data, colWidths=col_widths, rowHeights=row_height)
-
-    # Table Styling
-    style = TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ('WORDWRAP', (0, 0), (-1, -1)),
-    ])
-    table.setStyle(style)
-
-    # Add Table to PDF
-    elements.append(table)
-
-    # Footer Note
-    elements.append(Spacer(1, 15))
-    note = Paragraph("<strong>Note:</strong> This is a system-generated report. No manual modifications have been made.", custom_normal)
-    elements.append(note)
-
-    # Build PDF
-    doc.build(elements, onFirstPage=on_page, onLaterPages=on_page)
-
-    return response
-
-
-
-def generate_subcategory_csv(request):
-    # Get filter parameters from request
-    subcategory_name = request.GET.get('subcategory_name', '').strip()
-    shortcode = request.GET.get('shortcode', '').strip()
-    category_id = request.GET.get('category_id', '').strip()
-
-    # Filter SubCategory data based on provided filters
-    subcategories = SubCategory.objects.all()
-    
-    if subcategory_name:
-        subcategories = subcategories.filter(subcategory_name__icontains=subcategory_name)
-    if shortcode:
-        subcategories = subcategories.filter(shortcode__icontains=shortcode)
-    if category_id:
-        subcategories = subcategories.filter(category_id=category_id)
-
-    # Create CSV Response
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="subcategory_details.csv"'
-
-    writer = csv.writer(response)
-
-    # Write CSV Header
-    writer.writerow(["SubCategory ID", "SubCategory Name", "Details", "Shortcode", "Category Name", "Created On"])
-
-    # Write SubCategory Data
-    for sub in subcategories:
-        writer.writerow([
-            sub.subcategory_id, sub.subcategory_name, sub.details, sub.shortcode,
-            sub.category.category_name, sub.created_on.strftime('%Y-%m-%d %H:%M:%S')
-        ])
-
-    return response
-
-
-def generate_subcategory_excel(request):
-    # Get filter parameters from request
-    subcategory_name = request.GET.get('subcategory_name', '').strip()
-    shortcode = request.GET.get('shortcode', '').strip()
-    category_id = request.GET.get('category_id', '').strip()
-
-    # Filter SubCategory data
-    subcategories = SubCategory.objects.all()
-
-    if subcategory_name:
-        subcategories = subcategories.filter(subcategory_name__icontains=subcategory_name)
-    if shortcode:
-        subcategories = subcategories.filter(shortcode__icontains=shortcode)
-    if category_id:
-        subcategories = subcategories.filter(category_id=category_id)
-
-    # Create an Excel workbook and sheet
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = "SubCategory Details"
-
-    # Define headers
-    headers = ["SubCategory ID", "SubCategory Name", "Details", "Shortcode", "Category Name", "Created On"]
-
-    # Add headers to the first row (bold formatting)
-    for col_num, header in enumerate(headers, 1):
-        cell = ws.cell(row=1, column=col_num, value=header)
-        cell.font = openpyxl.styles.Font(bold=True)
-
-    # Add SubCategory Data
-    for row_num, sub in enumerate(subcategories, 2):
-        ws.cell(row=row_num, column=1, value=sub.subcategory_id)
-        ws.cell(row=row_num, column=2, value=sub.subcategory_name)
-        ws.cell(row=row_num, column=3, value=sub.details)
-        ws.cell(row=row_num, column=4, value=sub.shortcode)
-        ws.cell(row=row_num, column=5, value=sub.category.category_name)
-        ws.cell(row=row_num, column=6, value=sub.created_on.strftime('%Y-%m-%d %H:%M:%S'))
-
-    # Create HTTP response
-    response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-    response["Content-Disposition"] = 'attachment; filename="subcategory_details.xlsx"'
-
-    # Save workbook to response
-    wb.save(response)
-
-    return response
-
-
-def generate_subcategory_pdf(request):
-     # Debugging: Print received parameters
-    print("Received Parameters:", request.GET)
-
-    # Get filter parameters
-    name = request.GET.get('name', '').strip()
-    shortcode = request.GET.get('shortcode', '').strip()
-    category_id = request.GET.get('category_id', '').strip()
-
-    # Filter SubCategories
-    subcategories = SubCategory.objects.all()
-
-    if name:
-        subcategories = subcategories.filter(subcategory_name__icontains=name)
-    if shortcode:
-        subcategories = subcategories.filter(shortcode__icontains=shortcode)
-    if category_id:
-        subcategories = subcategories.filter(category__id=category_id)
-
-    # Debugging: Print the filtered queryset
-    print("Filtered SubCategories:", subcategories.query)
-
-    # If no data found, return an empty PDF
-    if not subcategories.exists():
-        return HttpResponse("No data found matching filters.", content_type="text/plain")
-
-    # Create response object
-    response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename="subcategory_details.pdf"'
-
-    # Define PDF document
-    doc = SimpleDocTemplate(
-        response,
-        pagesize=A4,
-        leftMargin=0.7 * inch,
-        rightMargin=0.7 * inch,
-        topMargin=1.5 * inch,
-        bottomMargin=1.5 * inch
-    )
-
-    elements = []
-    styles = getSampleStyleSheet()
-    custom_normal = ParagraphStyle('custom_normal', parent=styles['Normal'], fontName='Helvetica', fontSize=11, leading=14, spaceAfter=8)
-
-    # Load header image (if available)
-    header_path = os.path.join(settings.STATIC_ROOT, "assets/images/pdf/report_header.png")
-
-    # Get current date/time
-    report_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    def on_page(canvas, doc):
-        width, height = A4
-        if os.path.exists(header_path):
-            header_img = Image(header_path, width=width, height=1.5 * inch)
-            header_img.drawOn(canvas, 0, height - 1.5 * inch)
-
-        canvas.setFont("Helvetica", 9)
-        canvas.drawRightString(width - 0.8 * inch, height - 1.7 * inch, f"Generated On: {report_date}")
-
-    # Define Page Template
-    frame = Frame(x1=0.7 * inch, y1=1.5 * inch, width=A4[0] - 1.4 * inch, height=A4[1] - 3 * inch, id='normal')
-    template = PageTemplate(id='custom', frames=frame, onPage=on_page)
-    doc.addPageTemplates([template])
-
-    # Report Title
-    elements.append(Spacer(1, 45))
-    elements.append(Paragraph('<para align="center"><b><font size=16>SUBCATEGORY DETAILS REPORT</font></b></para>', styles["Normal"]))
-    elements.append(Spacer(1, 30))
-
-    # Report Description
-    elements.append(Paragraph('<font size=11>This report contains details of subcategories, including their names, shortcodes, and categories.</font>', custom_normal))
-    elements.append(Spacer(1, 10))
-
-    # Table Title
-    elements.append(Paragraph('<para align="center"><strong>SubCategory Information Summary</strong></para>', styles["Heading3"]))
-    elements.append(Spacer(1, 10))
-
-    # Table Headers
-    data = [["SubCategory Name", "Shortcode", "Category Name"]]
-
-    # Add subcategory data to the table
-    if subcategories.exists():
-        for subcategory in subcategories:
-            data.append([subcategory.subcategory_name, subcategory.shortcode, subcategory.category.category_name])
-    else:
-        data.append(["No Data", "-", "-"])
-
-    # Define Table
-    col_widths = [2.5 * inch, 1.5 * inch, 3.0 * inch]
-    row_height = 22
-    table = Table(data, colWidths=col_widths, rowHeights=row_height)
-
-    # Table Styling
-    style = TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ('WORDWRAP', (0, 0), (-1, -1)),
-    ])
-    table.setStyle(style)
-
-    # Add Table to PDF
-    elements.append(table)
-
-    # Footer Note
-    elements.append(Spacer(1, 15))
-    note = Paragraph("<strong>Note:</strong> This is a system-generated report. No manual modifications have been made.", custom_normal)
-    elements.append(note)
-
-    # Build PDF
-    doc.build(elements, onFirstPage=on_page, onLaterPages=on_page)
-
-    return response
-
-
-def generate_box_csv(request):
-    # Get filter parameters from request
-    box_name = request.GET.get('box_name', '').strip()
-    
-    # Filter Box data
-    boxes = Box.objects.all()
-    if box_name:
-        boxes = boxes.filter(box_name__icontains=box_name)
-    
-    # Create CSV Response
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="box_details.csv"'
-    
-    writer = csv.writer(response)
-    
-    # Write CSV Header
-    writer.writerow(["Box ID", "Box Name", "Details", "Created On"])
-    
-    # Write Box Data
-    for box in boxes:
-        writer.writerow([
-            box.box_id, box.box_name, box.details, box.created_on.strftime('%Y-%m-%d %H:%M:%S')
-        ])
-    
-    return response
-
-
-def generate_box_excel(request):
-    # Get filter parameters from request
-    box_name = request.GET.get('box_name', '').strip()
-    
-    # Filter Box data
-    boxes = Box.objects.all()
-    if box_name:
-        boxes = boxes.filter(box_name__icontains=box_name)
-    
-    # Create an Excel workbook and sheet
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = "Box Details"
-    
-    # Define headers
-    headers = ["Box ID", "Box Name", "Details", "Created On"]
-    
-    # Add headers to the first row (bold formatting)
-    for col_num, header in enumerate(headers, 1):
-        cell = ws.cell(row=1, column=col_num, value=header)
-        cell.font = openpyxl.styles.Font(bold=True)
-    
-    # Add Box Data
-    for row_num, box in enumerate(boxes, 2):
-        ws.cell(row=row_num, column=1, value=box.box_id)
-        ws.cell(row=row_num, column=2, value=box.box_name)
-        ws.cell(row=row_num, column=3, value=box.details)
-        ws.cell(row=row_num, column=4, value=box.created_on.strftime('%Y-%m-%d %H:%M:%S'))
-    
-    # Create HTTP response
-    response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-    response["Content-Disposition"] = 'attachment; filename="box_details.xlsx"'
-    
-    # Save workbook to response
-    wb.save(response)
-    
-    return response
-
-
-
-def generate_box_pdf(request):
-    # Get filter parameters
-    box_id = request.GET.get('box_id', '').strip()
-    box_name = request.GET.get('box_name', '').strip()
-
-    # Filter Box records based on query parameters
-    boxes = Box.objects.all()
-    if box_id:
-        boxes = boxes.filter(box_id__icontains=box_id)
-    if box_name:
-        boxes = boxes.filter(box_name__icontains=box_name)
-
-    # Create response object
-    response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename="box_details.pdf"'
-
-    # Define PDF document
-    doc = SimpleDocTemplate(
-        response,
-        pagesize=A4,
-        leftMargin=0.7 * inch,
-        rightMargin=0.7 * inch,
-        topMargin=1.5 * inch,
-        bottomMargin=1.5 * inch
-    )
-
-    elements = []
-    styles = getSampleStyleSheet()
-    custom_normal = ParagraphStyle('custom_normal', parent=styles['Normal'], fontName='Helvetica', fontSize=11, leading=14, spaceAfter=8)
-
-    # Load header image (if available)
-    header_path = os.path.join(settings.STATIC_ROOT, "assets/images/pdf/report_header.png")
-
-    # Get current date/time
-    report_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    def on_page(canvas, doc):
-        width, height = A4
-        if os.path.exists(header_path):
-            header_img = Image(header_path, width=width, height=1.5 * inch)
-            header_img.drawOn(canvas, 0, height - 1.5 * inch)
-
-        canvas.setFont("Helvetica", 9)
-        canvas.drawRightString(width - 0.8 * inch, height - 1.7 * inch, f"Generated On: {report_date}")
-
-    # Define Page Template
-    frame = Frame(x1=0.7 * inch, y1=1.5 * inch, width=A4[0] - 1.4 * inch, height=A4[1] - 3 * inch, id='normal')
-    template = PageTemplate(id='custom', frames=frame, onPage=on_page)
-    doc.addPageTemplates([template])
-
-    # Report Title
-    elements.append(Spacer(1, 45))
-    elements.append(Paragraph('<para align="center"><b><font size=16>BOX DETAILS</font></b></para>', styles["Normal"]))
-    elements.append(Spacer(1, 30))
-
-    # Report Description
-    elements.append(Paragraph('<font size=11>This report contains details of boxes, including their IDs and names.</font>', custom_normal))
-    elements.append(Spacer(1, 10))
-
-    # Table Title
-    elements.append(Paragraph('<para align="center"><strong>Box Information Summary</strong></para>', styles["Heading3"]))
-    elements.append(Spacer(1, 10))
-
-    # Table Headers
-    data = [["Box ID", "Box Name"]]
-
-    # Add Box data to the table
-    if boxes.exists():
-        for box in boxes:
-            data.append([box.box_id, box.box_name])
-    else:
-        data.append(["No Data", "-"])
-
-    # Define Table
-    col_widths = [2.5 * inch, 3.0 * inch]
-    row_height = 22
-    table = Table(data, colWidths=col_widths, rowHeights=row_height)
-
-    # Table Styling
-    style = TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ('WORDWRAP', (0, 0), (-1, -1)),
-    ])
-    table.setStyle(style)
-
-    # Add Table to PDF
-    elements.append(table)
-
-    # Footer Note
-    elements.append(Spacer(1, 15))
-    note = Paragraph("<strong>Note:</strong> This is a system-generated report. No manual modifications have been made.", custom_normal)
-    elements.append(note)
-
-    # Build PDF
-    doc.build(elements, onFirstPage=on_page, onLaterPages=on_page)
-
-    return response
-
-
-
-def generate_rank_csv(request):
-    # Get filter parameters from request
-    rank_id = request.GET.get('rank_id', '').strip()
-    rank_name = request.GET.get('rank_name', '').strip()
-
-    # Filter Rank data
-    ranks = Rank.objects.all()
-    if rank_id:
-        ranks = ranks.filter(rank_id=int(rank_id)) 
-    if rank_name:
-        ranks = ranks.filter(rank_name__icontains=rank_name)
-
-    # Create CSV Response
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="rank_details.csv"'
-
-    writer = csv.writer(response)
-
-    # Write CSV Header
-    writer.writerow(["Rank ID", "Rank Name", "Details", "Created On"])
-
-    # Write Rank Data
-    for rank in ranks:
-        writer.writerow([
-            rank.rank_id, rank.rank_name, rank.details, rank.created_on.strftime('%Y-%m-%d %H:%M:%S')
-        ])
-
-    return response
-
-
-def generate_rank_excel(request):
-    # Get filter parameters from request
-    rank_id = request.GET.get('rank_id', '').strip()
-    rank_name = request.GET.get('rank_name', '').strip()
-
-    # Filter Rank data
-    ranks = Rank.objects.all()
-    if rank_id:
-        ranks = ranks.filter(rank_id=int(rank_id)) 
-    if rank_name:
-        ranks = ranks.filter(rank_name__icontains=rank_name)
-
-    # Create an Excel workbook and sheet
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = "Rank Details"
-
-    # Define headers
-    headers = ["Rank ID", "Rank Name", "Details", "Created On"]
-
-    # Add headers to the first row (bold formatting)
-    for col_num, header in enumerate(headers, 1):
-        cell = ws.cell(row=1, column=col_num, value=header)
-        cell.font = openpyxl.styles.Font(bold=True)
-
-    # Add Rank Data
-    for row_num, rank in enumerate(ranks, 2):
-        ws.cell(row=row_num, column=1, value=rank.rank_id)
-        ws.cell(row=row_num, column=2, value=rank.rank_name)
-        ws.cell(row=row_num, column=3, value=rank.details)
-        ws.cell(row=row_num, column=4, value=rank.created_on.strftime('%Y-%m-%d %H:%M:%S'))
-
-    # Create HTTP response
-    response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-    response["Content-Disposition"] = 'attachment; filename="rank_details.xlsx"'
-
-    # Save workbook to response
-    wb.save(response)
-
-    return response
-
-
-def generate_rank_pdf(request):
-    # Get filter parameters from request
-    rank_id = request.GET.get('rank_id', '').strip()
-    rank_name = request.GET.get('rank_name', '').strip()
-
-    # Filter Rank data
-    ranks = Rank.objects.all()
-
-    if rank_id:
-        ranks = ranks.filter(rank_id=rank_id)
-
-    if rank_name:
-        ranks = ranks.filter(rank_name__icontains=rank_name)
-
-    # Debugging: Print filtered results
-    print("Filtered Ranks:", ranks)
-
-    # Create response object
-    response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename="rank_details.pdf"'
-
-    # Define PDF document
-    doc = SimpleDocTemplate(response, pagesize=A4)
-    elements = []
-    styles = getSampleStyleSheet()
-    custom_style = ParagraphStyle('custom_style', parent=styles['Normal'], fontName='Helvetica', fontSize=11, leading=14, spaceAfter=8)
-
-    # Header Image (Optional)
-    header_path = os.path.join(settings.STATIC_ROOT, "assets/images/pdf/report_header.png")
-
-    # Get current date/time
-    report_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    def on_page(canvas, doc):
-        width, height = A4
-        if os.path.exists(header_path):
-            header_img = Image(header_path, width=width, height=1.5 * inch)
-            header_img.drawOn(canvas, 0, height - 1.5 * inch)
-
-        canvas.setFont("Helvetica", 9)
-        canvas.drawRightString(width - 0.8 * inch, height - 1.7 * inch, f"Generated On: {report_date}")
-
-    # Report Title
-    elements.append(Spacer(1, 50))
-    elements.append(Paragraph('<para align="center"><b><font size=16>RANK DETAILS</font></b></para>', styles["Normal"]))
-    elements.append(Spacer(1, 20))
-
-    # Report Description
-    elements.append(Paragraph('<font size=11>This report contains details of ranks, including their IDs and names.</font>', custom_style))
-    elements.append(Spacer(1, 10))
-
-    # Table Headers
-    data = [["Rank ID", "Rank Name", "Details", "Created On"]]
-
-    # Add Rank data to the table
-    for rank in ranks:
-        data.append([
-            rank.rank_id, rank.rank_name, rank.details, rank.created_on.strftime('%Y-%m-%d %H:%M:%S')
-        ])
-
-    # Define Table
-    col_widths = [1.5 * inch, 2.0 * inch, 2.5 * inch, 2.0 * inch]
-    table = Table(data, colWidths=col_widths)
-
-    # Table Styling
-    style = TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ('WORDWRAP', (0, 0), (-1, -1)),
-    ])
-    table.setStyle(style)
-
-    # Add Table to PDF
-    elements.append(table)
-
-    # Footer Note
-    elements.append(Spacer(1, 15))
-    note = Paragraph("<strong>Note:</strong> This is a system-generated report. No manual modifications have been made.", custom_style)
-    elements.append(note)
-
-    # Build PDF
-    doc.build(elements, onFirstPage=on_page, onLaterPages=on_page)
-
-    return response
-
-
-
-# Generate Customer CSV
-def generate_customer_csv(request):
-    customer_name = request.GET.get('customer_name', '').strip()
-    company_id = request.GET.get('company_name', '')
-
-    customers = Customer.objects.all()
-    
-    if customer_name:
-        customers = customers.filter(customer_name__icontains=customer_name)
-    if company_id:
-        customers = customers.filter(company_id=company_id)
-
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="customer_details.csv"'
-
-    writer = csv.writer(response)
-    writer.writerow([
-        "Customer ID", "Customer Name", "Email", "Company", "Phone Number",
-        "Address", "City", "State", "ZIP Code", "Country", "Details"
-    ])
-
-    for customer in customers:
-        writer.writerow([
-            customer.customer_id, customer.customer_name, customer.email,
-            customer.company.company_name if customer.company else "N/A",
-            customer.phone_number, customer.address, customer.city,
-            customer.state, customer.zip_code, customer.country,
-            customer.details
-        ])
-
-    return response
-
-# Generate Customer Excel
-def generate_customer_excel(request):
-    customer_name = request.GET.get('customer_name', '').strip()
-    company_id = request.GET.get('company_name', '')
-
-    customers = Customer.objects.all()
-    
-    if customer_name:
-        customers = customers.filter(customer_name__icontains=customer_name)
-    if company_id:
-        customers = customers.filter(company_id=company_id)
-
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = "Customer Details"
-
-    headers = [
-        "Customer ID", "Customer Name", "Email", "Company", "Phone Number",
-        "Address", "City", "State", "ZIP Code", "Country", "Details"
-    ]
-
-    for col_num, header in enumerate(headers, 1):
-        ws.cell(row=1, column=col_num, value=header).font = openpyxl.styles.Font(bold=True)
-
-    for row_num, customer in enumerate(customers, 2):
-        ws.cell(row=row_num, column=1, value=customer.customer_id)
-        ws.cell(row=row_num, column=2, value=customer.customer_name)
-        ws.cell(row=row_num, column=3, value=customer.email)
-        ws.cell(row=row_num, column=4, value=customer.company.company_name if customer.company else "N/A")
-        ws.cell(row=row_num, column=5, value=customer.phone_number)
-        ws.cell(row=row_num, column=6, value=customer.address)
-        ws.cell(row=row_num, column=7, value=customer.city)
-        ws.cell(row=row_num, column=8, value=customer.state)
-        ws.cell(row=row_num, column=9, value=customer.zip_code)
-        ws.cell(row=row_num, column=10, value=customer.country)
-        ws.cell(row=row_num, column=11, value=customer.details)
-
-    response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-    response["Content-Disposition"] = 'attachment; filename="customer_details.xlsx"'
-
-    wb.save(response)
-    return response
-
-def generate_customer_pdf(request):
-    customer_name = request.GET.get('customer_name', '').strip()
-    company_name = request.GET.get('company_name', '').strip()
-
-    print(f"Received company_name: {company_name}")  # Debugging
-
-    # Get all customers
-    customers = Customer.objects.all()
-
-    if customer_name:
-        customers = customers.filter(customer_name__icontains=customer_name)
-
-    if company_name:
-        if company_name.isdigit():  # If input is an ID
-            customers = customers.filter(company__company_id=int(company_name))
-        else:
-            customers = customers.filter(company__company_name__icontains=company_name)
-
-    # Create response object for PDF
-    response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename="customer_details.pdf"'
-
-    # Define PDF Document
-    doc = SimpleDocTemplate(response, pagesize=A4)
-    elements = []
-    styles = getSampleStyleSheet()
-    custom_style = ParagraphStyle('custom_style', parent=styles['Normal'], fontName='Helvetica', fontSize=11, leading=14, spaceAfter=8)
-
-    # Header Image Path
-    header_path = os.path.join(settings.STATIC_ROOT, "assets/images/pdf/report_header.png")
-
-    # Get Current Date
-    report_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    # Header function
-    def on_page(canvas, doc):
-        width, height = A4
-        if os.path.exists(header_path):
-            header_img = Image(header_path, width=width, height=1.5 * inch)
-            header_img.drawOn(canvas, 0, height - 1.5 * inch)
-
-        canvas.setFont("Helvetica", 9)
-        canvas.drawRightString(width - 0.8 * inch, height - 1.7 * inch, f"Generated On: {report_date}")
-
-    # Report Title
-    elements.append(Spacer(1, 80))
-    elements.append(Paragraph('<para align="center"><b><font size=16>CUSTOMER DETAILS REPORT</font></b></para>', styles["Normal"]))
-    elements.append(Spacer(1, 20))
-
-    # Report Description
-    elements.append(Paragraph('<font size=11>This report contains details of customers, including their names, emails, and companies.</font>', custom_style))
-    elements.append(Spacer(1, 10))
-
-    # Table Headers
-    data = [["Customer Name", "Email", "Company", "Phone Number"]]
-    
-    # Fetch Customers and Append to Table Data
-    if customers.exists():
-        for customer in customers:
-            data.append([customer.customer_name, customer.email, customer.company.company_name, customer.phone_number])
-    else:
-        data.append(["No Data", "-", "-", "-"])  
-
-    # Table Column Widths
-    col_widths = [2 * inch, 2.5 * inch, 2 * inch, 1.5 * inch]  # Approx 72 points per inch
-    table = Table(data, colWidths=col_widths)
-
-    # Table Styling
-    style = TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-    ])
-    table.setStyle(style)
-
-    elements.append(table)
-    elements.append(Spacer(1, 15))
-
-    # Footer Note
-    elements.append(Paragraph("<strong>Note:</strong> This is a system-generated report. No manual modifications have been made.", custom_style))
-    
-    # Build PDF
-    doc.build(elements, onFirstPage=on_page, onLaterPages=on_page)
-
-    return response
-
-
-
-# Generate Supplier CSV
-def generate_supplier_csv(request):
-    supplier_name = request.GET.get('supplier_name', '').strip()
-    company_id = request.GET.get('company_name', '')
-
-    suppliers = Supplier.objects.all()
-    
-    if supplier_name:
-        suppliers = suppliers.filter(supplier_name__icontains=supplier_name)
-    if company_id:
-        suppliers = suppliers.filter(company_id=company_id)
-
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="supplier_details.csv"'
-
-    writer = csv.writer(response)
-    writer.writerow([
-        "Supplier ID", "Supplier Name", "Email", "Company", "Phone Number",
-        "Address", "City", "State", "ZIP Code", "Country", "Details"
-    ])
-
-    for supplier in suppliers:
-        writer.writerow([
-            supplier.supplier_id, supplier.supplier_name, supplier.email,
-            supplier.company.company_name if supplier.company else "N/A",
-            supplier.phone_number, supplier.address, supplier.city,
-            supplier.state, supplier.zip_code, supplier.country,
-            supplier.details
-        ])
-
-    return response
-
-
-# Generate Supplier Excel
-def generate_supplier_excel(request):
-    supplier_name = request.GET.get('supplier_name', '').strip()
-    company_id = request.GET.get('company_name', '')
-
-    suppliers = Supplier.objects.all()
-    
-    if supplier_name:
-        suppliers = suppliers.filter(supplier_name__icontains=supplier_name)
-    if company_id:
-        suppliers = suppliers.filter(company_id=company_id)
-
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = "Supplier Details"
-
-    headers = [
-        "Supplier ID", "Supplier Name", "Email", "Company", "Phone Number",
-        "Address", "City", "State", "ZIP Code", "Country", "Details"
-    ]
-
-    for col_num, header in enumerate(headers, 1):
-        ws.cell(row=1, column=col_num, value=header).font = openpyxl.styles.Font(bold=True)
-
-    for row_num, supplier in enumerate(suppliers, 2):
-        ws.cell(row=row_num, column=1, value=supplier.supplier_id)
-        ws.cell(row=row_num, column=2, value=supplier.supplier_name)
-        ws.cell(row=row_num, column=3, value=supplier.email)
-        ws.cell(row=row_num, column=4, value=supplier.company.company_name if supplier.company else "N/A")
-        ws.cell(row=row_num, column=5, value=supplier.phone_number)
-        ws.cell(row=row_num, column=6, value=supplier.address)
-        ws.cell(row=row_num, column=7, value=supplier.city)
-        ws.cell(row=row_num, column=8, value=supplier.state)
-        ws.cell(row=row_num, column=9, value=supplier.zip_code)
-        ws.cell(row=row_num, column=10, value=supplier.country)
-        ws.cell(row=row_num, column=11, value=supplier.details)
-
-    response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-    response["Content-Disposition"] = 'attachment; filename="supplier_details.xlsx"'
-
-    wb.save(response)
-    return response
-
-
-def generate_supplier_pdf(request):
-    supplier_name = request.GET.get('supplier_name', '').strip()
-    company_name = request.GET.get('company_name', '').strip()
-
-    print(f"Received company_name: {company_name}")  # Debugging
-
-    # Get all suppliers
-    suppliers = Supplier.objects.all()
-
-    if supplier_name:
-        suppliers = suppliers.filter(supplier_name__icontains=supplier_name)
-
-    if company_name:
-        if company_name.isdigit():  # If input is an ID
-            suppliers = suppliers.filter(company__company_id=int(company_name))
-        else:
-            suppliers = suppliers.filter(company__company_name__icontains=company_name)
-
-    # Create response object for PDF
-    response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename="supplier_details.pdf"'
-
-    # Define PDF Document
-    doc = SimpleDocTemplate(response, pagesize=A4)
-    elements = []
-    styles = getSampleStyleSheet()
-    custom_style = ParagraphStyle('custom_style', parent=styles['Normal'], fontName='Helvetica', fontSize=11, leading=14, spaceAfter=8)
-
-    # Header Image Path
-    header_path = os.path.join(settings.STATIC_ROOT, "assets/images/pdf/report_header.png")
-
-    # Get Current Date
-    report_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    # Header function
-    def on_page(canvas, doc):
-        width, height = A4
-        if os.path.exists(header_path):
-            header_img = Image(header_path, width=width, height=1.5 * inch)
-            header_img.drawOn(canvas, 0, height - 1.5 * inch)
-
-        canvas.setFont("Helvetica", 9)
-        canvas.drawRightString(width - 0.8 * inch, height - 1.7 * inch, f"Generated On: {report_date}")
-
-    # Report Title
-    elements.append(Spacer(1, 80))
-    elements.append(Paragraph('<para align="center"><b><font size=16>SUPPLIER DETAILS REPORT</font></b></para>', styles["Normal"]))
-    elements.append(Spacer(1, 20))
-
-    # Report Description
-    elements.append(Paragraph('<font size=11>This report contains details of suppliers, including their names, emails, and companies.</font>', custom_style))
-    elements.append(Spacer(1, 10))
-
-    # Table Headers
-    data = [["Supplier Name", "Email", "Company", "Phone Number"]]
-    
-    # Fetch Suppliers and Append to Table Data
-    if suppliers.exists():
-        for supplier in suppliers:
-            data.append([supplier.supplier_name, supplier.email, supplier.company.company_name, supplier.phone_number])
-    else:
-        data.append(["No Data", "-", "-", "-"])  
-
-    # Table Column Widths
-    col_widths = [2 * inch, 2.5 * inch, 2 * inch, 1.5 * inch]  # Approx 72 points per inch
-    table = Table(data, colWidths=col_widths)
-
-    # Table Styling
-    style = TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-    ])
-    table.setStyle(style)
-
-    elements.append(table)
-    elements.append(Spacer(1, 15))
-
-    # Footer Note
-    elements.append(Paragraph("<strong>Note:</strong> This is a system-generated report. No manual modifications have been made.", custom_style))
-    
-    # Build PDF
-    doc.build(elements, onFirstPage=on_page, onLaterPages=on_page)
-
-    return response
-
-
-def generate_exhibition_csv(request):
-    exhibition_name = request.GET.get('exhibition_name', '').strip()
-    location = request.GET.get('location', '').strip()
-
-    exhibitions = Exhibition.objects.all()
-
-    if exhibition_name:
-        exhibitions = exhibitions.filter(exhibition_name__icontains=exhibition_name)
-    if location:
-        exhibitions = exhibitions.filter(location__icontains=location)
-
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="exhibition_details.csv"'
-
-    writer = csv.writer(response)
-    writer.writerow([
-        "Exhibition ID", "Exhibition Name", "Location", "Address", "City",
-        "State", "Pincode", "Start Date", "End Date", "Details"
-    ])
-
-    for exhibition in exhibitions:
-        writer.writerow([
-            exhibition.exhibition_id, exhibition.exhibition_name, exhibition.location,
-            exhibition.address, exhibition.city, exhibition.state, exhibition.pincode,
-            exhibition.start_date.strftime('%Y-%m-%d'), exhibition.end_date.strftime('%Y-%m-%d'),
-            exhibition.details
-        ])
-
-    return response
-
-
-def generate_exhibition_excel(request):
-    exhibition_name = request.GET.get('exhibition_name', '').strip()
-    location = request.GET.get('location', '').strip()
-
-    exhibitions = Exhibition.objects.all()
-
-    if exhibition_name:
-        exhibitions = exhibitions.filter(exhibition_name__icontains=exhibition_name)
-    if location:
-        exhibitions = exhibitions.filter(location__icontains=location)
-
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = "Exhibition Details"
-
-    headers = [
-        "Exhibition ID", "Exhibition Name", "Location", "Address", "City",
-        "State", "Pincode", "Start Date", "End Date", "Details"
-    ]
-
-    for col_num, header in enumerate(headers, 1):
-        ws.cell(row=1, column=col_num, value=header).font = openpyxl.styles.Font(bold=True)
-
-    for row_num, exhibition in enumerate(exhibitions, 2):
-        ws.cell(row=row_num, column=1, value=exhibition.exhibition_id)
-        ws.cell(row=row_num, column=2, value=exhibition.exhibition_name)
-        ws.cell(row=row_num, column=3, value=exhibition.location)
-        ws.cell(row=row_num, column=4, value=exhibition.address)
-        ws.cell(row=row_num, column=5, value=exhibition.city)
-        ws.cell(row=row_num, column=6, value=exhibition.state)
-        ws.cell(row=row_num, column=7, value=exhibition.pincode)
-        ws.cell(row=row_num, column=8, value=exhibition.start_date.strftime('%Y-%m-%d'))
-        ws.cell(row=row_num, column=9, value=exhibition.end_date.strftime('%Y-%m-%d'))
-        ws.cell(row=row_num, column=10, value=exhibition.details)
-
-    response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-    response["Content-Disposition"] = 'attachment; filename="exhibition_details.xlsx"'
-
-    wb.save(response)
-    return response
-
-
-
-def generate_exhibition_pdf(request): 
-    exhibition_name = request.GET.get('exhibition_name', '').strip()
-    location = request.GET.get('location', '').strip()
-
-    # Fetch exhibitions from the database
-    exhibitions = Exhibition.objects.all()
-
-    if exhibition_name:
-        exhibitions = exhibitions.filter(exhibition_name__icontains=exhibition_name)
-    
-    if location:
-        exhibitions = exhibitions.filter(location__icontains=location)
-
-    # Create response object for PDF
-    response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename="exhibition_details.pdf"'
-
-    # Define PDF Document
-    doc = SimpleDocTemplate(response, pagesize=A4)
-    elements = []
-    styles = getSampleStyleSheet()
-    custom_style = ParagraphStyle('custom_style', parent=styles['Normal'], fontName='Helvetica', fontSize=11, leading=14, spaceAfter=8)
-
-    # Header Image Path
-    header_path = os.path.join(settings.STATIC_ROOT, "assets/images/pdf/report_header.png")
-
-    # Get Current Date
-    report_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    # Header function
-    def on_page(canvas, doc):
-        width, height = A4
-        if os.path.exists(header_path):
-            header_img = Image(header_path, width=width, height=1.5 * inch)
-            header_img.drawOn(canvas, 0, height - 1.5 * inch)
-
-        canvas.setFont("Helvetica", 9)
-        canvas.drawRightString(width - 0.8 * inch, height - 1.7 * inch, f"Generated On: {report_date}")
-
-    # Report Title
-    elements.append(Spacer(1, 80))
-    elements.append(Paragraph('<para align="center"><b><font size=16>EXHIBITION DETAILS</font></b></para>', styles["Normal"]))
-    elements.append(Spacer(1, 20))
-
-    # Report Description
-    elements.append(Paragraph('<font size=11>This report contains details of exhibitions, including their names, cities, states, locations, start, and end dates.</font>', custom_style))
-    elements.append(Spacer(1, 10))
-
-    # Table Headers (Added Start Date and End Date)
-    data = [["Exhibition Name", "City", "State", "Location", "Start Date", "End Date"]]
-    
-    # Fetch Exhibitions and Append to Table Data
-    if exhibitions.exists():
-        for exhibition in exhibitions:
-            data.append([
-                exhibition.exhibition_name, 
-                exhibition.city, 
-                exhibition.state, 
-                exhibition.location,
-                exhibition.start_date.strftime("%Y-%m-%d"),  # Convert to string format
-                exhibition.end_date.strftime("%Y-%m-%d")  # Convert to string format
-            ])
-    else:
-        data.append(["No Data", "-", "-", "-", "-", "-"])  
-
-    # Adjusted Table Column Widths
-    col_widths = [1.9 * inch, 1.3 * inch, 1.2 * inch, 1.5 * inch, 1.0 * inch, 1.0 * inch]  
-    table = Table(data, colWidths=col_widths)
-
-    # Table Styling
-    style = TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-    ])
-    table.setStyle(style)
-
-    elements.append(table)
-    elements.append(Spacer(1, 15))
-
-    # Footer Note
-    elements.append(Paragraph("<strong>Note:</strong> This is a system-generated report. No manual modifications have been made.", custom_style))
-    
-    # Build PDF
-    doc.build(elements, onFirstPage=on_page, onLaterPages=on_page)
-
-    return response  
-
-
-def generate_product_csv(request):  
-    # Get filter parameters
-    name = request.GET.get('name', '')
-    pcode = request.GET.get('pcode', '')
-    category = request.GET.get('category', '')
-    subcategory = request.GET.get('subcategory', '')
-
-    # Apply filters
-    products = Product.objects.all()
-    if name:
-        products = products.filter(product_name__icontains=name)  
-    if pcode:
-        products = products.filter(product_code__icontains=pcode) 
-    if category and category.isdigit():
-        products = products.filter(category=category)
-    if subcategory and subcategory.isdigit():
-        products = products.filter(subcategory=subcategory)
-
-    # Create CSV Response
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="product_details.csv"'
-
-    writer = csv.writer(response)
-
-    # Write CSV Header
-    writer.writerow([
-        "Product ID", "Product Code", "Product Name", "Category", "Subcategory", 
-        "Date of Entry", "Size (LxBxH)", "Weight", "Manufacturer", "Description", 
-        "Vendor"
-    ])
-
-    # Write Product Data or Show Blank Row If No Data
-    if products.exists():
-        for product in products:
-            writer.writerow([
-                product.id,  
-                product.product_code,
-                product.product_name,
-                product.category.category_name if product.category else "",
-                product.subcategory.subcategory_name if product.subcategory else "",
-                product.date_of_entry.strftime('%Y-%m-%d') if product.date_of_entry else "",
-                f"{product.product_size_length} x {product.product_size_breadth} x {product.product_size_height}",
-                product.product_weight,
-                product.manufacture_name,
-                product.description,
-                product.vendor
-            ])
-    else:
-        writer.writerow([""] * 11)  # ✅ **Blank row with 11 empty columns**
-
-    return response
-
-
-def generate_product_excel(request):
-    # Get filter parameters
-    name = request.GET.get('name', '')
-    pcode = request.GET.get('pcode', '')
-    category = request.GET.get('category', '')
-    subcategory = request.GET.get('subcategory', '')
-
-    # Apply filters
-    products = Product.objects.all()
-    products = Product.objects.all()
-    if name:
-        products = products.filter(product_name__icontains=name)  
-    if pcode:
-        products = products.filter(product_code__icontains=pcode) 
-    if category and category.isdigit():
-        products = products.filter(category=category)
-    if subcategory and subcategory.isdigit():
-        products = products.filter(subcategory=subcategory)
-
-
-    # Create an Excel workbook and sheet
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = "Product Details"
-
-    # Define Excel headers (Removed Barcode, Purchase Date, Purchase Amount)
-    headers = [
-        "Product ID", "Product Code", "Product Name", "Category", "Subcategory",
-        "Date of Entry", "Size (LxBxH)", "Weight", "Manufacturer", "Description",
-        "Vendor"
-    ]
-
-    # Add headers to the first row with bold formatting
-    for col_num, header in enumerate(headers, 1):
-        ws.cell(row=1, column=col_num, value=header).font = openpyxl.styles.Font(bold=True)
-
-    # Add Product Data
-    for row_num, product in enumerate(products, 2):
-        ws.cell(row=row_num, column=1, value=product.product_id)
-        ws.cell(row=row_num, column=2, value=product.product_code)
-        ws.cell(row=row_num, column=3, value=product.product_name)
-        ws.cell(row=row_num, column=4, value=product.category.category_name if product.category else "N/A")
-        ws.cell(row=row_num, column=5, value=product.subcategory.subcategory_name if product.subcategory else "N/A")
-        ws.cell(row=row_num, column=6, value=product.date_of_entry.strftime('%Y-%m-%d') if product.date_of_entry else "N/A")
-        ws.cell(row=row_num, column=7, value=f"{product.product_size_length} x {product.product_size_breadth} x {product.product_size_height}")
-        ws.cell(row=row_num, column=8, value=product.product_weight)
-        ws.cell(row=row_num, column=9, value=product.manufacture_name)
-        ws.cell(row=row_num, column=10, value=product.description)
-        ws.cell(row=row_num, column=11, value=product.vendor)
-
-    # Create HTTP response for file download
-    response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-    response["Content-Disposition"] = 'attachment; filename="product_details.xlsx"'
-    
-    # Save workbook to response
-    wb.save(response)
-    
-    return response 
-
-
-def generate_product_pdf(request):
-    # Get filter parameters from request
-   # Get filter parameters
-    name = request.GET.get('name', '')
-    pcode = request.GET.get('pcode', '')
-    category = request.GET.get('category', '')
-    subcategory = request.GET.get('subcategory', '')
-
-    # Apply filters
-    products = Product.objects.all()
-    if name:
-        products = products.filter(product_name__icontains=name)  
-    if pcode:
-        products = products.filter(product_code__icontains=pcode) 
-    if category and category.isdigit():
-        products = products.filter(category=category)
-    if subcategory and subcategory.isdigit():
-        products = products.filter(subcategory=subcategory)
-
-
-
-    response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename="product_details.pdf"'
-
-    # Create PDF Document
-    doc = SimpleDocTemplate(
-        response, pagesize=A4,
-        leftMargin=0.7 * inch, rightMargin=0.7 * inch,
-        topMargin=1.5 * inch, bottomMargin=1.5 * inch
-    )
-
-    elements = []
-    styles = getSampleStyleSheet()
-    custom_normal = ParagraphStyle('custom_normal', parent=styles['Normal'], fontName='Helvetica', fontSize=11, leading=14, spaceAfter=8)
-
-    # Load Header Image
-    header_path = os.path.join(settings.STATIC_ROOT, "assets/images/pdf/report_header.png")
-    report_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    def on_page(canvas, doc):
-        width, height = A4
-        if os.path.exists(header_path):
-            header_img = Image(header_path, width=width, height=1.5 * inch)
-            header_img.drawOn(canvas, 0, height - 1.5 * inch)
-        canvas.setFont("Helvetica", 9)
-        canvas.drawRightString(width - 0.8 * inch, height - 1.7 * inch, f"Generated On: {report_date}")
-
-    # Define Page Template
-    frame = Frame(x1=0.7 * inch, y1=1.5 * inch, width=A4[0] - 1.4 * inch, height=A4[1] - 3 * inch, id='normal')
-    template = PageTemplate(id='custom', frames=frame, onPage=on_page)
-    doc.addPageTemplates([template])
-
-    # Report Title
-    elements.append(Spacer(1, 45))
-    elements.append(Paragraph('<para align="center"><b><font size=16>PRODUCT DETAILS REPORT</font></b></para>', styles["Normal"]))
-    elements.append(Spacer(1, 30))
-
-    # Report Description
-    elements.append(Paragraph('<font size=11>This report contains the details of products, including their codes, names, categories, and images.</font>', custom_normal))
-    elements.append(Spacer(1, 10))
-
-    # Table Title
-    elements.append(Paragraph("<strong>Product Information Summary</strong>", styles["Heading3"]))
-    elements.append(Spacer(1, 10))
-
-    # Table Headers
-    data = [["Product Code", "Product Image", "Product Name", "Category", "Subcategory"]]
-
-    # Fetch Products and Append to Table Data
-    if products.exists():
-        for prod in products:
-            product_image = "No Image"
-            if prod.product_images.exists():
-                img_path = prod.product_images.first().image.path
-                if os.path.exists(img_path):
-                    product_image = Image(img_path, width=50, height=50)
+import traceback  # Import traceback module
+
+import time
+import random
+import uuid
+# def save_assigned_stock(request):
+#     if request.method == "POST":
+#         try:
+#             data = json.loads(request.body)
             
-            data.append([
-                prod.product_code,
-                product_image,
-                prod.product_name,
-                prod.category.category_name if prod.category else "N/A",
-                prod.subcategory.subcategory_name if prod.subcategory else "N/A",
-            ])
-    else:
-        data.append(["No Data", "-", "-", "-", "-"])  
-
-    # Define Table
-    col_widths = [1.3 * inch, 1.3 * inch, 2.4 * inch, 1.3 * inch, 1.3 * inch]
-    table = Table(data, colWidths=col_widths)
-
-    # Table Styling
-    style = TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),  
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'), 
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-    ])
-    table.setStyle(style)
-
-    # Add Table to PDF
-    elements.append(table)
-    elements.append(Spacer(1, 15))
-
-    # Footer Note
-    note = Paragraph("<strong>Note:</strong> This is a system-generated report. No manual modifications have been made.", custom_normal)
-    elements.append(note)
-
-    # Build PDF
-    doc.build(elements, onFirstPage=on_page, onLaterPages=lambda canvas, doc: None)
-
-    return response
-
-
-def print_barcode_page(request):
-    return render(request, "printbarcode/print_barcode.html")
-
-
-
-def generate_barcode_pdf(request):
-    # Extract filter parameters
-    category_id = request.GET.get("category", None)
-    subcategory_id = request.GET.get("subcategory", None)
-    product_id = request.GET.get("product", None)
-    location_id = request.GET.get("location", None)
-    from_date = request.GET.get("from_date", None)
-    to_date = request.GET.get("to_date", None)
-
-    # Fetch stock entries and apply filters if provided
-    stock_entries = StockEntry.objects.prefetch_related("barcodes").all()
-
-    if category_id:
-        stock_entries = stock_entries.filter(category_id=category_id)
-    if subcategory_id:
-        stock_entries = stock_entries.filter(subcategory_id=subcategory_id)
-    if product_id:
-        stock_entries = stock_entries.filter(product_id=product_id)
-    if location_id:
-        stock_entries = stock_entries.filter(location_id=location_id)
-    if from_date:
-        from_date = parse_date(from_date)
-        stock_entries = stock_entries.filter(created_on__gte=from_date)
-    if to_date:
-        to_date = parse_date(to_date)
-        stock_entries = stock_entries.filter(created_on__lte=to_date)
-
-    # Get page size and grid parameters
-    page_size_param = request.GET.get("page_size", "A4")  
-    grid_param = request.GET.get("grid", "3x8")  
-
-    # Define available page sizes and grids
-    page_size_map = {"A4": A4, "A3": A3, "A5": A5}
-    grid_map = {
-        "3x8": (3, 8), "4x10": (4, 10), "5x12": (5, 12), 
-        "6x15": (6, 15), "2x5": (2, 5), "3x7": (3, 7)
-    }
-
-    # Get selected page size and grid dimensions
-    page_size = page_size_map.get(page_size_param, A4)
-    cols, rows = grid_map.get(grid_param, (3, 8))
-
-    # PDF settings
-    response = HttpResponse(content_type="application/pdf")
-    response["Content-Disposition"] = f'attachment; filename="barcodes_{page_size_param}_{grid_param}.pdf"'
-
-    page_width, page_height = page_size
-    margin = 10  
-    barcode_width = (page_width - 2 * margin) / cols
-    barcode_height = (page_height - 2 * margin) / rows
-
-    pdf = canvas.Canvas(response, pagesize=page_size)
-    
-    x_offset = margin
-    y_offset = page_height - margin - barcode_height  
-
-    count = 0  
-    for stock in stock_entries:
-        for barcode in stock.barcodes.all():
-            if barcode.barcode_image:
-                img = ImageReader(barcode.barcode_image.path)
+#             assign_id = uuid.uuid4()
+#             print("The product Assign Code Is : ",data)
+#             for item in data:
+#                 print("The item is:", item)
+#                 stock_product = StockEntry.objects.get(stock_id=item['stockId'])
+#                 product = stock_product.product
+#                 assign_product_mode = item['assign_product_mode']
                 
-                # Draw box border
-                pdf.rect(x_offset, y_offset, barcode_width, barcode_height, stroke=1, fill=0)
-                
-                # Draw barcode image inside the box with padding
-                padding = 5
-                pdf.drawImage(
-                    img, 
-                    x_offset + padding, 
-                    y_offset + padding, 
-                    width=barcode_width - 2 * padding, 
-                    height=barcode_height - 2 * padding, 
-                    preserveAspectRatio=True
-                )
+#                 assign_employee = None
+#                 assign_company = None
+#                 assign_exhibition = None
+#                 assign_customer = None
 
-                count += 1
-                if count % cols == 0:  
-                    x_offset = margin
-                    y_offset -= barcode_height
+#                 assign_stock_id = StockEntry.objects.get(stock_id=item['stockId'])
+#                 if item['mode'] == "Users":
+#                     assign_employee = Employee.objects.get(employee_id=item['relatedFields']['employee'])
+#                 elif item['mode'] == "Company":
+#                     assign_company = Company.objects.get(company_id=item['relatedFields']['company'])
+#                 elif item['mode'] == "Exhibition":
+#                     assign_exhibition = Exhibition.objects.get(exhibition_id=item['relatedFields']['exhibition'])
+#                     assign_employee = Employee.objects.get(employee_id=item['relatedFields']['employee'])
+#                 elif item['mode'] == "Customers":
+#                     assign_customer = Customer.objects.get(customer_id=item['relatedFields']['customer'])
+#                 else:
+#                     raise ValueError("Invalid mode provided")
+
+#                 # Create and save the AssignProduct instance
+#                 assign_product = AssignProduct(
+#                     assign_id=assign_id,
+#                     stock_id = assign_stock_id,
+#                     assign_mode = item['mode'],
+#                     assign_product=product,
+#                     assign_employee=assign_employee,
+#                     assign_company=assign_company,
+#                     assign_exhibition=assign_exhibition,
+#                     assign_customer=assign_customer,
+#                     assign_quantity=1,  # Assuming 1 quantity per item
+#                     assign_customer_details=item['relatedFields'].get('customerDetails', ''),  # Optional field
+#                     assign_at=timezone.now()
+#                 )
+#                 assign_product.save()
+
+#                 return_assign_product = ReturnProductHistory(
+#                     assign_return_id=assign_id,
+#                     return_id = "",
+#                     return_stock_id = assign_stock_id,
+#                     return_mode = item['mode'],                                    
+#                     return_product=product,
+#                     return_employee=assign_employee,
+#                     return_company=assign_company,
+#                     return_exhibition=assign_exhibition,
+#                     return_customer=assign_customer,
+#                     return_quantity=0,  # Assuming 1 quantity per item
+#                     return_customer_details=item['relatedFields'].get('customerDetails', ''),  # Optional field
+#                     return_product_status = assign_product_mode,
+#                     reuturn_assign_at=timezone.now(),
+#                     return_at = "-",
+#                 )
+#                 return_assign_product.save()
+
+#                 stock_product.product_status = assign_product_mode
+#                 stock_product.save()
+#             return JsonResponse({"success": True})
+#         except Exception as e:
+#             traceback_str = traceback.format_exc()
+#             print("Traceback:", traceback_str)
+#             return JsonResponse({"success": False, "error": str(e)})
+#     return JsonResponse({"success": False, "error": "Invalid request method"})
+
+from django.template.loader import render_to_string
+from django.utils.html import strip_tags
+from django.conf import settings  # Import settings
+
+def save_assigned_stock(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            assign_id = uuid.uuid4()
+            print("The product Assign Code Is : ", data)
+
+            # Dictionary to group products by user
+            user_products = {}
+
+            for item in data:
+                print("The item is:", item)
+                stock_product = StockEntry.objects.select_related(
+                    'product',  # Fetch related product
+                    'product__category',  # Fetch related category of the product
+                    'product__subcategory'  # Fetch related subcategory of the product
+                ).get(stock_id=item['stockId'])
+
+                product = stock_product.product
+                assign_product_mode = item['assign_product_mode']
+
+                assign_employee = None
+                assign_company = None
+                assign_exhibition = None
+                assign_customer = None
+
+                assign_stock_id = stock_product
+                if item['mode'] == "Users":
+                    assign_employee = Employee.objects.get(employee_id=item['relatedFields']['employee'])
+                    user_key = f"employee_{assign_employee.employee_id}"
+                elif item['mode'] == "Company":
+                    assign_company = Company.objects.get(company_id=item['relatedFields']['company'])
+                    user_key = f"company_{assign_company.company_id}"
+                elif item['mode'] == "Exhibition":
+                    assign_exhibition = Exhibition.objects.get(exhibition_id=item['relatedFields']['exhibition'])
+                    assign_employee = Employee.objects.get(employee_id=item['relatedFields']['employee'])
+                    user_key = f"exhibition_{assign_exhibition.exhibition_id}"
+                elif item['mode'] == "Customers":
+                    assign_customer = Customer.objects.get(customer_id=item['relatedFields']['customer'])
+                    user_key = f"customer_{assign_customer.customer_id}"
                 else:
-                    x_offset += barcode_width
+                    raise ValueError("Invalid mode provided")
 
-                if count % (cols * rows) == 0:  
-                    pdf.showPage()
-                    x_offset = margin
-                    y_offset = page_height - margin - barcode_height
+                # Create and save the AssignProduct instance
+                assign_product = AssignProduct(
+                    assign_id=assign_id,
+                    stock_id=assign_stock_id,
+                    assign_mode=item['mode'],
+                    assign_product=product,
+                    assign_employee=assign_employee,
+                    assign_company=assign_company,
+                    assign_exhibition=assign_exhibition,
+                    assign_customer=assign_customer,
+                    assign_quantity=1,  # Assuming 1 quantity per item
+                    assign_customer_details=item['relatedFields'].get('customerDetails', ''),  # Optional field
+                    assign_at=timezone.now()
+                )
+                assign_product.save()
 
-    pdf.save()
-    return response
+                return_assign_product = ReturnProductHistory(
+                    assign_return_id=assign_id,
+                    return_id="",
+                    return_stock_id=assign_stock_id,
+                    return_mode=item['mode'],
+                    return_product=product,
+                    return_employee=assign_employee,
+                    return_company=assign_company,
+                    return_exhibition=assign_exhibition,
+                    return_customer=assign_customer,
+                    return_quantity=0,  # Assuming 1 quantity per item
+                    return_customer_details=item['relatedFields'].get('customerDetails', ''),  # Optional field
+                    return_product_status=assign_product_mode,
+                    reuturn_assign_at=timezone.now(),
+                    return_at="-",
+                )
+                return_assign_product.save()
 
+                stock_product.product_status = assign_product_mode
+                stock_product.save()
 
-import datetime
+                # Group products by user
+                if user_key not in user_products:
+                    user_products[user_key] = {
+                        'user': assign_employee or assign_company or assign_exhibition or assign_customer,
+                        'products': []
+                    }
+                user_products[user_key]['products'].append({
+                    'product': product,
+                    'stock_id': item['stockId'],
+                    'barcode_text': item['barcodeText'],
+                    'assign_product_mode': item['assign_product_mode']
+                })
 
+            # Send email to each user with their assigned products
+            for user_key, user_data in user_products.items():
+                user = user_data['user']
+                products = user_data['products']
 
-def generate_barcode_details_pdf(request):
-    # Get filter parameters
+                # Prepare email content
+                subject = "Your Assigned Products"
+                html_message = render_to_string('assign_product_email.html', {
+                    'user': user,
+                    'products': products,  # Pass grouped products with item details
+                    'assign_id': assign_id,
+                })
+                plain_message = strip_tags(html_message)
+                from_email = settings.EMAIL_HOST_USER
+                to_email = user.email  # Ensure the user model has an email field
+
+                # Send email
+                send_mail(subject, plain_message, from_email, [to_email], html_message=html_message)
+
+            return JsonResponse({"success": True})
+        except Exception as e:
+            traceback_str = traceback.format_exc()
+            print("Traceback:", traceback_str)
+            return JsonResponse({"success": False, "error": str(e)})
+    return JsonResponse({"success": False, "error": "Invalid request method"})
+
+@csrf_exempt
+def get_all_assigned_data(request):
     category_id = request.GET.get("category")
     subcategory_id = request.GET.get("subcategory")
     product_id = request.GET.get("product")
     location_id = request.GET.get("location")
-    from_date = request.GET.get("from_date")
-    to_date = request.GET.get("to_date")
-
-    # Filter stock data
-    stocks = StockEntry.objects.all()
-    if category_id:
-        stocks = stocks.filter(category_id=category_id)
-    if subcategory_id:
-        stocks = stocks.filter(subcategory_id=subcategory_id)
-    if product_id:
-        stocks = stocks.filter(product_id=product_id)
-    if location_id:
-        stocks = stocks.filter(location_id=location_id)
-    if from_date and to_date:
-        stocks = stocks.filter(created_on__range=[from_date, to_date])
-
-    # Create PDF response
-    response = HttpResponse(content_type="application/pdf")
-    response["Content-Disposition"] = "attachment; filename=barcode_details.pdf"
-
-    # Define page size
-    page_size = A4  # Change to A3, A5 dynamically if needed
-    doc = SimpleDocTemplate(response, pagesize=page_size)
-    elements = []
-
-    # Load styles
-    styles = getSampleStyleSheet()
-    styleN = styles["Normal"]
-    styleN.wordWrap = "CJK"
-
-    # Load header image (Only for first page)
-    header_path = os.path.join(settings.STATIC_ROOT, "assets/images/pdf/report_header.png")
-    report_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    def on_first_page(canvas, doc):
-        width, height = page_size
-        if os.path.exists(header_path):
-            header_img = Image(header_path, width=width, height=1.5 * inch)
-            header_img.drawOn(canvas, 0, height - 1.5 * inch)
-        canvas.setFont("Helvetica", 9)
-        canvas.drawRightString(width - 0.8 * inch, height - 1.7 * inch, f"Generated On: {report_date}")
-
-    def on_later_pages(canvas, doc):
-        # No header image, just continue content
-        pass
-    
-    
-    # **Add space above the title**
-    elements.append(Spacer(1, 70))  # Adjust space as needed
-
-    # **Heading (Centered)**
-    heading_style = ParagraphStyle(
-        "HeadingStyle",
-        fontSize=16,  # Reduce the font size
-        fontName="Helvetica-Bold",
-        alignment=TA_CENTER,
-        spaceAfter=20,
+    mode = request.GET.get("mode")
+    assigned_product_count = AssignProduct.objects.filter(assign_mode=mode).count()
+    print("assigned_product_count",assigned_product_count)
+    stock = AssignProduct.objects.filter(
+        assign_product__category__category_id=category_id,
+        assign_product__subcategory__subcategory_id=subcategory_id, 
+        assign_product__product_id=product_id,
+        stock_id__location = location_id,
+        assign_mode = mode,
     )
-
-    elements.append(Paragraph("Product Label & Barcode Details", heading_style))
-
-
-    # **Table Headers**
-    data = [["Barcode Image", "Barcode Label", "Product", "Category", "Subcategory", "Rack", "Box", "Location","SN & MFG No"]]
-
-    # **Barcode Data**
-    for stock in stocks:
-        barcode = stock.barcodes.first() if hasattr(stock, "barcodes") and stock.barcodes.exists() else None
-        barcode_img = Image(barcode.barcode_image.path, width=80, height=40) if barcode and barcode.barcode_image else "N/A"
-
-        row = [
-            barcode_img, 
-            Paragraph(barcode.barcode_text if barcode else "N/A", styleN),
-            Paragraph(getattr(stock.product, "product_name", "N/A"), styleN),
-            Paragraph(getattr(stock.category, "category_name", "N/A"), styleN),
-            Paragraph(getattr(stock.subcategory, "subcategory_name", "N/A"), styleN),
-            Paragraph(getattr(stock.rack, "rank_name", "N/A"), styleN),
-            Paragraph(getattr(stock.box, "box_name", "N/A"), styleN),
-            Paragraph(getattr(stock.location, "name", "N/A"), styleN),
-            Paragraph(stock.serial_number if stock.serial_number else "N/A", styleN),
-        ]
-        data.append(row)
-
-    # **3x8 Grid Layout for A4 (Can be modified dynamically)**
-    table = Table(data, colWidths=[90, 80, 80, 60, 60, 45, 45, 60, 60], repeatRows=1)
-    # Apply styling
-    table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), colors.grey),  # Header background color
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),  # Header text color
-        ("ALIGN", (0, 0), (-1, -1), "CENTER"),  # Align all text to center
-        ("GRID", (0, 0), (-1, -1), 1, colors.black),  # Table border
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),  # Vertical alignment middle
-        ("FONTSIZE", (0, 0), (-1, 0), 8),  # Increase font size for headers
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),  # Bold headers
-        ("ROWHEIGHT", (0, 0), (-1, 0), 50),  # Increase header row height
-        ("FONTSIZE", (0, 1), (-1, -1), 6),  # Normal font size for data rows
-        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.whitesmoke, colors.lightgrey]),  # Alternating row colors
-    ]))
-
-    elements.append(table)
-    
-     # **Add space above the table**
-    elements.append(Spacer(1, 20))  # Adjust space as needed
-    
-  # **Footer Note**
-    custom_style = styles["Normal"]
-    custom_style.fontSize = 10  # Increase font size for better readability
-    custom_style.alignment = 0  # Align to the left (use 1 for center, 2 for right)
-
-    note = Paragraph("<strong>Note:</strong> This is a system-generated report. No manual modifications have been made.", custom_style)
-    elements.append(note)
-    
-    doc.build(elements, onFirstPage=on_first_page, onLaterPages=on_later_pages)
-
-    return response
-
-
-def create_user_page(request):
-    return render(request, "users/add_user.html")
-
-def user_list_page(request):
-    return render(request, "users/list_user.html")
-
-
-def add_user(request):
-    if request.method == 'POST':
-        try:
-            print("POST Data:", request.POST)  # Debugging step
-
-            # Extract data from request.POST instead of request.body
-            username = request.POST.get('username')
-            password = request.POST.get('password')
-            email = request.POST.get('email')
-            name = request.POST.get('name')
-            mobile_no = request.POST.get('mobile_no')
-            company = request.POST.get('company')
-            location = request.POST.get('location')
-            role_id = request.POST.get('role')
-
-            errors = {}
-
-            # Email validation
-            email_validator = EmailValidator()
-            try:
-                email_validator(email)
-            except ValidationError:
-                errors['email'] = 'Enter a valid email address.'
-
-            # Phone number validation (10-digit format)
-            phone_validator = RegexValidator(r'^\d{10}$', 'Enter a valid 10-digit phone number.')
-            try:
-                phone_validator(mobile_no)
-            except ValidationError:
-                errors['mobile_no'] = 'Mobile number must be a 10-digit number.'
-
-            # Length validation for fields
-            length_validator = [MinLengthValidator(5), MaxLengthValidator(30)]
-            for field, value in [('name', name), ('username', username), ('password', password), ('company', company), ('location', location)]:
-                for validator in length_validator:
-                    try:
-                        validator(value)
-                    except ValidationError:
-                        errors[field] = f'{field.capitalize()} must be between 5 and 30 characters long.'
-
-            # Check if role is provided
-            if not role_id:
-                errors['role'] = 'Role is required.'
-
-            if errors:
-                return JsonResponse({'success': False, 'errors': errors})
-
-            # Create user
-            uobj = User(username=username, email=email, password=make_password(password))
-            uobj.save()
-
-            # Create or update profile
-            profile_obj = Profile(user=uobj, name=name, mobile_no=mobile_no, company=company, location=location)
-
-            if role_id:
-                try:
-                    user_role = Role.objects.get(id=role_id)
-                    profile_obj.role = user_role
-                except Role.DoesNotExist:
-                    return JsonResponse({'success': False, 'errors': {'role': 'Invalid role selected.'}})
-
-            profile_obj.save()
-
-            # Create UserRole instance
-            UserRole.objects.create(user=profile_obj.user, role=profile_obj.role)
-
-            # Log the action
-            UserAuditLog.objects.create(
-                user=request.user,
-                action='Create User',
-                details=f"User {uobj.username} created.",
-                username=uobj.username,
-                last_login=uobj.last_login
-            )
-
-            # Send email notification
-            connection = CustomEmailBackend(use_secondary=False)
-            connection.open()
-
-            subject = 'Welcome to TTSPL IMS!'
-            html_message = f"""
-            <!DOCTYPE html>
-            <html>
-            <body>
-                <p>Dear {name},<br><br>
-                Your account has been successfully created on TTSPL IMS! 🎉</p>
-                <p><strong>Account Details:</strong><br>
-                - Username: {username}<br>
-                - Email Address: {email}</p>
-                <p>Thank you for joining us!</p>
-            </body>
-            </html>
-            """
-
-            try:
-                send_mail(subject, '', 'noreply@example.com', [email], connection=connection, html_message=html_message)
-                connection.close()
-            except Exception as e:
-                return JsonResponse({'success': False, 'errors': {'email': f'Error sending email: {str(e)}'}})
-
-            return JsonResponse({'success': True, 'message': 'User created successfully!'})
-
-        except IntegrityError as e:
-            if 'unique constraint' in str(e):
-                return JsonResponse({'success': False, 'errors': {'email': 'Email already exists.'}})
-
-        except Exception as e:
-            return JsonResponse({'success': False, 'errors': {'error': str(e)}})
-
-    return JsonResponse({'success': False, 'error': 'Invalid request method'})
-
-
-
-
-
-def create_rol_permission_page(request):
-    return render(request, "rol_permission/add_rol_permission.html")
-
-def rol_permission_list_page(request):
-    return render(request, "rol_permission/list_rol_permission.html")
-
-def add_role(request):
-    if request.method == 'POST':
-        try:
-            form = RoleForm(request.POST, created_by=request.user)
-            if form.is_valid():
-                role = form.save(commit=True)
-                created_permissions = form.created_permissions
-
-                # Log the creation of the role and associated permissions
-                RolePermissionAuditLog.objects.create(
-                    user=request.user,
-                    action='Role created',
-                    details=f'Role "{role}" created with permissions: {", ".join(created_permissions)}',
-                    role=str(role),
-                    permission=', '.join(created_permissions),
-                )
-
-                return JsonResponse({'success': True, 'message': 'Role added successfully!'})
-
-            return JsonResponse({'success': False, 'errors': form.errors})
-
-        except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)})
-
-    return JsonResponse({'success': False, 'error': 'Invalid request method'})
-
-
-def get_roles(request):
-    # Query all Role objects and order by id in ascending order
-    roles = Role.objects.order_by('id').all()
-
-    # Process roles as needed (convert to JSON, render in template, etc.)
-    role_list = [{'id': role.id, 'role_name': role.role_name}
-                 for role in roles]
-
-    # Example: Return as JSON response
-    return JsonResponse({'roles': role_list})
-
-
-
-
-def others_settings_page(request):
-    return render(request, "settings/general_settings.html")
-
-
-@csrf_exempt  # Disable CSRF for simplicity, but use carefully!
-def save_secondary_email_config(request):
-    if request.method == 'POST':
-        # Get values from the request
-        otp_host = request.POST.get('otp_host')
-        otp_port = request.POST.get('otp_port')
-        otp_use_tls = request.POST.get(
-            'otp_use_tls') == 'true'  # Convert to boolean
-        otp_user = request.POST.get('otp_user')
-        otp_password = request.POST.get('otp_password')
-        otp_from_email = request.POST.get('otp_from_email')
-
-        # Save or update the existing configuration
-        secondary_email_config, created = SecondaryEmailConfig.objects.update_or_create(
-            id=1,  # Assuming you only have one configuration
-            defaults={
-                'host': otp_host,
-                'port': otp_port,
-                'use_tls': otp_use_tls,
-                'host_user': otp_user,
-                'host_password': otp_password,
-                'default_from_email': otp_from_email,
+    stock_data = []
+    for entry in stock:
+            entry_dict = {
+                "assign_id": entry.assign_id,
+                "product_name": entry.assign_product.product_name,
+                "category_name": entry.assign_product.category.category_name,
+                "subcategory_name": entry.assign_product.subcategory.subcategory_name,
+                "assign_mode": entry.assign_mode,
+                "product_status": entry.stock_id.product_status,
             }
-        )
+            stock_data.append(entry_dict)
+    return JsonResponse(stock_data, safe=False)
 
-        return JsonResponse({'message': 'Secondary email configuration saved successfully.'}, status=200)
-
-    elif request.method == 'GET':
-        # Retrieve the existing configuration, if any
-        try:
-            config = SecondaryEmailConfig.objects.get(id=1)
-            data = {
-                'otp_host': config.host,
-                'otp_port': config.port,
-                'otp_use_tls': config.use_tls,
-                'otp_user': config.host_user,
-                'otp_password': config.host_password,
-                'otp_from_email': config.default_from_email,
-            }
-            return JsonResponse(data, status=200)
-        except SecondaryEmailConfig.DoesNotExist:
-            return JsonResponse({'error': 'Configuration not found.'}, status=404)
-
-    return JsonResponse({'error': 'Invalid request method.'}, status=400)
-
-
-
-
-def fetch_role_permission_datatable_data(request): 
-    role_id = request.GET.get('role_id', '')
-    role_name = request.GET.get('role_name', '')  
-    status = request.GET.get('status', '')
-
-    roles = Role.objects.all()
-
-    if role_id:
-        roles = roles.filter(id=role_id) 
-    if role_name and role_name != "All Roles":
-        roles = roles.filter(role_name__icontains=role_name) 
-
-    if status:
-        roles = roles.filter(is_active=(status == 'Active'))
-
-    role_table = [
-        {
-            'id': role.id,
-            'role_name': role.role_name,
-            'role_description': role.role_description,
-            'is_active': role.is_active,
-            'permissions': list(role.defaultrolepermission_set.values_list('permission__permission_name', flat=True))
-        }
-        for role in roles
-    ]
-
-    return JsonResponse({'role_table': role_table}, status=200)
-
-
-
-
-def get_role_details(request, role_id):
-    role = get_object_or_404(Role, id=role_id)
-    permissions = Permission.objects.all().values('id', 'permission_name')
-    assigned_permissions = role.defaultrolepermission_set.values_list('permission_id', flat=True)
-
-    # Get Default Permissions
-    default_permissions = DefaultRolePermission.objects.filter(role=role).values_list('permission_id', flat=True)
-
-    data = {
-        'id': role.id,
-        'role_name': role.role_name,
-        'role_description': role.role_description,
-        'is_active': role.is_active,
-        'permissions': list(permissions),
-        'assigned_permissions': list(assigned_permissions),
-        'default_permissions': list(default_permissions),
-    }
-    return JsonResponse(data)
-
-
-def get_role_update_details(request, role_id):
-    role = get_object_or_404(Role, id=role_id)
-    permissions = Permission.objects.all().values('id', 'permission_name')
-    assigned_permissions = role.defaultrolepermission_set.values_list(
-        'permission_id', flat=True)
-
-    data = {
-        'id': role.id,
-        'role_name': role.role_name,
-        'role_description': role.role_description,
-        'is_active': role.is_active,
-        'permissions': list(permissions),
-        'assigned_permissions': list(assigned_permissions),
-    }
-    return JsonResponse(data)
-
-
-def update_role(request, role_id):
-    # Retrieve role object based on role_id
-    try:
-        role = Role.objects.get(id=role_id)
-    except Role.DoesNotExist:
-        return JsonResponse({'error': 'Role not found.'}, status=404)
-
-    # Retrieve current permissions for logging
-    current_permissions = role.defaultrolepermission_set.all(
-    ).values_list('permission__permission_name', flat=True)
-
-    # Process form data
-    role_name = request.POST.get('role_name')
-    role_description = request.POST.get('role_description')
-    is_active = request.POST.get('is_active') == '1'  # Convert to boolean
-    # Assuming permissions are passed as an array
-    permissions = request.POST.getlist('permissions[]')
-
-    # Update role fields
-    role.role_name = role_name
-    role.role_description = role_description
-    role.is_active = is_active
-    role.save()
-
-    # Log the previous permissions
-    RolePermissionAuditLog.objects.create(
-        user=request.user,
-        action='Role permissions before update',
-        details=f'Previous permissions for role "{role}": {", ".join(current_permissions)}',
-        role=str(role),
-        permission=", ".join(current_permissions)  # Store previous permissions
-    )
-
-    # Update role permissions
-    updated_permissions = []
-
-    # Remove existing permissions not in the updated list
-    for existing_perm in role.defaultrolepermission_set.all():
-        if str(existing_perm.permission.id) not in permissions:
-            existing_perm.delete()
-
-    # Add new permissions or reactivate existing ones
-    for permission_id in permissions:
-        permission_id = int(permission_id)
-        permission, created = Permission.objects.get_or_create(
-            id=permission_id)
-        obj, created = DefaultRolePermission.objects.get_or_create(
-            role=role, permission=permission)
-        updated_permissions.append(permission.permission_name)
-
-    # Log the update action
-    RolePermissionAuditLog.objects.create(
-        user=request.user,
-        action='Role updated',
-        details=f'Role "{role}" updated with permissions: {", ".join(updated_permissions)}',
-        role=str(role),
-        permission=", ".join(updated_permissions)  # Store updated permissions
-    )
-
-    # Return success response
-    return JsonResponse({'message': 'Role updated successfully.'})
-
-
-@login_required
-def delete_role(request):
-    if request.method == 'POST':
-        role_id = request.POST.get('role_id')
-
-        try:
-            # Retrieve the Role object by ID
-            role = Role.objects.get(id=role_id)
-
-            # Get all profiles assigned to this role
-            assigned_profiles = role.profiles.all()  # Use 'profiles' related name here
-
-            # Check if any profiles are assigned to this role
-            if assigned_profiles.exists():
-                # Create a list of usernames assigned to this role
-                assigned_usernames = [
-                    profile.user.username for profile in assigned_profiles]
-
-                # Return a response indicating the role is assigned to users and cannot be deleted
-                return JsonResponse({
-                    'success': False,
-                    'message': 'Role is assigned to users. Cannot delete.',
-                    'assigned_users': assigned_usernames
-                })
-
-            # Save the role details before deleting
-            role_name = role.role_name  # Assuming role has a role_name field
-
-            # Retrieve role permissions
-            role_permissions = DefaultRolePermission.objects.filter(
-                role_id=role_id).values_list('permission__permission_name', flat=True)
-
-            # Create a list of permissions associated with the role
-            permissions_list = list(role_permissions)
-
-            # Delete the role if no profiles are assigned to it
-            role.delete()
-
-            # Create audit log entry with role and permissions details
-            RolePermissionAuditLog.objects.create(
-                user=request.user,
-                action='Role Deleted',
-                details=f'Role "{role_name}"  and associated permissions were deleted.',
-                role=role_name,
-                permission=", ".join(
-                    permissions_list) if permissions_list else None
-            )
-
-            return JsonResponse({'success': True, 'message': 'Role deleted successfully.'})
-
-        except Role.DoesNotExist:
-            # Return a response indicating the role was not found
-            return JsonResponse({'success': False, 'message': 'Role not found.'})
-
-    # Return a response indicating an invalid request method
-    return JsonResponse({'success': False, 'message': 'Invalid request method.'})
-
-
+def return_stock(request):
+    return render(request, "stock/stock_return.html")
 
 @csrf_exempt
-def user_list(request):
-    if request.method == "GET":
-        user_id = request.GET.get('user_id', '').strip()
-        user_name = request.GET.get('user_name', '').strip()
-        role = request.GET.get('role', '').strip()
-
-        # Fetch users along with related Profile and Role models
-        users = User.objects.select_related('profile', 'profile__role').all()
-
-        if user_id.isdigit():
-            users = users.filter(id=int(user_id))
-
-        if user_name:
-            users = users.filter(profile__name__icontains=user_name)
-
-        if role.isdigit():
-            users = users.filter(profile__role__id=int(role)) 
-
-        user_list = [
-            {
-                'id': user.id,
-                'name': getattr(user.profile, 'name', ''),  # Correct reference
-                'role': getattr(user.profile.role, 'role_name', '') if user.profile and user.profile.role else '',
-                'email': user.email,
-                'mobile': getattr(user.profile, 'mobile_no', ''),
-                'company': getattr(user.profile, 'company', ''),
-                'location': getattr(user.profile, 'location', ''),
-                'status': 'Active' if user.is_active else 'Inactive',
-            }
-            for user in users if hasattr(user, 'profile')  # Ensure profile exists
-        ]
-
-        # 🔹 Print user_list in the console
-        # print("User List:", user_list)
-
-        return JsonResponse({'users': user_list}, status=200)
-
-    return JsonResponse({'error': 'Invalid request method.'}, status=405)
-
-
-def get_user_details(request, user_id):
-    user = get_object_or_404(User, pk=user_id)
-    profile = user.profile
-    user_role = profile.role  # Retrieve the role directly from the profile
-
-    # Fetch all roles available in the database
-    all_roles = Role.objects.all()
-
-    roles_data = []
-    if user_role:
-        roles_data.append({
-            'id': user_role.id,
-            'role_name': user_role.role_name
-        })
-
-    all_roles_data = []
-    for role in all_roles:
-        all_roles_data.append({
-            'id': role.id,
-            'role_name': role.role_name
-        })
-
-    user_data = {
-        'id': user.id,
-        'name': profile.name,
-        'email': user.email,
-        'mobile_no': profile.mobile_no,
-        'company': profile.company,
-        'location': profile.location,
-        'role_id': user_role.id if user_role else None,
-        'role_name': user_role.role_name if user_role else None,
-        'all_roles': all_roles_data,
-        'is_active': user.is_active
-    }
-
-    return JsonResponse(user_data)
-
-
-def get_user_data(request):
-    user_id = request.GET.get('user_id')
-    if user_id:
-        user = get_object_or_404(User, id=user_id)
-        user_data = {
-            'id': user.id,
-            'full_name': user.name,
-            'email': user.email_address,
-            'mobile': user.mobile_no,
-            'company': user.company,
-            'location': user.location,
-            'is_active': user.is_active
-        }
-        print('User Data:', user_data)
-        return JsonResponse(user_data)
-    return JsonResponse({'error': 'User ID not provided'}, status=400)
-
-
-import datetime
-
-def update_user(request):
-    if request.method == 'POST':
-        user_id = request.POST.get('userId')
-        user_name = request.POST.get('userName')
-        user_email = request.POST.get('userEmail')
-        user_mobile = request.POST.get('userMobile')
-        user_company = request.POST.get('userCompany')
-        user_location = request.POST.get('userLocation')
-        user_role_id = request.POST.get('userRole')
-        user_is_active = request.POST.get(
-            'userIsActive') == 'true'  # Convert to boolean
-
-        user = get_object_or_404(User, id=user_id)
-
-        # Save the original user details for the audit log
-        original_username = user.username
-        original_last_login = user.last_login
-
-        # Update user fields
-        user.username = user_name
-        user.email = user_email
-        user.is_active = user_is_active  # Update is_active status
-        user.save()
-
-        # Update profile fields if available
-        if hasattr(user, 'profile'):
-            profile = user.profile
-            profile.name = user_name
-            profile.mobile_no = user_mobile
-            profile.company = user_company
-            profile.location = user_location
-
-            # Update user role if provided
-            if user_role_id:
-                new_role = get_object_or_404(Role, id=user_role_id)
-                profile.role = new_role
-                profile.save()
-
-                # Update or create UserRole entry
-                user_role, created = UserRole.objects.update_or_create(
-                    user=profile.user,
-                    defaults={'role': new_role}
-                )
-
-                # Determine active status display
-            active_status = "Active" if user_is_active else "Inactive"
-
-        # Create an audit log entry
-        UserAuditLog.objects.create(
-            user=request.user,
-            action='Update User',
-            details=f"User {original_username} updated. Changes: username={user_name}, email={user_email}, is_active={active_status}",
-            username=original_username,
-            last_login=original_last_login,
-            timestamp=datetime.datetime.now()
-        )
-
-        return JsonResponse({'success': True, 'message': 'User updated successfully.'})
-    return JsonResponse({'error': 'Invalid request method.'}, status=405)
-
-
-def delete_user(request):
-    if request.method == 'POST':
-        user_id = request.POST.get('user_id')
-        try:
-            user = get_object_or_404(User, id=user_id)
-
-            # Save user details for audit log before deletion
-            user_details = {
-                'username': user.username,
-                'email': user.email,
-                'last_login': user.last_login,
-            }
-
-            # Delete the user
-            user.delete()
-
-            # Create an audit log entry
-            UserAuditLog.objects.create(
-                user=request.user,
-                action='Delete User',
-                details=f"User {user_details['username']} deleted. Details: {user_details}",
-                username=user_details['username'],
-                last_login=user_details['last_login'],
-                timestamp=datetime.datetime.now()
-            )
-
-            return JsonResponse({'success': True})
-        except Exception as e:
-            print(f'Error deleting user: {e}')
-            return JsonResponse({'success': False, 'message': str(e)})
-    else:
-        return JsonResponse({'success': False})
-
-
-def audit_logs(request):
-    return render(request, "audit_log/audit_log.html")
-
-
-def get_filter_options_users(request):
-    if request.method == 'GET':
-        usernames = UserAuditLog.objects.values_list(
-            'username', flat=True).distinct()
-        actions = UserAuditLog.objects.values_list(
-            'action', flat=True).distinct()
-        users = User.objects.values_list('id', 'username').distinct()
-
-        return JsonResponse({
-            'usernames': list(usernames),
-            'actions': list(actions),
-            'users': list(users)
-        })
-
-
-def get_user_audit_logs(request):
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':  # Detect AJAX request
-        start_date = request.GET.get('start_date')
-        end_date = request.GET.get('end_date')
-        username = request.GET.get('username')
-        action = request.GET.get('action', '')
-
-        filters = Q()
-        if start_date and end_date:
-            filters &= Q(date__range=[start_date, end_date])
-        if username:
-            filters &= Q(username=username)
-        if action:
-            filters &= Q(action=action)
-
-        audit_logs = UserAuditLog.objects.filter(filters).values(
-            'user__username', 'action', 'timestamp', 'details', 'username', 'date', 'last_login'
-        )
-
-        return JsonResponse({'data': list(audit_logs)})  
-
-    return render(request, "audit_log/audit_log.html")  
-
-
-def generate_audit_log_csv(request):
-    # Get filter parameters from the request
-    start_date = request.GET.get('start_date', '').strip()
-    end_date = request.GET.get('end_date', '').strip()
-    username = request.GET.get('username', '').strip()
-    action = request.GET.get('action', '').strip()
-
-    # Filter logs based on input criteria
-    audit_logs = UserAuditLog.objects.all()
-
-    if start_date:
-        audit_logs = audit_logs.filter(date__gte=start_date)
-    if end_date:
-        audit_logs = audit_logs.filter(date__lte=end_date)
-    if username:
-        audit_logs = audit_logs.filter(username__icontains=username)
-    if action:
-        audit_logs = audit_logs.filter(action__icontains=action)
-
-    # Create CSV Response
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="user_audit_log.csv"'
-
-    writer = csv.writer(response)
-    writer.writerow(["ID", "Username", "Action", "Details", "Timestamp", "Last Login", "Created At"])
-
-    for log in audit_logs:
-        writer.writerow([
-            log.id, log.username, log.action, log.details, 
-            log.timestamp.strftime('%Y-%m-%d %H:%M:%S') if log.timestamp else "",
-            log.last_login.strftime('%Y-%m-%d %H:%M:%S') if log.last_login else "",
-            log.created_at.strftime('%Y-%m-%d %H:%M:%S') if log.created_at else ""
-        ])
-
-    return response
-
-
-
-def generate_audit_log_excel(request):
-    # Get filter parameters
-    start_date = request.GET.get('start_date', '').strip()
-    end_date = request.GET.get('end_date', '').strip()
-    username = request.GET.get('username', '').strip()
-    action = request.GET.get('action', '').strip()
-
-    # Filter logs based on input criteria
-    audit_logs = UserAuditLog.objects.all()
-
-    if start_date:
-        audit_logs = audit_logs.filter(date__gte=start_date)
-    if end_date:
-        audit_logs = audit_logs.filter(date__lte=end_date)
-    if username:
-        audit_logs = audit_logs.filter(username__icontains=username)
-    if action:
-        audit_logs = audit_logs.filter(action__icontains=action)
-
-    # Create an Excel workbook and sheet
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = "User Audit Log"
-
-    # Define headers
-    headers = ["ID", "Username", "Action", "Details", "Timestamp", "Last Login", "Created At"]
-    ws.append(headers)
-
-    # Add data rows
-    for log in audit_logs:
-        ws.append([
-            log.id, log.username, log.action, log.details, 
-            log.timestamp.strftime('%Y-%m-%d %H:%M:%S') if log.timestamp else "",
-            log.last_login.strftime('%Y-%m-%d %H:%M:%S') if log.last_login else "",
-            log.created_at.strftime('%Y-%m-%d %H:%M:%S') if log.created_at else ""
-        ])
-
-    # Create HTTP response
-    response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-    response["Content-Disposition"] = 'attachment; filename="user_audit_log.xlsx"'
-
-    # Save workbook to response
-    wb.save(response)
-
-    return response
-
-
-def generate_user_audit_pdf(request):
-    # Get filter parameters
-    start_date = request.GET.get('start_date_user', '').strip()
-    end_date = request.GET.get('end_date_user', '').strip()
-    username = request.GET.get('username_user', '').strip()
-    action = request.GET.get('action_user', '').strip()
-
-    # Filter User Audit Log records
-    logs = UserAuditLog.objects.all()
-    if start_date:
-        logs = logs.filter(timestamp__gte=start_date)
-    if end_date:
-        logs = logs.filter(timestamp__lte=end_date)
-    if username:
-        logs = logs.filter(username__icontains=username)
-    if action:
-        logs = logs.filter(action__icontains=action)
-
-    # Create response object
-    response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename="user_audit_log.pdf"'
-
-    # Define PDF document
-    doc = SimpleDocTemplate(
-        response,
-        pagesize=A4,
-        leftMargin=0.7 * inch,
-        rightMargin=0.7 * inch,
-        topMargin=1.5 * inch,
-        bottomMargin=1.5 * inch
-    )
-
-    elements = []
-    styles = getSampleStyleSheet()
-    custom_normal = ParagraphStyle('custom_normal', parent=styles['Normal'], fontName='Helvetica', fontSize=11, leading=14, spaceAfter=8)
-
-    # Load header image (if available)
-    header_path = os.path.join(settings.STATIC_ROOT, "assets/images/pdf/report_header.png")
-
-    # Get current date/time
-    report_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    def on_page(canvas, doc):
-        width, height = A4
-        if os.path.exists(header_path):
-            header_img = Image(header_path, width=width, height=1.5 * inch)
-            header_img.drawOn(canvas, 0, height - 1.5 * inch)
-
-        canvas.setFont("Helvetica", 9)
-        canvas.drawRightString(width - 0.8 * inch, height - 1.7 * inch, f"Generated On: {report_date}")
-
-    # Define Page Template
-    frame = Frame(x1=0.7 * inch, y1=1.5 * inch, width=A4[0] - 1.4 * inch, height=A4[1] - 3 * inch, id='normal')
-    template = PageTemplate(id='custom', frames=frame, onPage=on_page)
-    doc.addPageTemplates([template])
-
-    # Report Title
-    elements.append(Spacer(1, 45))
-    elements.append(Paragraph('<para align="center"><b><font size=16>USER AUDIT LOG</font></b></para>', styles["Normal"]))
-    elements.append(Spacer(1, 30))
-
-    # Report Description
-    elements.append(Paragraph('<font size=11>This report contains user audit logs including their actions.</font>', custom_normal))
-    elements.append(Spacer(1, 10))
-
-    # Table Headers
-    data = [["Timestamp", "Username", "Action", "Details"]]
-
-    # Add User Audit Log data to the table
-    if logs.exists():
-        for log in logs:
-            data.append([log.timestamp.strftime('%Y-%m-%d %H:%M:%S'), log.username, log.action, log.details])
-    else:
-        data.append(["No Data", "-", "-", "-"])
-
-    # Define Table
-    col_widths = [2.0 * inch, 1.5 * inch, 2.0 * inch, 2.5 * inch]
-    row_height = 22
-    table = Table(data, colWidths=col_widths, rowHeights=row_height)
-
-    # Table Styling
-    style = TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ('WORDWRAP', (0, 0), (-1, -1)),
-    ])
-    table.setStyle(style)
-
-    # Add Table to PDF
-    elements.append(table)
-
-    # Footer Note
-    elements.append(Spacer(1, 15))
-    note = Paragraph("<strong>Note:</strong> This is a system-generated report. No manual modifications have been made.", custom_normal)
-    elements.append(note)
-
-    # Build PDF
-    doc.build(elements, onFirstPage=on_page, onLaterPages=on_page)
-
-    return response
-
-
-
-
-# Fetch distinct filter options
-def get_filter_options_role_permissions(request):
-    if request.method == 'GET':
-        actions = RolePermissionAuditLog.objects.values_list('action', flat=True).distinct()
-        roles = RolePermissionAuditLog.objects.values_list('role', flat=True).distinct()
-        permissions = RolePermissionAuditLog.objects.values_list('permission', flat=True).distinct()
-        created_by = RolePermissionAuditLog.objects.values_list('user__username', flat=True).distinct()
-
-        return JsonResponse({
-            'actions': list(actions),
-            'roles': list(roles),
-            'permissions': list(permissions),
-            'created_by': list(created_by),
-        })
-
-# Fetch role-permission audit logs with filters
-def get_role_permission_audit_logs(request):
-    if request.method == 'GET':
-        start_date = request.GET.get('start_date')
-        end_date = request.GET.get('end_date')
-        action = request.GET.get('action')
-        role = request.GET.get('role')
-        permission = request.GET.get('permission')
-
-        filters = Q()
-        if start_date and end_date:
-            filters &= Q(date__range=[start_date, end_date])
-        if action:
-            filters &= Q(action=action)
-        if role:
-            filters &= Q(role=role)
-        if permission:
-            filters &= Q(permission=permission)
-
-        role_permission_logs = RolePermissionAuditLog.objects.filter(filters).values(
-            'date', 'role', 'action', 'details', 'permission'
-        )
-
-        return JsonResponse({'data': list(role_permission_logs)})
-    
-    return render(request, 'audit_log/audit_log.html')
-
-# Export Role Permission Audit Logs as CSV
-def generate_role_permission_audit_csv(request):
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="role_permission_audit_log.csv"'
-
-    writer = csv.writer(response)
-    writer.writerow(['Date', 'Role', 'Action', 'Details', 'Permission'])
-
-    start_date = request.GET.get('start_date')
-    end_date = request.GET.get('end_date')
-    action = request.GET.get('action')
-    role = request.GET.get('role')
-    permission = request.GET.get('permission')
-
-    filters = Q()
-    if start_date and end_date:
-        filters &= Q(date__range=[start_date, end_date])
-    if action:
-        filters &= Q(action=action)
-    if role:
-        filters &= Q(role=role)
-    if permission:
-        filters &= Q(permission=permission)
-
-    role_permission_logs = RolePermissionAuditLog.objects.filter(filters)
-
-    for log in role_permission_logs:
-        writer.writerow([log.date, log.role, log.action, log.details, log.permission])
-
-    return response
-
-def generate_role_permission_audit_excel(request):
-    # Get filter parameters
-    start_date = request.GET.get('start_date', '').strip()
-    end_date = request.GET.get('end_date', '').strip()
-    action = request.GET.get('action', '').strip()
-    role = request.GET.get('role', '').strip()
-    permission = request.GET.get('permission', '').strip()
-
-    # Filter logs based on input criteria
-    filters = Q()
-    if start_date:
-        filters &= Q(date__gte=start_date)
-    if end_date:
-        filters &= Q(date__lte=end_date)
-    if action:
-        filters &= Q(action__icontains=action)
-    if role:
-        filters &= Q(role__icontains=role)
-    if permission:
-        filters &= Q(permission__icontains=permission)
-
-    role_permission_logs = RolePermissionAuditLog.objects.filter(filters)
-
-    # Create an Excel workbook and sheet
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = "Role Permission Audit Log"
-
-    # Define headers
-    headers = ["ID", "Role", "Action", "Details", "Permission", "Date"]
-    ws.append(headers)
-
-    # Add data rows
-    for log in role_permission_logs:
-        ws.append([
-            log.id, log.role, log.action, log.details, log.permission,
-            log.date.strftime('%Y-%m-%d %H:%M:%S') if log.date else ""
-        ])
-
-    # Create HTTP response
-    response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-    response["Content-Disposition"] = 'attachment; filename="role_permission_audit_log.xlsx"'
-
-    # Save workbook to response
-    wb.save(response)
-
-    return response
-
-
-
-
-def generate_role_permission_audit_pdf(request): 
-    # Get filter parameters
-    start_date = request.GET.get('start_date', '').strip()
-    end_date = request.GET.get('end_date', '').strip()
-    action = request.GET.get('action', '').strip()
-    role = request.GET.get('role', '').strip()
-    permission = request.GET.get('permission', '').strip()
-
-    # Filter Role Permission Audit Log records
-    filters = Q()
-    if start_date:
-        filters &= Q(date__gte=start_date)
-    if end_date:
-        filters &= Q(date__lte=end_date)
-    if action:
-        filters &= Q(action__icontains=action)
-    if role:
-        filters &= Q(role__icontains=role)
-    if permission:
-        filters &= Q(permission__icontains=permission)
-    
-    logs = RolePermissionAuditLog.objects.filter(filters)
-    
-    # Create response object
-    response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename="role_permission_audit_log.pdf"'
-
-    # Define PDF document
-    doc = SimpleDocTemplate(
-        response,
-        pagesize=A4,
-        leftMargin=0.7 * inch,
-        rightMargin=0.7 * inch,
-        topMargin=1.5 * inch,
-        bottomMargin=1.5 * inch
-    )
-
-    elements = []
-    styles = getSampleStyleSheet()
-    custom_normal = ParagraphStyle('custom_normal', parent=styles['Normal'], fontName='Helvetica', fontSize=10, leading=12, spaceAfter=8, wordWrap='CJK')
-
-    # Load header image (if available)
-    header_path = os.path.join(settings.STATIC_ROOT, "assets/images/pdf/report_header.png")
-    report_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    def on_page(canvas, doc):
-        width, height = A4
-        if os.path.exists(header_path):
-            header_img = Image(header_path, width=width, height=1.5 * inch)
-            header_img.drawOn(canvas, 0, height - 1.5 * inch)
-
-        canvas.setFont("Helvetica", 9)
-        canvas.drawRightString(width - 0.8 * inch, height - 1.7 * inch, f"Generated On: {report_date}")
-
-    # Define Page Template
-    frame = Frame(x1=0.7 * inch, y1=1.5 * inch, width=A4[0] - 1.4 * inch, height=A4[1] - 3 * inch, id='normal')
-    template = PageTemplate(id='custom', frames=frame, onPage=on_page)
-    doc.addPageTemplates([template])
-
-    # Report Title
-    elements.append(Spacer(1, 45))
-    elements.append(Paragraph('<para align="center"><b><font size=16>ROLE PERMISSION AUDIT LOG</font></b></para>', styles["Normal"]))
-    elements.append(Spacer(1, 30))
-
-    # Report Description
-    elements.append(Paragraph('<font size=11>This report contains role permission audit logs including actions performed on role permissions.</font>', custom_normal))
-    elements.append(Spacer(1, 10))
-
-   # Define custom paragraph style for text wrapping
-    styles = getSampleStyleSheet()
-    custom_style = ParagraphStyle(
-        'CustomStyle',
-        parent=styles['Normal'],
-        fontSize=9,
-        leading=12,  # Line height for better readability
-        wordWrap='CJK'  # Enables text wrapping
-    )
-
-   # Table Headers
-    data = [["Date", "Role", "Action", "Permission", "Details"]]
-
-    # Add Role Permission Audit Log data to the table
-    if logs.exists():
-        for log in logs:
-            data.append([
-                Paragraph(log.date.strftime('%Y-%m-%d %H:%M:%S'), custom_style),
-                Paragraph(log.role, custom_style),
-                Paragraph(log.action, custom_style),
-                Paragraph(log.permission, custom_style),
-                Paragraph(log.details, custom_style)
-            ])
-    else:
-        data.append([
-            Paragraph("No Data", custom_style), "-", "-", "-", "-"
-        ])
-
-    # Define Table with Auto Row Height and Header Repeat on New Pages
-    col_widths = [1.0 * inch, 1.0 * inch, 1.2 * inch, 2.5 * inch, 2.5 * inch]
-    table = LongTable(data, colWidths=col_widths, repeatRows=1)  # Header repeats on every page
-
-    # Table Styling
-    style = TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),  # Left-align for better readability
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ('VALIGN', (0, 0), (-1, -1), 'TOP'),  # Align text to top
-    ])
-
-    table.setStyle(style)
-
-    # Add Table to PDF
-    elements.append(table)
-
-    # Footer Note
-    elements.append(Spacer(1, 15))
-    note = Paragraph("<strong>Note:</strong> This is a system-generated report. No manual modifications have been made.", custom_normal)
-    elements.append(note)
-
-    # Ensure the table does not break across pages improperly
-    elements.append(KeepTogether(table))
-
-    # Build PDF
-    doc.build(elements, onFirstPage=on_page, onLaterPages=on_page)
-
-    return response
-
-
-
-@csrf_exempt
-def generate_user_csv(request):
-    user_id = request.GET.get('user_id', '').strip()
-    user_name = request.GET.get('user_name', '').strip()
-    role = request.GET.get('role', '').strip()
-
-    users = User.objects.all().prefetch_related('profile', 'profile__role')
-
-    if user_id.isdigit():
-        users = users.filter(id=int(user_id))
-
-    if user_name:
-        users = users.filter(profile__name__icontains=user_name)
-
-    if role.isdigit():
-        users = users.filter(profile__role__id=int(role))
-
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="user_list.csv"'
-
-    writer = csv.writer(response)
-    writer.writerow(["User ID", "Name", "Role", "Email", "Mobile", "Company", "Location", "Status"])
-
-    for user in users:
-        profile = getattr(user, 'profile', None)  # Check if the user has a profile
-        role_obj = getattr(profile, 'role', None) if profile else None
-
-        writer.writerow([
-            user.id,
-            getattr(profile, 'name', '') if profile else '',  # Safe access
-            getattr(role_obj, 'role_name', '') if role_obj else '',  # Safe access
-            user.email,
-            getattr(profile, 'mobile_no', '') if profile else '',
-            getattr(profile, 'company', '') if profile else '',
-            getattr(profile, 'location', '') if profile else '',
-            "Active" if user.is_active else "Inactive",
-        ])
-
-    return response
-
-
-@csrf_exempt
-def generate_user_excel(request):
-    user_id = request.GET.get('user_id', '').strip()
-    user_name = request.GET.get('user_name', '').strip()
-    role = request.GET.get('role', '').strip()
-
-    users = User.objects.all().prefetch_related('profile', 'profile__role')
-
-    if user_id.isdigit():
-        users = users.filter(id=int(user_id))
-
-    if user_name:
-        users = users.filter(profile__name__icontains=user_name)
-
-    if role.isdigit():
-        users = users.filter(profile__role__id=int(role))
-
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = "User List"
-
-    headers = ["User ID", "Name", "Role", "Email", "Mobile", "Company", "Location", "Status"]
-
-    # Write headers in bold
-    for col_num, header in enumerate(headers, 1):
-        cell = ws.cell(row=1, column=col_num, value=header)
-        cell.font = Font(bold=True)
-
-    for row_num, user in enumerate(users, 2):
-        profile = getattr(user, 'profile', None)  # Check if user has a profile
-        role_obj = getattr(profile, 'role', None) if profile else None
-
-        ws.cell(row=row_num, column=1, value=user.id)
-        ws.cell(row=row_num, column=2, value=getattr(profile, 'name', '') if profile else '')
-        ws.cell(row=row_num, column=3, value=getattr(role_obj, 'role_name', '') if role_obj else '')
-        ws.cell(row=row_num, column=4, value=user.email)
-        ws.cell(row=row_num, column=5, value=getattr(profile, 'mobile_no', '') if profile else '')
-        ws.cell(row=row_num, column=6, value=getattr(profile, 'company', '') if profile else '')
-        ws.cell(row=row_num, column=7, value=getattr(profile, 'location', '') if profile else '')
-        ws.cell(row=row_num, column=8, value="Active" if user.is_active else "Inactive")
-
-    response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-    response["Content-Disposition"] = 'attachment; filename="user_list.xlsx"'
-
-    wb.save(response)
-
-    return response
-
-
-
-@csrf_exempt
-def generate_user_pdf(request):
-    user_id = request.GET.get('user_id', '').strip()
-    user_name = request.GET.get('user_name', '').strip()
-    role = request.GET.get('role', '').strip()
-
-    users = User.objects.all().select_related('profile', 'profile__role')
-
-    if user_id.isdigit():
-        users = users.filter(id=int(user_id))
-
-    if user_name:
-        users = users.filter(profile__name__icontains=user_name)
-
-    if role.isdigit():
-        users = users.filter(profile__role__id=int(role))
-
-    response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename="user_list.pdf"'
-
-    doc = SimpleDocTemplate(response, pagesize=A4, leftMargin=0.7 * inch, rightMargin=0.7 * inch, topMargin=1.5 * inch, bottomMargin=1.5 * inch)
-    elements = []
-    styles = getSampleStyleSheet()
-    custom_normal = ParagraphStyle('custom_normal', parent=styles['Normal'], fontName='Helvetica', fontSize=10, leading=14, spaceAfter=5)
-
-    header_path = os.path.join(settings.STATIC_ROOT, "assets/images/pdf/report_header.png")
-
-    def on_page(canvas, doc):
-        width, height = A4
-        if os.path.exists(header_path):
-            img = Image(header_path, width=width, height=1.5 * inch)
-            img.wrapOn(canvas, width, height)
-            img.drawOn(canvas, 0, height - 1.5 * inch)
-
-        canvas.setFont("Helvetica", 9)
-        canvas.drawRightString(width - 0.8 * inch, height - 1.7 * inch, f"Generated On: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-
-    frame = Frame(0.7 * inch, 1.5 * inch, A4[0] - 1.4 * inch, A4[1] - 3 * inch, id='normal')
-    template = PageTemplate(id='custom', frames=[frame], onPage=on_page)
-    doc.addPageTemplates([template])
-
-    elements.append(Spacer(1, 45))
-    elements.append(Paragraph('<para align="center"><b><font size=16>USER DETAILS</font></b></para>', styles["Normal"]))
-    elements.append(Spacer(1, 30))
-    elements.append(Paragraph('<font size=11>This report contains details of users, including their IDs, names, roles, and contact details.</font>', custom_normal))
-    elements.append(Spacer(1, 10))
-
-    data = [["User ID", "Name", "Role", "Email", "Mobile", "Company", "Location", "Status"]]
-
-    if users.exists():
-        for user in users:
-            profile = getattr(user, 'profile', None)
-            data.append([
-                str(user.id),
-                Paragraph(getattr(profile, 'name', 'N/A'), custom_normal),
-                Paragraph(getattr(profile.role, 'role_name', 'N/A') if profile and profile.role else 'N/A', custom_normal),
-                Paragraph(user.email, custom_normal),
-                Paragraph(getattr(profile, 'mobile_no', 'N/A'), custom_normal),
-                Paragraph(getattr(profile, 'company', 'N/A'), custom_normal),
-                Paragraph(getattr(profile, 'location', 'N/A'), custom_normal),
-                Paragraph("Active" if user.is_active else "Inactive", custom_normal)
-            ])
-    else:
-        data.append(["No Data", "-", "-", "-", "-", "-", "-", "-"])
-
-    col_widths = [0.6 * inch, 1.2 * inch, 1.0 * inch, 1.0 * inch, 1.0 * inch, 1.0 * inch, 1.0 * inch, 1.0 * inch]
-    
-    table = Table(data, colWidths=col_widths)
-    style = TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-    ])
-    
-    table.setStyle(style)
-
-    elements.append(table)
-    elements.append(Spacer(1, 15))
-    
-    note = Paragraph("<strong>Note:</strong> This is a system-generated report. No manual modifications have been made.", custom_normal)
-    elements.append(note)
-
-    doc.build(elements, onFirstPage=on_page, onLaterPages=on_page)
-    return response
-
-
-
-
-@csrf_exempt
-def generate_role_permission_csv(request):
-    """Generate CSV file for Role & Permissions with applied filters"""
-    role_id = request.GET.get('role_id', '').strip()
-    role_name = request.GET.get('role_name', '').strip()
-    status = request.GET.get('status', '').strip()
-
-    roles = Role.objects.all()
-
-    # Apply filters
-    if role_id.isdigit():
-        roles = roles.filter(id=int(role_id))
-
-    if role_name:
-        roles = roles.filter(role_name__icontains=role_name)
-
-    if status:
-        roles = roles.filter(is_active=(status == 'Active'))
-
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="role_permission_list.csv"'
-
-    writer = csv.writer(response)
-    writer.writerow(["Role ID", "Role Name", "Description", "Permissions", "Status"])
-
-    for role in roles:
-        permissions = ", ".join(role.defaultrolepermission_set.values_list('permission__permission_name', flat=True))
-        writer.writerow([
-            role.id,
-            role.role_name,
-            role.role_description,
-            permissions,
-            "Active" if role.is_active else "Inactive",
-        ])
-
-    return response
-
-
-@csrf_exempt
-def generate_role_permission_excel(request):
-    """Generate Excel file for Role & Permissions with applied filters"""
-    role_id = request.GET.get('role_id', '').strip()
-    role_name = request.GET.get('role_name', '').strip()
-    status = request.GET.get('status', '').strip()
-
-    roles = Role.objects.all()
-
-    # Apply filters
-    if role_id.isdigit():
-        roles = roles.filter(id=int(role_id))
-
-    if role_name:
-        roles = roles.filter(role_name__icontains=role_name)
-
-    if status:
-        roles = roles.filter(is_active=(status == 'Active'))
-
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = "Role & Permissions"
-
-    headers = ["Role ID", "Role Name", "Description", "Permissions", "Status"]
-
-    # Write headers in bold
-    for col_num, header in enumerate(headers, 1):
-        cell = ws.cell(row=1, column=col_num, value=header)
-        cell.font = Font(bold=True)
-
-    for row_num, role in enumerate(roles, 2):
-        permissions = ", ".join(role.defaultrolepermission_set.values_list('permission__permission_name', flat=True))
-        
-        ws.cell(row=row_num, column=1, value=role.id)
-        ws.cell(row=row_num, column=2, value=role.role_name)
-        ws.cell(row=row_num, column=3, value=role.role_description)
-        ws.cell(row=row_num, column=4, value=permissions)
-        ws.cell(row=row_num, column=5, value="Active" if role.is_active else "Inactive")
-
-    response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-    response["Content-Disposition"] = 'attachment; filename="role_permission_list.xlsx"'
-
-    wb.save(response)
-
-    return response
-
-
-
-@csrf_exempt
-def generate_role_permission_pdf(request):
-    """Generate PDF file for Role & Permissions with auto-adjusting text and header image."""
-
-    # Fetch GET parameters with safe defaults
-    role_id = request.GET.get('role_id', '').strip()
-    role_name = request.GET.get('role_name', '').strip()
-    status = request.GET.get('status', '').strip()
-
-    # Query all roles initially
-    roles = Role.objects.all()
-
-    # Apply filters dynamically
-    if role_id.isdigit():
-        roles = roles.filter(id=int(role_id))
-    if role_name:
-        roles = roles.filter(role_name__icontains=role_name)
-    if status:
-        is_active = status.lower() == 'active'
-        roles = roles.filter(is_active=is_active)
-
-    # Prepare HTTP Response for PDF download
-    response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename="role_permission_report.pdf"'
-
-    # Initialize PDF document
-    doc = SimpleDocTemplate(response, pagesize=A4, leftMargin=0.7 * inch, rightMargin=0.7 * inch, topMargin=1.5 * inch, bottomMargin=1.5 * inch)
-    elements = []
-
-    # Load header image
-    header_path = os.path.join(settings.STATIC_ROOT, "assets/images/pdf/report_header.png")
-    report_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    def on_page(canvas, doc):
-        width, height = A4
-        if os.path.exists(header_path):
-            header_img = Image(header_path, width=width, height=1.5 * inch)
-            header_img.drawOn(canvas, 0, height - 1.5 * inch)
-        canvas.setFont("Helvetica", 9)
-        canvas.drawRightString(width - 0.8 * inch, height - 1.7 * inch, f"Generated On: {report_date}")
-
-    # Define Page Template
-    frame = Frame(x1=0.7 * inch, y1=1.5 * inch, width=A4[0] - 1.4 * inch, height=A4[1] - 3 * inch, id='normal')
-    template = PageTemplate(id='custom', frames=frame, onPage=on_page)
-    doc.addPageTemplates([template])
-
-    # Title & Date
-    styles = getSampleStyleSheet()
-    elements.append(Spacer(1, 45))
-    elements.append(Paragraph('<para align="center"><b><font size=16>ROLE PERMISSION REPORT</font></b></para>', styles["Normal"]))
-    elements.append(Spacer(1, 30))
-
-    # Define text wrapping style
-    custom_style = ParagraphStyle(
-        'CustomStyle',
-        parent=styles['Normal'],
-        fontSize=9,
-        leading=12,
-        wordWrap='CJK'
-    )
-
-    # Table Header
-    data = [['Role ID', 'Role Name', 'Description', 'Permissions', 'Status']]
-
-    # Add roles to the table
-    if roles.exists():
-        for role in roles:
-            permissions = ", ".join(role.defaultrolepermission_set.values_list('permission__permission_name', flat=True)) or "No Permissions"
-            data.append([
-                Paragraph(str(role.id), custom_style),
-                Paragraph(role.role_name, custom_style),
-                Paragraph(role.role_description or "N/A", custom_style),
-                Paragraph(permissions, custom_style),
-                Paragraph("Active" if role.is_active else "Inactive", custom_style)
-            ])
-    else:
-        data.append([Paragraph("No Data", custom_style), "-", "-", "-", "-"])
-
-    # Define column widths
-    col_widths = [0.8 * inch, 1.2 * inch, 2.0 * inch, 2.5 * inch, 1.0 * inch]
-
-    # Create table
-    table = Table(data, colWidths=col_widths, repeatRows=1)
-    table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-    ]))
-
-    # Add table and note
-    elements.append(KeepTogether(table))
-    elements.append(Spacer(1, 20))
-    elements.append(Paragraph("<b>Note:</b> This is a system-generated report.", custom_style))
-
-    # Build and return PDF response
-    doc.build(elements, onFirstPage=on_page, onLaterPages=on_page)
-
-    return response
-
-
-
-def master_reports_page(request):
-    return render(request, "reports/master_reports.html")
-
-
-def report_generate_employee_csv(request):   
-    employee_name = request.GET.get('employee_name', '').strip()
-    work_location = request.GET.get('work_location', '').strip()
-    start_date = request.GET.get('from_date', '')
-    end_date = request.GET.get('to_date', '')
-    selected_columns = request.GET.get('columns', '').split(',')
-
-    print(f"Filters received: Employee Name: {employee_name}, Work Location: {work_location}, Dates: {start_date} - {end_date}")
-
-    employees = Employee.objects.all()
-
-    # Print all employees before filtering
-    print(f"Total employees in DB: {employees.count()}")
-
-    # Filter by Employee Name
-    if employee_name:
-        if employee_name.isdigit():  
-            employees = employees.filter(employee_id=int(employee_name))
-        else:
-            employees = employees.filter(name__icontains=employee_name)
-
-    # Filter by Work Location
-    if work_location:
-        employees = employees.filter(work_location__id=work_location)
-
-    # Filter by Date Range
-    if start_date and end_date:
-        start_date = parse_date(start_date)  # Convert to proper date object
-        end_date = parse_date(end_date)
-        if start_date and end_date:
-            employees = employees.filter(created_at__date__gte=start_date, created_at__date__lte=end_date)
-
-    print(f"Filtered employees count: {employees.count()}")
-
-    # Filter by Employee Name
-    if employee_name:
-        if employee_name.isdigit():  
-            employees = employees.filter(employee_id=int(employee_name))  
-        else:  
-            employees = employees.filter(name__icontains=employee_name)
-
-    # Filter by Work Location (ID or Name)
-    if work_location:
-        try:
-            if work_location.isdigit():  
-                employees = employees.filter(work_location_id=int(work_location))  # Filtering by ID
-            else:  
-                employees = employees.filter(work_location__name__icontains=work_location)  # Filtering by Name
-        except Exception as e:
-            print(f"Error filtering work location: {e}")
-
-    print(f"After filtering by work location: {employees.count()}")
-
-    # Filter by Date Range
-    if start_date and end_date:
-        employees = employees.filter(created_at__range=[start_date, end_date])
-        print(f"After filtering by date range: {employees.count()}")
-
-    # Print filtered results before returning response
-    print("Filtered employees:", list(employees.values()))
-
-    if not employees.exists():
-        print("No data found after filtering.")
-        return HttpResponse("No data found", content_type="text/plain")
-
-    # Generate CSV
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="employees.csv"'
-    writer = csv.writer(response)
-
-    if not selected_columns or selected_columns == ['']:
-        selected_columns = [
-            "employee_code", "name", "designation",
-            "location", "work_location", "mobile_number", "email"
-        ]
-
-    writer.writerow(selected_columns)
-
-    for employee in employees:
-        writer.writerow([getattr(employee, col, '') for col in selected_columns])
-
-    return response
-
-
-def report_generate_employee_excel(request):
-    employee_name = request.GET.get('employee_name', '').strip()
-    work_location = request.GET.get('work_location', '').strip()
-    start_date = request.GET.get('from_date', '')
-    end_date = request.GET.get('to_date', '')
-    selected_columns = request.GET.get('columns', '').split(',')
-
-    # Fetch data based on filters
-    employees = Employee.objects.all()
-    
-    if employee_name:
-        employees = employees.filter(name__icontains=employee_name)
-    if work_location:
-        employees = employees.filter(work_location__id=work_location)  # Filter by work_location ID
-    if start_date and end_date:
-        employees = employees.filter(created_at__range=[start_date, end_date])
-
-    # Define column mappings
-    column_map = {
-        "employee_id": "ID",
-        "employee_code": "Code",
-        "name": "Name",
-        "designation": "Designation",
-        "location": "Location",
-        "work_location": "Work Location",
-        "date_of_birth": "Date of Birth",
-        "mobile_number": "Mobile",
-        "email": "Email",
-        "aadhaar_card": "Aadhaar",
-        "pan_card": "PAN",
-        "created_at": "Created At",
-        "updated_at": "Updated At"
-    }
-
-    # Create an Excel workbook and sheet
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = "Employee Report"
-
-    # Set the header row
-    header_row = [column_map[col] for col in selected_columns if col in column_map]
-    ws.append(header_row)
-
-    # Populate data rows
-    for emp in employees:
-        row_data = []
-        for col in selected_columns:
-            if hasattr(emp, col):
-                value = getattr(emp, col)
-
-                # Convert ForeignKey (Location) to string
-                if isinstance(value, Location):
-                    value = str(value.name)  # Assuming Location model has a `name` field
-
-                # Handle datetime and date fields separately
-                elif isinstance(value, datetime.datetime):
-                    value = localtime(value).strftime("%Y-%m-%d %H:%M:%S")
-                elif isinstance(value, datetime.date):
-                    value = value.strftime("%Y-%m-%d")  # No time part
-
-                row_data.append(value)
-
-        ws.append(row_data)
-
-    # Prepare response
-    response = HttpResponse(
-        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    )
-    response['Content-Disposition'] = 'attachment; filename="employee_report.xlsx"'
-    wb.save(response)
-    
-    return response
-
-from datetime import datetime
-
-
-def report_generate_employee_pdf(request):
-    employee_name = request.GET.get('employee_name', '').strip()
-    work_location = request.GET.get('work_location', '').strip()
-    start_date = request.GET.get('from_date', '').strip()
-    end_date = request.GET.get('to_date', '').strip()
-
-    # Fetch all employees
-    employees = Employee.objects.all()
-
-    # Filter by Employee Name
-    if employee_name:
-        employees = employees.filter(name__icontains=employee_name)
-
-    # Filter by Work Location
-    if work_location:
-        if work_location.isdigit():
-            employees = employees.filter(work_location_id=int(work_location))
-        else:
-            employees = employees.filter(work_location__name__icontains=work_location)
-
-    # Filter by Date Range
-    if start_date and end_date:
-        start_date = parse_date(start_date)  # Convert to date object
-        end_date = parse_date(end_date)      # Convert to date object
-        if start_date and end_date:
-            employees = employees.filter(created_at__date__gte=start_date, created_at__date__lte=end_date)
-
-    # Create response object for PDF
-    response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename="employee_details.pdf"'
-
-    # Define PDF Document
-    doc = SimpleDocTemplate(response, pagesize=A4)
-    elements = []
-    styles = getSampleStyleSheet()
-
-    # Custom Style
-    custom_style = ParagraphStyle('custom_style', parent=styles['Normal'], fontName='Helvetica', fontSize=11, leading=14, spaceAfter=8)
-
-    # Header Image Path
-    header_path = os.path.join(settings.STATIC_ROOT, "assets/images/pdf/report_header.png")
-
-    # Get Current Date
-    report_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    # Header function
-    def on_page(canvas, doc):
-        width, height = A4
-        if os.path.exists(header_path):
-            header_img = Image(header_path, width=width, height=1.5 * inch)
-            header_img.drawOn(canvas, 0, height - 1.5 * inch)
-        canvas.setFont("Helvetica", 9)
-        canvas.drawRightString(width - 0.8 * inch, height - 1.7 * inch, f"Generated On: {report_date}")
-
-    # Report Title
-    elements.append(Spacer(1, 12))
-    elements.append(Paragraph("Employee Details Report", styles['Title']))
-    elements.append(Spacer(1, 12))
-
-    # Table Header
-    data = [["Employee ID", "Name", "Designation", "Work Location", "Email", "Mobile Number"]]
-
-    for emp in employees:
-        data.append([
-            emp.employee_id,
-            emp.name,
-            emp.designation,
-            emp.work_location.name if emp.work_location else "",
-            emp.email,
-            emp.mobile_number
-        ])
-
-    # Create table
-    table = Table(data, colWidths=[80, 120, 100, 100, 140, 100])
-    table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black)
-    ]))
-
-    elements.append(table)
-
-    # Build PDF
-    doc.build(elements, onFirstPage=on_page, onLaterPages=on_page)
-
-    return response
-
-
-
-def backup_recovery_page(request):
-    return render(request, "settings/backup_recovery.html")
-
-
-def get_tables():
-    try:
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                SELECT tablename 
-                FROM pg_catalog.pg_tables 
-                WHERE schemaname = 'public';
-            """)
-            tables = [row[0] for row in cursor.fetchall()]
-        return tables
-    except Exception as e:
-        print("Error fetching tables:", e)
-        return []
-
-
-def get_tables_ajax(request):
-    tables = get_tables()
-    
-    # Fetch existing schedule data for the logged-in user, if available
-    existing_schedules = ScheduledBackup.objects.filter(user=request.user)
-    schedule_data = {
-        'days': existing_schedules.first().backup_interval_days if existing_schedules.exists() else "",
-        'operation': existing_schedules.first().operation if existing_schedules.exists() else "",
-        'tables': [schedule.table_name for schedule in existing_schedules]  # List of selected tables
-    }
-
-    return JsonResponse({'tables': tables, 'schedule_data': schedule_data})
-
-
-def fetch_backup_details(request):
-    backup_data = ScheduledBackupDetails.objects.all().values('id', 'backup_name', 'sql_file_name', 'txt_file_name', 'from_date', 'to_date', 'scheduled_operation', 'file_size')
-    return JsonResponse({'backup_data': list(backup_data)})
-
-
-
-@csrf_exempt
-def import_db(request):
-    if request.method == 'POST':
-        # Step 1: Handle file upload and get table names
-        if 'sql_file' in request.FILES:
-            sql_file = request.FILES['sql_file']
-            sql_content = sql_file.read().decode('utf-8')
-
-            # Extract table names from the SQL file
-            insert_pattern = r"INSERT INTO (\w+) \("
-            matches = re.findall(insert_pattern, sql_content)
-            table_names = list(set(matches))  # Remove duplicates
-
-            if request.POST.get('selected_tables'):
-                selected_tables = json.loads(request.POST['selected_tables'])
-                if not selected_tables:
-                    return JsonResponse({"error": "No tables selected."}, status=400)
-
-                # Import selected tables into the database
-                try:
-                    db_settings = settings.DATABASES['default']
-                    conn = psycopg2.connect(
-                        dbname=db_settings['NAME'],
-                        user=db_settings['USER'],
-                        password=db_settings['PASSWORD'],
-                        host=db_settings['HOST'],
-                        port=db_settings['PORT']
-                    )
-                    cursor = conn.cursor()
-
-                    for table_name in selected_tables:
-                        # Extract and execute SQL for each selected table
-                        pattern = f"INSERT INTO {table_name} \((.*?)\) VALUES\s*\((.*?)\);"
-                        table_matches = re.findall(
-                            pattern, sql_content, re.DOTALL)
-
-                        for match in table_matches:
-                            columns = match[0].split(', ')
-                            values_str = match[1]
-                            values_str = values_str.strip()
-                            rows = re.split(r'\),\s*\(', values_str)
-
-                            for row in rows:
-                                row = row.strip("()")
-                                values = re.split(r"',\s*'", row)
-                                values = [v.strip("'") for v in values]
-                                values = [v.replace("''", "'") for v in values]
-                                values = [None if v =='NULL' else v for v in values]
-                                insert_query = f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES ({', '.join(['%s'] * len(values))})"
-                                cursor.execute(insert_query, values)
-
-                    conn.commit()
-                    cursor.close()
-                    conn.close()
-
-                    return JsonResponse({"messages": ["Database imported successfully."]})
-
-                except Exception as e:
-                    return JsonResponse({"error": str(e)}, status=500)
-
-            return JsonResponse({"tables": table_names})
-
-        return JsonResponse({"error": "No SQL file uploaded."}, status=400)
-
-    return JsonResponse({"error": "Invalid request method."}, status=405)
-
-
-@csrf_exempt
-def export_db(request):
-    if request.method == 'POST':
-        try:
-            table_names = request.POST.getlist('table_name')
-            start_date = request.POST.get('start_date')
-            end_date = request.POST.get('end_date')
-
-            if not table_names:
-                return HttpResponse("At least one table name is required.", status=400)
-
-            # Process start date
-            if start_date:
-                try:
-                    start_date = datetime.strptime(start_date, '%Y-%m-%d')
-                except ValueError:
-                    return HttpResponse("Invalid start date format. Use YYYY-MM-DD.", status=400)
-
-            # Process end date
-            if end_date:
-                try:
-                    end_date = datetime.strptime(end_date, '%Y-%m-%d')
-                    end_date = end_date.replace(hour=23, minute=59, second=59)
-                except ValueError:
-                    return HttpResponse("Invalid end date format. Use YYYY-MM-DD.", status=400)
-
-            # Check if end_date is earlier than start_date
-            if end_date and start_date and end_date < start_date:
-                return HttpResponse("End date cannot be earlier than start date.", status=400)
-
-            db_settings = settings.DATABASES['default']
-
-            def get_table_names_from_db():
-                conn = psycopg2.connect(
-                    dbname=db_settings['NAME'],
-                    user=db_settings['USER'],
-                    password=db_settings['PASSWORD'],
-                    host=db_settings['HOST'],
-                    port=db_settings['PORT']
-                )
-                cursor = conn.cursor()
-                cursor.execute(
-                    "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';")
-                all_table_names = [row[0] for row in cursor.fetchall()]
-                cursor.close()
-                conn.close()
-                return all_table_names
-
-            # If "all" is selected, fetch all table names
-            if "all" in table_names:
-                table_names = get_table_names_from_db()
-
-            queries = []
-
-            for table_name in table_names:
-                conn = psycopg2.connect(
-                    dbname=db_settings['NAME'],
-                    user=db_settings['USER'],
-                    password=db_settings['PASSWORD'],
-                    host=db_settings['HOST'],
-                    port=db_settings['PORT']
-                )
-                cursor = conn.cursor()
-
-                # Check if table has either `created_at` or `timestamp` column
-                cursor.execute(f"""
-                    SELECT column_name FROM information_schema.columns 
-                    WHERE table_name = '{table_name}' AND column_name IN ('created_at', 'timestamp')
-                """)
-                date_column = cursor.fetchone()
-
-                query = f"SELECT * FROM {table_name}"
-
-                if date_column:
-                    date_column = date_column[0]  # Get the column name (either 'created_at' or 'timestamp')
-
-                    # Append date filters if they are present
-                    if start_date and end_date:
-                        query += f" WHERE {date_column} BETWEEN '{start_date}' AND '{end_date}'"
-                    elif start_date:
-                        query += f" WHERE {date_column} >= '{start_date}'"
-                    elif end_date:
-                        query += f" WHERE {date_column} <= '{end_date}'"
-
-                # If neither `created_at` nor `timestamp` is present, export all rows without filters
-                queries.append((table_name, query))
-
-                cursor.close()
-                conn.close()
-
-            if not queries:
-                return HttpResponse("No valid queries generated.", status=400)
-
-            def export_data(query, table_name):
-                conn = psycopg2.connect(
-                    dbname=db_settings['NAME'],
-                    user=db_settings['USER'],
-                    password=db_settings['PASSWORD'],
-                    host=db_settings['HOST'],
-                    port=db_settings['PORT']
-                )
-                cursor = conn.cursor()
-
-                # Fetch column names
-                cursor.execute(
-                    f"SELECT column_name FROM information_schema.columns WHERE table_name = '{table_name}' ORDER BY ordinal_position;")
-                columns = [row[0] for row in cursor.fetchall()]
-
-                cursor.execute(query)
-                rows = cursor.fetchall()
-
-                output = io.StringIO()
-
-                # Write column names
-                columns_str = ', '.join(columns)
-                output.write(f'-- Data from table {table_name}\n')
-                output.write(f'INSERT INTO {table_name} ({columns_str}) VALUES\n')
-
-                # Write data rows
-                row_strs = []
-                for row in rows:
-                    values_str = ', '.join(map(lambda x: f"'{x}'" if x is not None else 'NULL', row))
-                    row_strs.append(f'({values_str})')
-
-                output.write(',\n'.join(row_strs) + ';\n')
-
-                cursor.close()
-                conn.close()
-                return output.getvalue()
-
-            output = io.StringIO()
-            for table_name, query in queries:
-                data = export_data(query, table_name)
-                output.write(data)
-
-            response = HttpResponse(content_type='application/octet-stream')
-            response['Content-Disposition'] = 'attachment; filename=database_backup.sql'
-            response.write(output.getvalue())
-            return response
-
-        except Exception as e:
-            return HttpResponse(f"Error: {e}", status=500)
-
-    elif request.method == 'GET' and request.headers.get('x-requested-with') == 'XMLHttpRequest':
-        def get_table_names():
-            db_settings = settings.DATABASES['default']
-            conn = psycopg2.connect(
-                dbname=db_settings['NAME'],
-                user=db_settings['USER'],
-                password=db_settings['PASSWORD'],
-                host=db_settings['HOST'],
-                port=db_settings['PORT']
-            )
-            cursor = conn.cursor()
-            cursor.execute(
-                "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';")
-            table_names = [row[0] for row in cursor.fetchall()]
-            cursor.close()
-            conn.close()
-            return table_names
-
-        table_names = get_table_names()
-        return JsonResponse({'table_names': table_names})
-
-    else:
-        return render(request, 'settings/backup_recovery.html')
-    
-
-
-def schedule_backup(request):
+def get_assign_data_all(request):
     if request.method == "POST":
-        days = int(request.POST.get('days'))
-        selected_tables = request.POST.getlist('tables')
-        operation = request.POST.get('operations')
+        try:
+            data = json.loads(request.body)
+            type = data.get("type")
+            value = data.get("value")
+            print("The Type Is:", type, "The Value Is:", value)
+            assigned_products = []
+            if type == "User":
+                assign_type ="Users"
+                assign_employee = AssignProduct.objects.filter(assign_employee__employee_id=value,assign_mode = assign_type)
+                for i in assign_employee:
+                    barcode_text = i.stock_id.barcodes.first().barcode_text if i.stock_id.barcodes.exists() else " - "
+                    assigned_products.append({
+                        "assign_id": i.assign_id,
+                        "stock_id": i.stock_id.stock_id,
+                        "barcode_text": barcode_text,
+                        "product_name": i.assign_product.product_name,
+                        "product_category": i.assign_product.category.category_name,
+                        "product_subcategory": i.assign_product.subcategory.subcategory_name,
+                        "employee_name": i.assign_employee.name,
+                        "mode": assign_type,
+                        "product_status": i.stock_id.product_status,
+                        
+                    })
+            elif type == "Company":
+                assign_company = AssignProduct.objects.filter(assign_company__company_id=value,assign_mode = type)
+                for i in assign_company:
+                    barcode_text = i.stock_id.barcodes.first().barcode_text if i.stock_id.barcodes.exists() else " - "
+                    assigned_products.append({
+                        "assign_id": i.assign_id,
+                        "stock_id": i.stock_id.stock_id,
+                        "barcode_text": barcode_text,
+                        "product_name": i.assign_product.product_name,
+                        "product_category": i.assign_product.category.category_name,
+                        "product_subcategory": i.assign_product.subcategory.subcategory_name,
+                        "company_name": i.assign_company.company_name,
+                        "mode": type,
+                        "product_status": i.stock_id.product_status,
+                    })
+            elif type == "Exhibition":
+                try:
+                    assign_exhibition = AssignProduct.objects.filter(assign_exhibition__exhibition_id=value,assign_mode = type)
+                except:
+                    assign_exhibition = AssignProduct.objects.filter(assign_mode = type)
+                for i in assign_exhibition:
+                    barcode_text = i.stock_id.barcodes.first().barcode_text if i.stock_id.barcodes.exists() else " - "
+                    assigned_products.append({
+                        "assign_id": i.assign_id,
+                        "stock_id": i.stock_id.stock_id,
+                        "barcode_text": barcode_text,
+                        "product_name": i.assign_product.product_name,
+                        "product_category": i.assign_product.category.category_name,
+                        "product_subcategory": i.assign_product.subcategory.subcategory_name,
+                        "exhibition_name": i.assign_exhibition.exhibition_name,
+                        "mode": type,
+                        "product_status": i.stock_id.product_status,
+                        "employee_name": i.assign_employee.name,
+                    })
+            elif type == "Customer":
+                assign_mode = "Customers"
+                assign_customer = AssignProduct.objects.filter(assign_customer__customer_id=value,assign_mode = assign_mode)
+                for i in assign_customer:
+                    barcode_text = i.stock_id.barcodes.first().barcode_text if i.stock_id.barcodes.exists() else " - "
+                    assigned_products.append({
+                        "assign_id": i.assign_id,
+                        "stock_id": i.stock_id.stock_id,
+                        "barcode_text": barcode_text,
+                        "product_name": i.assign_product.product_name,
+                        "product_category": i.assign_product.category.category_name,
+                        "product_subcategory": i.assign_product.subcategory.subcategory_name,
+                        "customer_name": i.assign_customer.customer_name,
+                        "mode": type,
+                        "product_status": i.stock_id.product_status,
+                    })
+            elif type == "ALL":
+                assign_employee = AssignProduct.objects.filter(assign_employee__employee_id=value)
+                for i in assign_employee:
+                    barcode_text = i.stock_id.barcodes.first().barcode_text if i.stock_id.barcodes.exists() else " - "
+                    assigned_products.append({
+                        "assign_id": i.assign_id,
+                        "stock_id": i.stock_id.stock_id,
+                        "barcode_text": barcode_text,
+                        "product_name": i.assign_product.product_name,
+                        "product_category": i.assign_product.category.category_name,
+                        "product_subcategory": i.assign_product.subcategory.subcategory_name,
+                        "employee_name": i.assign_employee.name,
+                        "mode": i.assign_mode,
+                        "product_status": i.stock_id.product_status,
+                        "exhibition_name": i.assign_exhibition.exhibition_name if i.assign_exhibition else " - ",
+                    })
+            else:
+                raise ValueError("Invalid type provided")
+            # Return the assigned products in the response
+            return JsonResponse({
+                "status": "success",
+                "type": type,
+                "value": value,
+                "assigned_products": assigned_products,  # Include assigned products data
+            })
+        except json.JSONDecodeError:
+            return JsonResponse({"status": "error", "message": "Invalid JSON data"}, status=400)
+        except ValueError as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+    else:
+        return JsonResponse({"status": "error", "message": "Invalid request method"}, status=400)
+    
+
+@csrf_exempt
+def update_product_status(request):
+    if request.method != "POST":
+        return JsonResponse({"status": "error", "message": "Invalid request method"}, status=400)
+
+    try:
+        data = json.loads(request.body)
+        stock_id = data.get("stock_id")
+        product_status = data.get("product_status")
+        assign_id = data.get("assign_id")
+        if not stock_id or not product_status:
+            return JsonResponse({"status": "error", "message": "Missing stock_id or product_status"}, status=400)
+
+        print("--------------", stock_id, product_status,assign_id)
+
+        if product_status == "RETURN":
+            try:
+                assign_product = AssignProduct.objects.get(stock_id=stock_id)
+                return_stock_data, created = ReturnProductHistory.objects.get_or_create(return_stock_id=stock_id,assign_return_id=assign_id)
+                return_stock_data.return_id = uuid.uuid4()
+                return_stock_data.return_quantity = assign_product.assign_quantity
+                return_stock_data.return_at = timezone.now()
+                return_stock_data.reuturn_status = "Success"
+                return_stock_data.save()
+
+                product = StockEntry.objects.get(stock_id=stock_id)
+                product.product_status = "INSTOCK"
+                product.save()
+
+                assign_product.delete()
+
+                return JsonResponse({"status": "success", "message": "Product status updated and moved to return history successfully!"})
+            except AssignProduct.DoesNotExist:
+                print(traceback.format_exc())
+                return JsonResponse({"status": "error", "message": "Product not found in AssignProduct"}, status=404)
+            except StockEntry.DoesNotExist:
+                print(traceback.format_exc())
+                return JsonResponse({"status": "error", "message": "StockEntry not found"}, status=404)
+        print(traceback.format_exc())
+        return JsonResponse({"status": "success", "message": "Product status updated successfully!"})
+
+    except json.JSONDecodeError:
+        return JsonResponse({"status": "error", "message": "Invalid JSON data"}, status=400)
+    except Exception as e:
+        print(traceback.format_exc())
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
+def return_stock_history(request):
+    return render(request, "stock/stock_return_history.html")
+from django.db.models import Q
 
 
-        # Your existing code to update schedules
-        existing_schedules = ScheduledBackup.objects.filter(user=request.user)
-        existing_schedules.exclude(table_name__in=selected_tables).delete()
-
-        for table in selected_tables:
-            ScheduledBackup.objects.update_or_create(
-                user=request.user,
-                table_name=table,
-                defaults={
-                    'backup_interval_days': days,
-                    'operation': operation,
-                    'next_backup': timezone.now() + timedelta(days=days)
-                }
+def get_return_history(request):
+    # data = ReturnProductHistory.objects.filter(return_id__isnull=False)
+    data = ReturnProductHistory.objects.filter(~Q(return_id__isnull=True) & ~Q(return_id=""))
+    return_data = []
+    for product in data:
+        employee_name = product.return_employee.name if product.return_employee else ""
+        if product.return_mode == "Exhibition":
+            employee_name = (
+                (product.return_employee.name if product.return_employee else "") +
+                " - " +
+                (product.return_exhibition.exhibition_name if product.return_exhibition else "")
             )
+        elif product.return_mode == "Customers":
+            employee_name = product.return_customer.customer_name if product.return_customer else None,
+        elif product.return_mode == "Company":
+            employee_name= product.return_company.company_name if product.return_company else None
+        print("==========",employee_name)
+        return_data.append({
+            'return_id': product.return_id,
+            'assign_return_id': product.assign_return_id,
+            "barcode": product.return_stock_id.barcodes.first().barcode_text if product.return_stock_id.barcodes.exists() else " - ",
+            'product_name': product.return_product.product_name,
+            'employee_name': employee_name,
+            'return_mode': product.return_mode,
+            'reuturn_status': product.reuturn_status,
+            'return_assign_status': product.return_product_status,
+            'assign_return_id': product.assign_return_id,
+            'return_product_status': product.return_product_status,
+            'reuturn_assign_at': product.reuturn_assign_at if product.reuturn_assign_at else "",
+            'return_at': product.return_at.strftime('%Y-%m-%d %H:%M:%S') if product.return_at else None,
+        })
+    
+    return JsonResponse(return_data, safe=False)
+import subprocess
 
-        # Return JSON response with success message
-        return JsonResponse({'success_message': "Backup schedule updated successfully!"})
 
-    # Prepare data for the GET request
-    existing_schedules = ScheduledBackup.objects.filter(user=request.user)
-    schedule_data = {
-        'days': existing_schedules.first().backup_interval_days if existing_schedules.exists() else "",
-        'tables': [schedule.table_name for schedule in existing_schedules]
-    }
+@csrf_exempt
+def receive_barcode(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            barcode = data.get('barcode')
+            print(f"Received barcode: {barcode}")
+            return JsonResponse({'status': 'success', 'barcode': barcode})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'}, status=405)
 
-    return render(request, 'settings/backup_recovery.html', {
-        'schedule_data': schedule_data
+
+
+
+
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+import cv2
+import os
+from django.core.files.storage import default_storage
+
+@csrf_exempt
+def scan_qr_image(request):
+    if request.method == 'POST' and request.FILES.get('image'):
+        # Save the uploaded file temporarily
+        file = request.FILES['image']
+        file_name = default_storage.save(file.name, file)
+        file_path = default_storage.path(file_name)
+
+        # Read the image using OpenCV
+        img = cv2.imread(file_path)
+
+        if img is not None:
+            detector = cv2.QRCodeDetector()
+            data, bbox, _ = detector.detectAndDecode(img)
+
+            # Clean up the uploaded file
+            default_storage.delete(file_name)
+
+            if data:
+                return JsonResponse({"qr_data": data})
+            else:
+                return JsonResponse({"error": "No QR code detected in the image!"}, status=400)
+        else:
+            return JsonResponse({"error": "Error reading the image!"}, status=400)
+    else:
+        return JsonResponse({"error": "No image provided!"}, status=400)
+
+def scan_via_mobile(request):
+    return render(request, "scanstock/scan_via_mobile.html")
+
+
+latest_scanned_data = None
+
+@csrf_exempt
+def get_backend_data_scanned_data(request):
+    global latest_scanned_data
+    if request.method == 'POST':
+        try:
+            if request.content_type == 'application/json':
+                data = json.loads(request.body)
+            else:
+                data = request.POST
+            qr_data = data.get('qr_data')
+            system_ip_data = data.get('system_ip')
+            get_temporary_ipv6 = data.get('get_temporary_ipv6')
+            print("QR DATA : ",qr_data,"SYSTEM IP : ",system_ip_data,"get_temporary_ipv6",get_temporary_ipv6)
+            if not qr_data:
+                return JsonResponse({"status": "error", "message": "Missing 'qr_data' in request."}, status=400)
+            if isinstance(qr_data, str):
+                barcode_text = qr_data.split(":")[1].strip().split("\n")[0]  # Extract "PROD-000001-ELEC-BO-01"
+            elif isinstance(qr_data, dict) and 'Barcode' in qr_data:
+                barcode_text = qr_data['Barcode']
+            else:
+                return JsonResponse({"status": "error", "message": "Invalid 'qr_data' format."}, status=400)
+            try:
+                assign_product = AssignProduct.objects.get(stock_id__barcodes__barcode_text=barcode_text)
+                if assign_product.assign_mode == "Users":
+                    emp_name = assign_product.assign_employee.name
+                elif assign_product.assign_mode == "Customer":
+                    emp_name = assign_product.assign_customer.customer_name
+                elif assign_product.assign_mode == "Exhibition":
+                    emp_name = f"{assign_product.assign_employee.name} - {assign_product.assign_exhibition.exhibition_name}"
+                elif assign_product.assign_mode == "Company":
+                    emp_name = assign_product.assign_company.company_name
+                else:
+                    emp_name = None
+                response_data = {
+                    "barcode": barcode_text,
+                    "stock_id": assign_product.stock_id.stock_id,
+                    "product_name": assign_product.assign_product.product_name,
+                    "product_category": assign_product.assign_product.category.category_name,
+                    "product_subcategory": assign_product.assign_product.subcategory.subcategory_name,
+                    "assign_mode": assign_product.assign_mode,
+                    "assign_at": assign_product.assign_at,
+                    "emp_name": emp_name,
+                    "box": assign_product.stock_id.box.box_name,
+                    "rack": assign_product.stock_id.rack.rank_name,
+                    "product_status": assign_product.stock_id.product_status,
+                    "location": assign_product.stock_id.location.name,
+                    "from": "assign_product",
+                    "system_ip": system_ip_data,
+                }
+            except AssignProduct.DoesNotExist:
+                stock_entry = StockEntry.objects.get(barcodes__barcode_text=barcode_text)
+                response_data = {
+                    "barcode": barcode_text,
+                    "stock_id": stock_entry.stock_id,
+                    "product_name": stock_entry.product.product_name,
+                    "product_category": stock_entry.product.category.category_name,
+                    "product_subcategory": stock_entry.product.subcategory.subcategory_name,
+                    "box": stock_entry.box.box_name,
+                    "rack": stock_entry.rack.rank_name,
+                    "product_status": stock_entry.product_status,
+                    "location": stock_entry.location.name,
+                    "from": "stock_entry",
+                    "system_ip": system_ip_data,
+                }
+            html = render_to_string('scanstock/scan_barcode_data_table.html', {"data": response_data})
+            latest_scanned_data = html  
+            return JsonResponse({
+                "status": "success",
+                "message": "Data retrieved successfully",
+                "data": response_data,
+                "html": html 
+            })
+        except Exception as e:
+            print("Error:", traceback.format_exc())
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+    return JsonResponse({"status": "error", "message": "Invalid request method. Only POST is allowed."}, status=405)
+
+@csrf_exempt
+def get_latest_scanned_data(request):
+    global latest_scanned_data
+    if latest_scanned_data:
+        return JsonResponse({
+            "status": "success",
+            "html": latest_scanned_data,
+        })
+    else:
+        return JsonResponse({
+            "status": "error",
+            "message": "No data available.",
+        })
+
+def assign_exhibition(request):
+    return render(request, "exhibition_operation/assign_exhibition.html")
+
+def return_exhibition(request):
+    return render(request, "exhibition_operation/return_exhibition.html")
+
+def assign_operation_exhibition_list(request):
+    return render(request, "exhibition_operation/assign_operation_exhibition_list.html")
+
+def fetch_exhibition_list(request):
+    exb_list = Exhibition.objects.all().values(
+        'exhibition_id',
+        'exhibition_name',
+        'location',
+        'city',
+        'state',
+        'start_date',
+        'end_date'
+    )
+    return JsonResponse({
+        "status": "success",
+        "data": list(exb_list),
     })
-
-
-
-def get_scheduled_backups(request):
-    backups = ScheduledBackup.objects.all()
-    data = [
-        {
-            "table_name": backup.table_name,
-            "backup_interval_days": backup.backup_interval_days,
-            "next_backup": backup.next_backup,
-            "user": backup.user.id
-        }
-        for backup in backups
-    ]
-    return JsonResponse(data, safe=False)
-
-
-backup_dir = os.path.join(os.path.dirname(__file__), 'backups')
-
-def download_sql_file(request, backup_id):
-    try:
-        backup = ScheduledBackupDetails.objects.get(id=backup_id)
-        file_path = os.path.join(backup_dir, backup.sql_file_name)
-        return FileResponse(open(file_path, 'rb'), as_attachment=True, filename=backup.sql_file_name)
-    except (ScheduledBackupDetails.DoesNotExist, FileNotFoundError):
-        raise Http404("SQL file not found.")
-
-def download_txt_file(request, backup_id):
-    try:
-        backup = ScheduledBackupDetails.objects.get(id=backup_id)
-        file_path = os.path.join(backup_dir, backup.txt_file_name)
-        return FileResponse(open(file_path, 'rb'), as_attachment=True, filename=backup.txt_file_name)
-    except (ScheduledBackupDetails.DoesNotExist, FileNotFoundError):
-        raise Http404("Text file not found.")

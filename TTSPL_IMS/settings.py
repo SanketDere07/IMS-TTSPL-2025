@@ -29,6 +29,7 @@ SECRET_KEY = 'django-insecure-!%y1)7=&#kht-&j7+v4a@n+$uos91t#)5vw=23*gxm^dxoyz7n
 DEBUG = True
 
 ALLOWED_HOSTS = ['*']
+X_FRAME_OPTIONS = 'SAMEORIGIN'  # Allows embedding only within the same site
 
 
 # Application definition
@@ -52,7 +53,6 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'TTSPL_IMS_App.middleware.NoCacheMiddleware',
 ]
 
 ROOT_URLCONF = 'TTSPL_IMS.urls'
@@ -75,27 +75,14 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'TTSPL_IMS.wsgi.application'
 
-SESSION_ENGINE = 'django.contrib.sessions.backends.db'
-
-# --------------------------------------------------------- Send Alarm Alert using Email---------------------------------------------------------#
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-
-SECONDARY_EMAIL_HOST = 'smtp.example.com'
-SECONDARY_EMAIL_PORT = 465  # Default port for SSL
-SECONDARY_EMAIL_USE_TLS = False
-SECONDARY_EMAIL_HOST_USER = 'default_secondary_user@example.com'
-SECONDARY_EMAIL_HOST_PASSWORD = 'default_password'
-SECONDARY_DEFAULT_FROM_EMAIL = 'default_from@example.com'
-
-
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-    }
-}
-
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'deresanket24@gmail.com'  
+EMAIL_HOST_PASSWORD = 'ixkxmgbdpkjmjyis'
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 # Database
-# https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
 DATABASE_NAME = 'IMS_TTSPL_DB'
 DATABASE_USER = 'postgres'
@@ -183,9 +170,6 @@ TIME_ZONE = 'Asia/Kolkata'
 USE_I18N = True
 
 USE_TZ = True
-
-AUTH_USER_MODEL = 'TTSPL_IMS_App.User'
-
 
 
 # Static files (CSS, JavaScript, Images)

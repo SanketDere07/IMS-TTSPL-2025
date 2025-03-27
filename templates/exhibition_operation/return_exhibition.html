@@ -1,0 +1,151 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %} Exhibitions | TTSPL IMS {% endblock %}
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
+            <h4 class="mb-sm-0">Exhibition List</h4>
+            <div class="page-title-right">
+                <ol class="breadcrumb m-0">
+                    <li class="breadcrumb-item"><a href="#">Dashboard</a></li>
+                    <li class="breadcrumb-item active">Exhibitions</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header align-items-center d-flex">
+                <h4 class="card-title mb-0 flex-grow-1">All Exhibitions</h4>
+                <div class="flex-shrink-0">
+                    <button class="btn btn-primary" id="refreshBtn">Refresh</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table id="exhibitionTable" class="table table-bordered table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>Exhibition Name</th>
+                                <th>Location</th>
+                                <th>City</th>
+                                <th>State</th>
+                                <th>Start Date</th>
+                                <th>End Date</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="exhibitionTableBody">
+                            <!-- Data will be loaded here via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    // Load exhibition data when page loads
+    loadExhibitionData();
+
+    // Refresh button click handler
+    $('#refreshBtn').click(function() {
+        loadExhibitionData();
+    });
+
+    function loadExhibitionData() {
+        $.ajax({
+            url: "{% url 'fetch_exhibition_list' %}",
+            type: "GET",
+            dataType: "json",
+            success: function(response) {
+                if(response.status === "success") {
+                    renderExhibitionTable(response.data);
+                } else {
+                    console.error("Failed to load exhibition data");
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error("Error fetching exhibition data:", error);
+            }
+        });
+    }
+
+    function renderExhibitionTable(data) {
+        const tableBody = $('#exhibitionTableBody');
+        tableBody.empty();
+
+        if(data.length === 0) {
+            tableBody.append(`
+                <tr>
+                    <td colspan="8" class="text-center">No exhibitions found</td>
+                </tr>
+            `);
+            return;
+        }
+
+        data.forEach(exhibition => {
+            const startDate = new Date(exhibition.start_date);
+            const endDate = new Date(exhibition.end_date);
+            
+            tableBody.append(`
+                <tr>
+                    <td>${exhibition.exhibition_id}</td>
+                    <td>${exhibition.exhibition_name}</td>
+                    <td>${exhibition.location}</td>
+                    <td>${exhibition.city}</td>
+                    <td>${exhibition.state}</td>
+                    <td>${startDate.toLocaleDateString()}</td>
+                    <td>${endDate.toLocaleDateString()}</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary view-btn" data-id="${exhibition.exhibition_id}">
+                            <i class="ri-eye-line"></i> View
+                        </button>
+                    </td>
+                </tr>
+            `);
+        });
+
+        // Initialize DataTable if you want enhanced features
+        $('#exhibitionTable').DataTable({
+            responsive: true,
+            destroy: true, // To allow reinitialization
+            columnDefs: [
+                { targets: [0], width: "5%" },
+                { targets: [7], width: "10%", orderable: false }
+            ]
+        });
+
+        // Add click handler for view buttons
+        $('.view-btn').click(function() {
+            const exhibitionId = $(this).data('id');
+            viewExhibitionDetails(exhibitionId);
+        });
+    }
+
+    function viewExhibitionDetails(exhibitionId) {
+        // Implement your view details logic here
+        console.log("Viewing exhibition:", exhibitionId);
+        // You can redirect to a detail page or show a modal
+        window.location.href = `/exhibitions/detail/${exhibitionId}/`;
+    }
+});
+</script>
+
+<style>
+    #exhibitionTable th {
+        white-space: nowrap;
+    }
+    .table-responsive {
+        overflow-x: auto;
+    }
+</style>
+
+{% endblock %}

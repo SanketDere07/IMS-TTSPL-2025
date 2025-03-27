@@ -1,0 +1,189 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %} Assign Stock | TTSPL IMS - Trisnota Technical Services Pvt. Ltd.{% endblock %}
+{% block content %}
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        .offcanvas-bottom {
+            height: 80vh !important;
+        }
+        #reader {
+            width: 100%;
+            max-width: 500px;
+            margin: 0 auto;
+            position: relative;
+            overflow: hidden;
+        }
+        #scan-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background-color: red;
+            animation: scan 2s linear infinite;
+        }
+        @keyframes scan {
+            0% { top: 0; }
+            100% { top: 100%; }
+        }
+        #current-scan-box {
+            margin-top: 20px;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            background-color: #f1f1f1;
+        }
+        iframe {
+            width: 100%;
+            height: 300px;
+            border: 1px solid #ccc;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h2>QR Code Scanner</h2>
+
+    <!-- Current Scan Data Box -->
+    <div id="current-scan-box">
+        <h4>Current Scan</h4>
+        <p id="current-scan-data">No data scanned yet.</p>
+        <button class="btn btn-success" id="copy-btn">Copy</button>
+        <button class="btn btn-info" id="share-btn">Share</button>
+    </div>
+
+    <button class="btn btn-primary mt-3" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasBottom" aria-controls="offcanvasBottom">
+        <i class="ri-scanner-line"></i> Open Scanner
+    </button>
+
+    <!-- Embedded Page -->
+    <iframe id="scannedDataIframe" src="about:blank" style="width: 100%; height: 500px; border: 1px solid #ccc; margin-top: 20px;"></iframe>
+
+    <div class="offcanvas offcanvas-bottom" tabindex="-1" id="offcanvasBottom" aria-labelledby="offcanvasBottomLabel">
+        <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="offcanvasBottomLabel">QR Code Scanner</h5>
+            <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body">
+            <div id="reader">
+                <div id="scan-line"></div> <!-- Scanning Line -->
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const html5QrCode = new Html5Qrcode("reader");
+        let lastScannedData = null;
+
+        async function startScanner() {
+            const config = { fps: 10, qrbox: 250 };
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: "environment" }
+                });
+                await html5QrCode.start(
+                    { deviceId: stream.getVideoTracks()[0].getSettings().deviceId },
+                    config,
+                    onScanSuccess,
+                    onScanError
+                );
+                console.log("Scanner started successfully");
+            } catch (err) {
+                console.error("Unable to start the scanner:", err);
+            }
+        }
+
+        function onScanSuccess(decodedText, decodedResult) {
+            if (decodedText !== lastScannedData) {
+                lastScannedData = decodedText;
+                document.getElementById("current-scan-data").innerText = decodedText;
+                const offcanvas = bootstrap.Offcanvas.getInstance(document.getElementById('offcanvasBottom'));
+                offcanvas.hide();
+                sendScannedDataToBackend(decodedText);
+            }
+        }
+
+        function sendScannedDataToBackend(data) {
+            const json = {
+                "qr_data": data
+            };
+            fetch('/get_backend_data_scanned_data/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'), // Include CSRF token for Django
+                },
+                body: JSON.stringify(json),
+            })
+            .then(response => response.json())
+            .then(result => {
+                // Update the iframe with the rendered HTML
+                const iframe = document.getElementById('scannedDataIframe');
+                const iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
+                iframeDocument.open();
+                iframeDocument.write(result.html); // Write the HTML content to the iframe
+                iframeDocument.close();
+
+                console.log("Data sent to backend:", result);
+                alert("Data saved successfully!");
+            })
+            .catch(error => {
+                console.error("Error sending data to backend:", error);
+                alert("Failed to save data.");
+            });
+        }
+
+        // Polling function to check for updates
+        function pollForUpdates() {
+            fetch('/get_latest_scanned_data/')  // Fetch the latest data
+                .then(response => response.json())
+                .then(result => {
+                    if (result.status === 'success') {
+                        const iframe = document.getElementById('scannedDataIframe');
+                        const iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
+                        iframeDocument.open();
+                        iframeDocument.write(result.html); // Write the HTML content to the iframe
+                        iframeDocument.close();
+                    }
+                })
+                .catch(error => {
+                    console.error("Error fetching latest data:", error);
+                });
+        }
+
+        // Poll every 5 seconds
+        setInterval(pollForUpdates, 1000);
+
+        function onScanError(errorMessage) {
+            console.warn(`Scan error: ${errorMessage}`);
+        }
+
+        const offcanvas = document.getElementById('offcanvasBottom');
+        offcanvas.addEventListener('shown.bs.offcanvas', startScanner);
+        offcanvas.addEventListener('hidden.bs.offcanvas', () => {
+            html5QrCode.stop().then(() => console.log("Scanner stopped.")).catch(err => console.error("Unable to stop the scanner:", err));
+        });
+
+        // Function to get CSRF token from cookies
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    </script>
+<!-- end page title -->
+{% endblock %}
+{% block custom_script %}
+{% endblock %}

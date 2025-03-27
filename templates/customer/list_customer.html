@@ -1,39 +1,6 @@
 {% extends 'base.html' %}
 {% block title %} Customer | TTSPL IMS - Trisnota Technical Services Pvt. Ltd.{% endblock %}
 {% block content %}
-<style>
-    /* Ensure select2 elements have uniform height */
-.select2-container--default .select2-selection--single .select2-selection__rendered {
-    color: #444;
-    line-height: 34px;
-}
-
-.select2-container--default .select2-selection--single {
-    background-color: #fff;
-    border: 1px solid #aaa;
-    border-radius: 4px;
-    height: 38px; /* Match input height */
-}
-
-/* Style for quantity input and buttons */
-.input-group .btn {
-    height: 38px !important; /* Ensure buttons match select2 height */
-    line-height: auto;
-}
-
-.input-group input[type="number"] {
-    height: 38px !important; /* Match select2 height */
-}
-
-.select2-container--default .select2-selection--single .select2-selection__arrow {
-    height: 34px !important;
-    position: absolute;
-    top: 1px;
-    right: 1px;
-    width: 20px;
-}
-</style>
-
 <div class="row">
     <div class="col-12">
        <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
@@ -57,47 +24,6 @@
                 </div>
             </div>
             <div class="card-body">
-                <div class="accordion accordion-primary mb-3" id="filterAccordion">
-                    <div class="accordion-item material-shadow">
-                        <h2 class="accordion-header" id="flush-headingFilters">
-                            <button class="accordion-button collapsed d-flex align-items-center" type="button" data-bs-toggle="collapse"
-                                data-bs-target="#flush-collapseFilters" aria-expanded="false" aria-controls="flush-collapseFilters">
-                                <i class="ri-filter-3-line me-2"></i> Filters
-                            </button>
-                        </h2>
-                        <div id="flush-collapseFilters" class="accordion-collapse collapse" aria-labelledby="flush-headingFilters"
-                            data-bs-parent="#filterAccordion">
-                            <div class="accordion-body">
-                                <div class="row mb-3">
-                                    <!-- Customer Name Filter -->
-                                    <div class="col-md-3">
-                                        <label class="form-label">Customer Name</label>
-                                        <input type="text" class="form-control" id="customer-name-filter" placeholder="Enter Customer Name">
-                                    </div>
-                
-                                    <!-- Company Name Filter -->
-                                    <div class="col-md-3">
-                                        <label class="form-label">Company Name</label>
-                                        <select class="form-control select2" id="company-name-filter">
-                                            <option value="">Select Company</option>
-                                        </select>
-                                    </div>
-                
-                                    <!-- Submit & Reset Buttons -->
-                                    <div class="col-md-3 d-flex align-items-end">
-                                        <button class="btn btn-primary me-2 w-50" id="apply-filters">Submit</button>
-                                        <button class="btn btn-warning w-50 me-2" id="reset-filters">Reset</button>
-                                        <button class="btn btn-danger w-50 me-2" id="generate-customer-pdf">PDF
-                                        </button>
-                                        <button class="btn btn-secondary w-50 me-2" id="generate-csv">CSV</button> 
-                                        <button class="btn btn-success w-50" id="generate-excel">Excel</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
                 <table id="customer" class="table table-bordered table-responsive align-middle" style="width:100%">
                     <thead>
                         <tr>
@@ -146,33 +72,7 @@
 </div><!-- /.modal -->
 
 <script>
-        $(document).ready(function () {
-        $('#company-name-filter').select2({
-            placeholder: "Select a company",
-            allowClear: true
-        });
-
-        // Fetch and load company data
-        fetchCompanies();
-    });
-        function fetchCompanies() {
-            $.getJSON("{% url 'get_companies' %}", function (data) {
-                $('#company-name-filter')
-                    .empty()
-                    .append('<option value="" disabled selected>Select Company</option>'); // Disabled label option
-
-                $.each(data.companies, function (index, company) {
-                    $('#company-name-filter').append(`<option value="${company.company_id}">${company.company_name}</option>`);
-                });
-
-                // Reinitialize Select2 after populating the dropdown
-                $('#company-name-filter').select2();
-            });
-        }
-
-
-        $(document).ready(function () {
-    
+    $(document).ready(function () {
         var customer_datatable = $('#customer').DataTable({
             pagingType: "full_numbers",
             hover: true,
@@ -181,14 +81,6 @@
             order: [[0, 'asc']], // Order by ID
             lengthMenu: [[5, 10, 25, 50, -1], [5, 10, 25, 50, "All"]],
             pageLength: 5,
-            ajax: {
-                url: "/customer-list/",
-                data: function (d) {
-                    d.customer_name = $('#customer-name-filter').val().trim();
-                    d.company_id = $('#company-name-filter').val();
-                },
-                dataSrc: "customers"
-            },
             columns: [
                 { data: 'id' },
                 { data: 'name' },
@@ -228,59 +120,18 @@
             ]
         });
 
-        function load_customer_data() {
-            $('#spinner-container').show();
-            customer_datatable.ajax.reload(null, false);
-            $('#spinner-container').hide();
+        function show_customer_datatable_data() {
+            $.ajax({
+                url: "/customer-list/",
+                method: "GET",
+                success: function (response) {
+                    customer_datatable.clear().rows.add(response.customers || []).draw(false);
+                }
+            });
         }
 
-        // Apply filters
-        $('#apply-filters').click(function () {
-            load_customer_data();
-        });
-
-        // Reset filters
-        $('#reset-filters').click(function () {
-            $('#customer-name-filter').val('');
-            $('#company-name-filter').val(null).trigger('change');
-            load_customer_data();
-        });
-
-        load_customer_data();
+        show_customer_datatable_data();
     });
-
-    $('#generate-customer-pdf').click(function () {
-        let filters = {
-            customer_name: $('#customer-name-filter').val().trim(),
-            company_name: $('#company-name-filter').val(),
-        };
-        window.location.href = `/generate-customer-pdf/?` + $.param(filters);
-    });
-
-
-    // Generate CSV when button is clicked 
-    $('#generate-csv').click(function () {
-        let filters = {
-            customer_name: $('#customer-name-filter').val().trim(),
-            company_name: $('#company-name-filter').val(),
-        };
-
-        // Redirect to CSV generation URL with filters
-        window.location.href = `/generate-customer-csv/?` + $.param(filters);
-    });
-
-    // Generate Excel when button is clicked
-    $('#generate-excel').click(function () {
-        let filters = {
-            customer_name: $('#customer-name-filter').val().trim(),
-            company_name: $('#company-name-filter').val(),
-        };
-
-        // Redirect to Excel generation URL with filters
-        window.location.href = `/generate-customer-excel/?` + $.param(filters);
-    });
-
-
 
     let customerIdToDelete = null;
 

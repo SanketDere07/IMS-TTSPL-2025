@@ -169,6 +169,7 @@
                                       <th>SN & MFG No</th>
                                       <th>Rack</th>
                                       <th>Box</th>
+                                       <th>Status</th>
                                       <th>Action</th>
                                    </tr>
                                 </thead>
@@ -372,6 +373,13 @@
                                 <td>
                                 <input type="text" class="form-control serial-number" name="serial_no[]" placeholder="Enter Serial No / Manufacture No" required />
                             </td>
+                            <td>
+                                <select class="form-control select2 status-select product_status" name="product_status[]" required>
+                                    <option value="">Select Status</option>
+                                    <option value="INSTOCK">INSTOCK</option>
+                                    <option value="FIXED_ASSET">FIXED ASSET</option>
+                                </select>
+                            </td>
                                 <td>
                                     <button class="btn btn-danger btn-sm remove-barcode" 
                                         data-image="${barcodeObj.image}" data-index="${index}">
@@ -521,13 +529,14 @@
                     let rackId = $(this).find('.rack-select').val();
                     let boxId = $(this).find('.box-select').val();
                     let serialNumber = $(this).find('.serial-number').val();
-
+                    let product_status = $(this).find('.product_status').val();
                     barcodeList.push({
                         barcode: barcodeText,
                         image: imageSrc,
                         rank_id: rackId,
                         box_id: boxId,
-                        serial_number: serialNumber 
+                        serial_number: serialNumber,
+                        product_status:product_status, 
                     });
                 });
 
@@ -545,15 +554,16 @@
                     success: function (response) {
                         console.log("Stock Submission Response:", response);
                         if (response.status === 'success') {
-                            alert("Stock submitted successfully!");
+                            showToast("Stock submitted successfully..!!" ,"Success", "success");
                             location.reload(); // Refresh page or handle UI reset
                         } else {
-                            alert("Error: " + response.message);
+                            
+                            showToast(response.message ,"Error", "error");
                         }
                     },
                     error: function (xhr, status, error) {
                         console.error("Stock Submission AJAX Error:", error);
-                        alert("Something went wrong. Check console for details.");
+                        showToast("Something went wrong. Check console for details." ,"Error", "error");
                     }
                 });
             });
@@ -568,12 +578,13 @@
                 success: function (response) {
                     if (response.status === 'success') {
                         $('#barcode-' + index).remove(); // Remove from the UI
+                        showToast("Remove Barcodes successfully..!!" ,"Success", "success");
                     } else {
-                        alert(response.message);
+                        showToast(response.message ,"Error", "error");
                     }
                 },
                 error: function () {
-                    alert('Error removing barcode');
+                    showToast('Error removing barcode' ,"Error", "error");
                 }
             });
         }
@@ -595,69 +606,118 @@
             });
         });
 
-        // Handle filter changes
-        $("#category, #subcategory, #product, #location").change(function () {
-            var category = $("#category").val();
-            var subcategory = $("#subcategory").val();
-            var product = $("#product").val();
-            var location = $("#location").val();
-
-            if (category && subcategory && product && location) {
-                $.ajax({
-                    url: "{% url 'fetch_barcode' %}",
+        $("#location").change(function () {
+            // Initialize DataTable
+            var barcodeTable = $('#barcode_table').DataTable({
+                pagingType: "full_numbers", // Pagination type
+                hover: true, // Enable row hover effect
+                ordering: true, // Enable sorting
+                searching: true, // Enable search functionality
+                scrollX: true, // Enable horizontal scrolling
+                order: [[0, 'asc']], // Default sorting by Stock ID
+                lengthMenu: [[5, 10, 25, 50, -1], [5, 10, 25, 50, "All"]], // Page length options
+                pageLength: 10, // Default page length
+                ajax: {
+                    url: "{% url 'stock_entry_fetch_barcode' %}", // URL to fetch data
                     type: "GET",
-                    data: { category, subcategory, product, location },
-                    success: function (response) {
-                        var barcodeTable = $("#barcode_table tbody");
-                        barcodeTable.empty();
-
-                        if (response.barcodes.length > 0) {
-                            response.barcodes.forEach(function (barcode) {
-                                let rackDropdown = `<select class="form-control rack-select" data-stock-id="${barcode.stock_id}">
-                                                        <option value="">Select Rack</option>`;
-                                Object.keys(rackOptions).forEach(function (id) {
-                                    let selected = barcode.rank === rackOptions[id] ? "selected" : "";
-                                    rackDropdown += `<option value="${id}" ${selected}>${rackOptions[id]}</option>`;
-                                });
-                                rackDropdown += `</select>`;
-
-                                let boxDropdown = `<select class="form-control box-select" data-stock-id="${barcode.stock_id}">
-                                                        <option value="">Select Box</option>`;
-                                Object.keys(boxOptions).forEach(function (id) {
-                                    let selected = barcode.box === boxOptions[id] ? "selected" : "";
-                                    boxDropdown += `<option value="${id}" ${selected}>${boxOptions[id]}</option>`;
-                                });
-                                boxDropdown += `</select>`;
-
-                                barcodeTable.append(`
-                                    <tr>
-                                        <td>${barcode.stock_id}</td>
-                                        <td><img src="${barcode.barcode_image}" width="100"></td>
-                                        <td>${barcode.barcode_text}</td>
-                                        <td>${barcode.product_name}</td>
-                                        <td>${barcode.location}</td>
-                                        <td>${barcode.serial_number}</td>
-                                        <td>${rackDropdown}</td>
-                                        <td>${boxDropdown}</td>
-                                        <td>
-                                            <button class="btn btn-danger btn-sm delete-stock" data-stock-id="${barcode.stock_id}">
-                                                <i class="ri-delete-bin-5-line"></i> 
-                                            </button>
-                                        </td>
-                                    </tr>
-                                `);
-                            });
-
-                            $('.rack-select, .box-select').select2();
-                        } else {
-                            barcodeTable.append("<tr><td colspan='7'>No Barcode Found</td></tr>");
+                    dataSrc: "barcodes", // Key in the response containing the data
+                    data: function (d) {
+                        // Add filter parameters to the AJAX request
+                        d.category = $("#category").val();
+                        d.subcategory = $("#subcategory").val();
+                        d.product = $("#product").val();
+                        d.location = $("#location").val();
+                    }
+                },
+                columns: [
+                    { data: 'stock_id' }, // Stock ID column
+                    {
+                        data: 'barcode_image', // Barcode image column
+                        render: function (data) {
+                            return data ? `<img src="${data}" alt="Barcode" width="100">` : "No Image";
                         }
                     },
-                    error: function (xhr, status, error) {
-                        console.error("AJAX Error:", status, error);
+                    { data: 'barcode_text' }, // Barcode text column
+                    { data: 'product_name' }, // Product name column
+                    { data: 'location' }, // Location column
+                    { data: 'serial_number' }, // Serial number column
+                    {
+                        data: 'rank', // Rack dropdown column
+                        render: function (data, type, row) {
+                            let rackDropdown = `<select class="form-control rack-select" data-stock-id="${row.stock_id}">
+                                                    <option value="">Select Rack</option>`;
+                            Object.keys(rackOptions).forEach(function (id) {
+                                let selected = data === rackOptions[id] ? "selected" : "";
+                                rackDropdown += `<option value="${id}" ${selected}>${rackOptions[id]}</option>`;
+                            });
+                            rackDropdown += `</select>`;
+                            return rackDropdown;
+                        }
+                    },
+                    {
+                        data: 'box', // Box dropdown column
+                        render: function (data, type, row) {
+                            let boxDropdown = `<select class="form-control box-select" data-stock-id="${row.stock_id}">
+                                                    <option value="">Select Box</option>`;
+                            Object.keys(boxOptions).forEach(function (id) {
+                                let selected = data === boxOptions[id] ? "selected" : "";
+                                boxDropdown += `<option value="${id}" ${selected}>${boxOptions[id]}</option>`;
+                            });
+                            boxDropdown += `</select>`;
+                            return boxDropdown;
+                        }
+                    },
+                    {
+                        data: 'product_status', // Product status column
+                        render: function (data, type, row) {
+                            let badgeClass = data === 'ASSIGN' ? 'bg-danger' : 'bg-success';
+                            return `<span class="badge ${badgeClass}">${data}</span>`;
+                        }
+                    },
+                    {
+                        data: null, // Action buttons column
+                        render: function (data, type, row) {
+                            return `
+                                <button class="btn btn-danger btn-sm delete-stock" data-stock-id="${row.stock_id}">
+                                    <i class="ri-delete-bin-5-line"></i> 
+                                </button>
+                            `;
+                        }
                     }
-                });
-            }
+                ],
+                initComplete: function () {
+                    // Initialize Select2 for dropdowns after table is loaded
+                    $('.rack-select, .box-select').select2();
+                }
+            });
+        
+            // Refresh DataTable when filters change
+           
+        
+            // Handle delete button click
+            $('#barcode_table').on('click', '.delete-stock', function () {
+                let stockId = $(this).data('stock-id');
+                if (confirm("Are you sure you want to delete this stock entry?")) {
+                    $.ajax({
+                        url: `/delete-stock/${stockId}/`,
+                        type: "DELETE",
+                        headers: {
+                            "X-CSRFToken": "{{ csrf_token }}" // Include CSRF token for Django
+                        },
+                        success: function (response) {
+                            if (response.success) {
+                                barcodeTable.ajax.reload(); // Reload DataTable after deletion
+                                showToast("Stock entry deleted successfully..!!" ,"Success", "success");
+                            } else {
+                                showToast("Failed to delete stock entry...!!" ,"Error", "error");
+                            }
+                        },
+                        error: function (xhr, status, error) {
+                            console.error("AJAX Error:", status, error);
+                        }
+                    });
+                }
+            });
         });
 
     // Handle Rack or Box Update
@@ -744,13 +804,13 @@ $("#delete-record").on("click", function () {
             if (response.status === "success") {
                 row.remove(); // Remove row from table on successful deletion
                 $("#deleteModal").modal("hide"); // Hide the modal after successful delete
-                alert("Stock entry deleted successfully!");
+                showToast("Stock entry deleted successfully!" ,"Success", "success");
             } else {
-                alert("Error: " + response.message);
+                showToast(response.message ,"Error", "error");
             }
         },
         error: function (xhr, status, error) {
-            alert("Error: Unable to delete stock entry.");
+            showToast("Error: Unable to delete stock entry." ,"Error", "error");
             console.error("AJAX Error:", status, error);
         }
     });
@@ -771,16 +831,8 @@ function getCookie(name) {
     }
     return cookieValue;
 }
-
-
-
-
-    });
-    
+});
 </script>
-
-
-<!-- end page title -->
 {% endblock %}
 {% block custom_script %}
 {% endblock %}

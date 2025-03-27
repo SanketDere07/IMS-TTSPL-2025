@@ -23,22 +23,7 @@ from TTSPL_IMS_App import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', views.login_view, name='login'),  # Root URL pattern
-    path('logout/', views.logout_view, name='logout'),
-
-    
-    path('login_page', views.login_page, name='login-page'),
-    path('reset_password_page', views.reset_password_page, name='reset-password-page'),
-
-
-    path('send-reset-otp/', views.send_reset_otp, name='send_reset_otp'),
-    path('verify-otp/', views.verify_otp, name='verify_otp'),
-    path('reset-password/', views.reset_password, name='reset_password'),
-    path('resend-otp/', views.resend_otp, name='resend_otp'),
-
-
-
-    path('dashboard_page', views.dashboard_page, name='dashboard-page'),
+    path('', views.dashboard_page, name='dashboard-page'),
     path('location_list_page', views.location_list_page, name='location-list-page'),
     path('location_add_page', views.location_add_page, name='location-add-page'),
 
@@ -88,10 +73,6 @@ urlpatterns = [
     path('view-category/<int:category_id>/', views.category_view_page, name='category_view_page'),
     path('update-category/<int:id>/', views.category_update_page, name='category_update_page'),
     path('delete-category/<int:id>/', views.delete_category, name='delete_category'),
-    path('generate-category-csv/',  views.generate_category_csv, name='generate_category_csv'),
-    path('generate-category-excel/',  views.generate_category_excel, name='generate_category_excel'),
-    path('generate-category-pdf/', views.generate_category_pdf, name='generate_category_pdf'),
-
     
     
     path('subcategory_list_page', views.subcategory_list_page, name='subcategory-list-page'),
@@ -103,10 +84,6 @@ urlpatterns = [
     path('view-subcategory/<int:subcategory_id>/', views.subcategory_view_page, name='subcategory_view_page'),
     path('update-subcategory/<int:id>/', views.subcategory_update_page, name='subcategory_update_page'),
     path('delete-subcategory/<int:id>/', views.delete_subcategory, name='delete_subcategory'),
-    path('generate-subcategory-csv/', views.generate_subcategory_csv, name='generate_subcategory_csv'),
-    path('generate-subcategory-excel/', views.generate_subcategory_excel, name='generate_subcategory_excel'),
-    path('generate-subcategory-pdf/', views.generate_subcategory_pdf, name='generate_subcategory_pdf'),
-
     
     
     path('box_list_page', views.box_list_page, name='box-list-page'),
@@ -117,9 +94,6 @@ urlpatterns = [
     path('view-box/<int:box_id>/', views.box_view_page, name='box_view_page'),
     path('update-box/<int:id>/', views.box_update_page, name='box_update_page'),
     path('delete-box/<int:id>/', views.delete_box, name='delete_box'),
-    path('generate-box-pdf/', views.generate_box_pdf, name='generate_box_pdf'),
-    path('generate-box-csv/', views.generate_box_csv, name='generate_box_csv'),
-    path('generate-box-excel/', views.generate_box_excel, name='generate_box_excel'),
     
     
     path('rank_list_page', views.rank_list_page, name='rank-list-page'),
@@ -130,26 +104,17 @@ urlpatterns = [
     path('view-rank/<int:rank_id>/', views.rank_view_page, name='rank_view_page'),
     path('update-rank/<int:id>/', views.rank_update_page, name='rank_update_page'),
     path('delete-rank/<int:id>/', views.delete_rank, name='delete_rank'),
-    path('generate-rank-csv/',  views.generate_rank_csv, name='generate_rank_csv'),
-    path('generate-rank-excel/',  views.generate_rank_excel, name='generate_rank_excel'),
-    path('generate-rank-pdf/', views.generate_rank_pdf, name='generate_rank_pdf'),
-
-
+    
     path('product_list_page', views.product_list_page, name='product-list-page'),
     path('product_add_page', views.product_add_page, name='product-add-page'),
     
     path('add-product/', views.add_product, name='add_product'),
     path('get-subcategories/<int:category_id>/', views.get_subcategories, name='get_subcategories'),
     path('get-products/', views.get_products, name='get_products'),
-    path('search-products/', views.search_products, name='search_products'),
-
     path('view-product/<int:product_id>/', views.product_view_page, name='product_view_page'),
     path('update-product/<int:id>/', views.update_product, name='update_product'),
     path('delete-product/<int:id>/', views.delete_product, name='delete_product'),
     path('remove-product-image/<int:image_id>/', views.remove_product_image, name='remove_product_image'),
-    path('generate-product-pdf/', views.generate_product_pdf, name='generate_product_pdf'),
-    path('generate-product-csv/', views.generate_product_csv, name='generate_product_csv'),
-    path('generate-product-excel/', views.generate_product_excel, name='generate_product_excel'),
 
     
     path('exhibition_list_page', views.exhibition_list_page, name='exhibition-list-page'),
@@ -160,9 +125,6 @@ urlpatterns = [
     path('view-exhibition/<int:exhibition_id>/', views.exhibition_view_page, name='exhibition_view_page'),
     path('update-exhibition/<int:id>/', views.exhibition_update_page, name='exhibition_update_page'),
     path('delete-exhibition/<int:id>/', views.delete_exhibition, name='delete_exhibition'),
-    path('generate-exhibition-pdf/', views.generate_exhibition_pdf, name='generate_exhibition_pdf'),
-    path('generate-exhibition-csv/', views.generate_exhibition_csv, name='generate_exhibition_csv'),
-    path('generate-exhibition-excel/', views.generate_exhibition_excel, name='generate_exhibition_excel'),
     
     
     path('customer_list_page', views.customer_list_page, name='customer-list-page'),
@@ -174,9 +136,6 @@ urlpatterns = [
     path('view-customer/<int:customer_id>/', views.customer_view_page, name='customer_view_page'),
     path('update-customer/<int:id>/', views.customer_update_page, name='customer_update_page'),
     path('delete-customer/<int:id>/', views.delete_customer, name='delete_customer'),
-    path('generate-customer-pdf/', views.generate_customer_pdf, name='generate_customer_pdf'),
-    path('generate-customer-csv/', views.generate_customer_csv, name='generate_customer_csv'),
-    path('generate-customer-excel/', views.generate_customer_excel, name='generate_customer_excel'),
     
     path('supplier_list_page', views.supplier_list_page, name='supplier-list-page'),
     path('supplier_add_page', views.supplier_add_page, name='supplier-add-page'),
@@ -186,9 +145,6 @@ urlpatterns = [
     path('view-supplier/<int:supplier_id>/', views.supplier_view_page, name='supplier_view_page'),
     path('update-supplier/<int:id>/', views.supplier_update_page, name='supplier_update_page'),
     path('delete-supplier/<int:id>/', views.delete_supplier, name='delete_supplier'),
-    path('generate-supplier-pdf/', views.generate_supplier_pdf, name='generate_supplier_pdf'),
-    path('generate-supplier-csv/', views.generate_supplier_csv, name='generate_supplier_csv'),
-    path('generate-supplier-excel/', views.generate_supplier_excel, name='generate_supplier_excel'),
     
     
     path('stock_entry_page', views.stock_entry_page, name='stock-add-page'),
@@ -202,6 +158,7 @@ urlpatterns = [
     path('get-boxes/', views.get_boxes, name='get_boxes'),
     path('get-ranks/', views.get_ranks, name='get_ranks'),
     path('fetch-barcode/', views.fetch_barcode, name='fetch_barcode'),
+    path('stock_entry_fetch_barcode/', views.stock_entry_fetch_barcode, name='stock_entry_fetch_barcode'),
     path("delete-stock/<int:stock_id>/", views.delete_stock, name="delete_stock"),
     path('update-stock/', views.update_stock, name='update_stock'),
     path('get-existing-barcodes/', views.get_existing_barcodes, name='get_existing_barcodes'), 
@@ -218,77 +175,24 @@ urlpatterns = [
     path("get_companies/", views.get_companies, name="get_companies"),
     path('get-customers/', views.get_customers, name='get_customers'),
 
-    path('print_barcode_page', views.print_barcode_page, name='print-barcode-page'),
-    path('generate-barcode-pdf/', views.generate_barcode_pdf, name='generate_barcode_pdf'),
-    path('generate-barcode-details-pdf/', views.generate_barcode_details_pdf, name='generate_barcode_details_pdf'),
 
+    path("save_assigned_stock/", views.save_assigned_stock, name="save_assigned_stock"),
+    path('return_stock/', views.return_stock, name='return_stock'),
+    path("get_all_assigned_data/", views.get_all_assigned_data, name="get_all_assigned_data"),
+    path("get_assign_data_all/", views.get_assign_data_all, name="get_assign_data_all"),
+    path('update_product_status/', views.update_product_status, name='update_product_status'),
+    path('return_stock_history/', views.return_stock_history, name='return_stock_history'),
+    path('get_return_history/', views.get_return_history, name='get_return_history'),
 
-    path('create_user_page', views.create_user_page, name='create-user-page'),
-    path('user_list_page', views.user_list_page, name='assign-list-page'),
-
-    path('add_user', views.add_user, name='add_user'),
-    path('user-list/', views.user_list, name='user_list'),
-    path('get_user_data/', views.get_user_data, name='get_user_data'),
-    path('get_user_details/<int:user_id>/', views.get_user_details, name='get_user_details'),
-    path('update_user/', views.update_user, name='update_user'),
-    path('delete_user/', views.delete_user, name='delete_user'),
-    path('generate-user-csv/', views.generate_user_csv, name='generate_user_csv'),
-    path('generate-user-excel/', views.generate_user_excel, name='generate_user_excel'),
-    path('generate-user-pdf/',  views.generate_user_pdf, name='generate_user_pdf'),
-
-    
-
-    path('create_rol_permission_page', views.create_rol_permission_page, name='create-rol-permission-page'),
-    path('rol_permission_list_page', views.rol_permission_list_page, name='rol-permission-list-page'),
-    path('add_role/', views.add_role, name='add_role'),
-    path('get_roles/', views.get_roles, name='get_roles'),
-    path('fetch_role_permission_datatable_data/', views.fetch_role_permission_datatable_data, name='fetch_role_permission_datatable_data'),
-    path('get_role_details/<int:role_id>/', views.get_role_details, name='get_role_details'),
-    path('get_role_update_details/<int:role_id>/', views.get_role_update_details, name='get_role_update_details'),
-    path('update_role/<int:role_id>/', views.update_role, name='update_role'),
-    path('delete_role/', views.delete_role, name='delete_role'),
-    path('generate-role-permission-csv/', views.generate_role_permission_csv, name='generate_role_permission_csv'),
-    path('generate-role-permission-excel/', views.generate_role_permission_excel, name='generate_role_permission_excel'),
-    path('generate-role-permission-pdf/', views.generate_role_permission_pdf, name='generate_role_permission_pdf'),
-
-
-
-    path('others_settings_page', views.others_settings_page, name='others-settings-page'),
-    path('save-secondary-email-config/', views.save_secondary_email_config, name='save_secondary_email_config'),
-
-    path('audit_logs', views.audit_logs, name='audit-logs-page'),
-    path('get_filter_options_users/', views.get_filter_options_users, name='get_filter_options_users'),
-    path('get_user_audit_logs/', views.get_user_audit_logs, name='get_user_audit_logs'),
-    path('generate-user-audit-pdf/', views.generate_user_audit_pdf, name='generate_user_audit_pdf'),
-    path('generate-audit-log-csv/', views.generate_audit_log_csv, name='generate_audit_log_csv'),
-    path('generate-audit-log-excel/', views.generate_audit_log_excel, name='generate_audit_log_excel'),
-
-
-    path('get_role_permission_audit_logs/', views.get_role_permission_audit_logs, name='get_role_permission_audit_logs'),
-    path('get_filter_options_role_permissions/', views.get_filter_options_role_permissions, name='get_filter_options_role_permissions'),
-    path('generate-role-permission-audit-csv/', views.generate_role_permission_audit_csv, name='generate_role_permission_audit_csv'),
-    path('generate-role-permission-audit-excel/', views.generate_role_permission_audit_excel, name='generate_role_permission_audit_excel'),
-    path('generate-role-permission-audit-pdf/', views.generate_role_permission_audit_pdf, name='generate_role_permission_audit_pdf'),
-
-    path('master_reports_page', views.master_reports_page, name='master-reports-page'),
-    path('report-generate-employee-csv/', views.report_generate_employee_csv, name='report_generate_employee_csv'),
-    path('report-generate-employee-excel/', views.report_generate_employee_excel, name='report_generate_employee_excel'),
-    path('report-generate-employee-pdf/', views.report_generate_employee_pdf, name='report_generate_employee_pdf'),
-
-
-    path('backup_recovery_page', views.backup_recovery_page, name='backup-recovery-page'),
-    path('get-tables/', views.get_tables_ajax, name='get_tables_ajax'),
-    path('fetch-backup-details/', views.fetch_backup_details, name='fetch_backup_details'),
-    path('import_db/', views.import_db, name='import_db'),
-    path('export-db/', views.export_db, name='export_db'),
-    path('schedule-backup/', views.schedule_backup, name='schedule_backup'),
-    path('get-scheduled-backups/', views.get_scheduled_backups, name='get_scheduled_backups'),
-    path('download-sql/<int:backup_id>/', views.download_sql_file, name='download_sql_file'),
-    path('download-txt/<int:backup_id>/', views.download_txt_file, name='download_txt_file'),
-
-
-
-
+    path('api/receive_barcode/', views.receive_barcode, name='receive_barcode'),
+    path('scan_qr_image/', views.scan_qr_image, name='scan_qr_image'),
+    path('scan_via_mobile/', views.scan_via_mobile, name='scan_via_mobile'),
+    path('get_backend_data_scanned_data/', views.get_backend_data_scanned_data, name='get_backend_data_scanned_data'),
+    path('get_latest_scanned_data/', views.get_latest_scanned_data, name='get_latest_scanned_data'),
+    path('assign_exhibition/', views.assign_exhibition, name='assign_exhibition'),
+    path('return_exhibition/', views.return_exhibition, name='return_exhibition'),
+    path('assign_operation_exhibition_list/', views.assign_operation_exhibition_list, name='assign_operation_exhibition_list'),
+    path('fetch_exhibition_list/', views.fetch_exhibition_list, name='fetch_exhibition_list'),
 
 
 

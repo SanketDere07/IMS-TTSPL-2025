@@ -197,16 +197,21 @@
       </div>
       <!-- JavaScript for OTP Input Navigation -->
       <script>
-         function moveToNext(index, event) {
-             let inputBoxes = document.querySelectorAll('.otp-input');
-             let key = event.key;
-         
-             if (key === "Backspace" && index > 0) {
-                 inputBoxes[index - 1].focus();
-             } else if (key.match(/[0-9]/) && index < inputBoxes.length - 1) {
-                 inputBoxes[index + 1].focus();
-             }
-         }
+       document.querySelectorAll('.otp-input').forEach((input, index) => {
+    input.addEventListener('paste', (e) => {
+        e.preventDefault();
+        const pasteData = e.clipboardData.getData('text').trim();
+        if (pasteData.match(/^\d{6}$/)) { // Assuming 6-digit OTP
+            const digits = pasteData.split('');
+            digits.forEach((digit, i) => {
+                if (inputBoxes[i]) {
+                    inputBoxes[i].value = digit;
+                }
+            });
+            inputBoxes[inputBoxes.length - 1].focus();
+        }
+    });
+});
          
          // Auto-hide alerts after 5 seconds
          document.addEventListener('DOMContentLoaded', function() {

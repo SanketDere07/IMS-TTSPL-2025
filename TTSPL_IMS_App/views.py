@@ -27,6 +27,7 @@ from reportlab.lib.units import inch
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image, PageTemplate, Frame
 from datetime import datetime
+from django.db.models import Min, Max, F, Prefetch
 
 import os
 from django.conf import settings
@@ -71,7 +72,21 @@ import psycopg2
 import io
 from datetime import timedelta
 from django.http import FileResponse, Http404
-
+from django.db.models import Min, Max
+from django.core.paginator import Paginator
+from django.core.files.storage import default_storage
+from django.http import JsonResponse
+import uuid
+from decimal import Decimal 
+from django.core.mail import EmailMultiAlternatives
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from .models import Expense, NewExpenseGenerated,VerifyProcessExpense, ExpenseFinanceProcess
+from django.db.models import Q
+from django.core.mail import EmailMessage
+from django.template.loader import render_to_string
+from django.utils.html import strip_tags
+from django.core.files.base import ContentFile
 
 import json
 
@@ -9885,15 +9900,6 @@ def update_user_profile(request, user_id):
 
 
 
-
-from django.shortcuts import render, redirect
-from django.core.files.storage import default_storage
-from django.http import JsonResponse
-from .models import Expense
-import uuid
-from decimal import Decimal 
-from django.core.mail import EmailMultiAlternatives
-
 def add_expense_page(request):
     return render(request, "expense/add_expense.html")
 
@@ -10581,6 +10587,7 @@ def generate_expense_pdf_content(expense):
     return pdf_content
 
 
+
 def download_expense_pdf(request, expense_id):
     # Get the latest generated report for this expense
     report = NewExpenseGenerated.objects.filter(
@@ -10991,12 +10998,6 @@ def view_verify_and_process_page(request):
     return render(request, "expense/view_verify_and_process.html")
 
 
-
-from django.shortcuts import render, redirect
-from django.contrib import messages
-from .models import Expense, VerifyProcessExpense, ExpenseFinanceProcess
-
-
 def process_expense(request, expense_id):
     expense_items = Expense.objects.filter(expense_id=expense_id)
     
@@ -11231,7 +11232,6 @@ def view_process_expense(request, expense_id):
 def finance_process_list_page(request):
     return render(request, "expense/finance_process_list.html")
 
-from django.db.models import Q
 
 def expensefinanceprocess_list(request):
     # Get filter parameters from request
@@ -11324,60 +11324,10 @@ def get_employee_list(request):
     
     return JsonResponse({'results': results})
 
+
 def view_finance_process_page(request):
     return render(request, "expense/view_finance_process.html")
 
-
-
-# def expense_finance_process(request, expense_id):
-#     # Get all expenses with this ID (should normally be just one)
-#     expenses = Expense.objects.filter(expense_id=expense_id)
-    
-#     if not expenses.exists():
-#         return render(request, '404.html', status=404)
-    
-#     # For safety, we'll use the first expense
-#     expense = expenses.first()
-    
-#     # Get or create finance process for this expense
-#     finance_process, created = ExpenseFinanceProcess.objects.get_or_create(expense=expense)
-    
-#     if request.method == 'POST':
-#         try:
-#             # Process form data
-#             finance_process.payment_mode = request.POST.get('payment_mode')
-#             finance_process.payment_date = request.POST.get('payment_date')
-#             finance_process.finance_comment = request.POST.get('finance_comment', '')
-#             finance_process.payment_email_sent = 'payment_email_sent' in request.POST
-            
-#             # Handle file upload
-#             if 'payment_file' in request.FILES:
-#                 finance_process.payment_file = request.FILES['payment_file']
-            
-#             finance_process.save()
-            
-#             # Update ALL expense records with this ID
-#             expenses.update(status='Payment Successful')
-            
-#             messages.success(request, 'Payment details saved successfully!')
-#             return redirect('expense_detail', expense_id=expense.expense_id)
-            
-#         except Exception as e:
-#             messages.error(request, f'Error processing payment: {str(e)}')
-    
-#     context = {
-#         'expense': expense,
-#         'finance_process': finance_process,
-#         'payment_modes': ExpenseFinanceProcess.PAYMENT_MODES,
-#         # Add this to show warning if duplicates exist
-#         'has_duplicates': expenses.count() > 1  
-#     }
-    
-#     return render(request, 'expense/process_finance_process.html', context)
-
-from django.core.mail import EmailMessage
-from django.template.loader import render_to_string
-from django.utils.html import strip_tags
 
 def expense_finance_process(request, expense_id):
     # Get all expenses with this ID (should normally be just one)

@@ -107,8 +107,6 @@ urlpatterns = [
     path('generate-subcategory-excel/', views.generate_subcategory_excel, name='generate_subcategory_excel'),
     path('generate-subcategory-pdf/', views.generate_subcategory_pdf, name='generate_subcategory_pdf'),
 
-    
-    
     path('box_list_page', views.box_list_page, name='box-list-page'),
     path('box_add_page', views.box_add_page, name='box-add-page'),
     

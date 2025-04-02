@@ -45,14 +45,18 @@ class User(AbstractBaseUser):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
-    otp = models.CharField(max_length=6, null=True, blank=True)  # Store OTP
-    otp_generated_time = models.DateTimeField(
-        null=True, blank=True)  # Store OTP generation time
+    
+    # OTP related fields
+    otp = models.CharField(max_length=6, null=True, blank=True)
+    otp_generated_time = models.DateTimeField(null=True, blank=True)
+    otp_resend_attempts = models.IntegerField(default=0)  # Track resend attempts
+    last_otp_resend = models.DateTimeField(null=True, blank=True)  # Track last resend time
+    otp_blocked_until = models.DateTimeField(null=True, blank=True)  # Track cooldown period
 
     objects = UserManager()
 
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['username']  # Add any additional required fields here
+    REQUIRED_FIELDS = ['username']
 
     def __str__(self):
         return self.email
@@ -62,10 +66,7 @@ class User(AbstractBaseUser):
         if self.is_superuser:
             return True
 
-        # Get all roles for this user
         user_roles = self.userrole_set.values_list('role_id', flat=True)
-
-        # Check if any of the user's roles have the permission
         return DefaultRolePermission.objects.filter(
             role_id__in=user_roles,
             permission__permission_name=permission_name
@@ -74,6 +75,23 @@ class User(AbstractBaseUser):
     def has_role(self, role_name):
         """Check if the user has a specific role."""
         return self.userrole_set.filter(role__role_name=role_name).exists()
+
+    def can_resend_otp(self):
+        """Check if user can resend OTP based on attempts and cooldown."""
+        if self.otp_resend_attempts < 4:
+            return True
+        
+        # If blocked, check if cooldown period has passed
+        if self.otp_blocked_until and timezone.now() < self.otp_blocked_until:
+            return False
+        
+        # Reset attempts if cooldown has passed
+        self.otp_resend_attempts = 0
+        self.otp_blocked_until = None
+        self.save()
+        return True
+   
+
 
 # ------------------------------UserLog----------------------------------------------------------#
 
@@ -295,6 +313,7 @@ class Company(models.Model):
     address = models.TextField()
     email = models.EmailField(unique=True)
     phone_number = models.CharField(max_length=15, unique=True)
+    created_on = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"{self.company_id} - {self.company_name}"
@@ -362,6 +381,7 @@ class Product(models.Model):
     barcode_image = models.ImageField(upload_to='barcodes/', blank=True, null=True)
     purchase_date = models.DateField()
     purchase_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    created_on = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"{self.product_code} - {self.product_name}"
@@ -403,9 +423,12 @@ class Customer(models.Model):
     zip_code = models.CharField(max_length=20)
     country = models.CharField(max_length=100)
     details = models.TextField()
+    created_on = models.DateTimeField(auto_now_add=True)
+
 
     def __str__(self):
         return f"{self.customer_name} ({self.customer_id})"
+    
     
     
 class Supplier(models.Model):
@@ -420,6 +443,8 @@ class Supplier(models.Model):
     zip_code = models.CharField(max_length=20)
     country = models.CharField(max_length=100)
     details = models.TextField()
+    created_on = models.DateTimeField(auto_now_add=True)
+
 
     def __str__(self):
         return f"{self.supplier_name} ({self.supplier_id})"
@@ -497,16 +522,41 @@ class ScheduledBackupDetails(models.Model):
         return f"Backup: {self.backup_name} - {self.scheduled_operation}"
     
 class Expense(models.Model):
-    expense_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    TRAVEL_MODES = [
+        ('Train', 'Train'),
+        ('Bus', 'Bus'),
+        ('Flight', 'Flight'),
+        ('Taxi/Cab', 'Taxi/Cab'),
+        ('Others', 'Others'),
+    ]
+
+    STATUS_CHOICES = [
+        ('Pending', 'Pending'),
+        ('Approved', 'Approved'),
+        ('Rejected', 'Rejected'),
+        ('Payment Successful', 'Payment Successful'),
+    ]
+
+    expense_id = models.UUIDField(default=uuid.uuid4, editable=False)  
     from_date = models.DateField()
     to_date = models.DateField()
-    sr_no = models.IntegerField(unique=True)
+    sr_no = models.IntegerField()
     details = models.TextField()
+    travel_modes = models.CharField(max_length=20, choices=TRAVEL_MODES)  
     total_amount_inr = models.DecimalField(max_digits=10, decimal_places=2)
-    total_amount_foreign_currency = models.DecimalField(max_digits=10, decimal_places=2)
+    total_amount_foreign_currency = models.CharField(max_length=50, null=True, blank=True)  # Store as "amount-(currencycode)"
+    total_calculation = models.DecimalField(max_digits=10, decimal_places=2, editable=False)
+    total_approved_amount = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2, 
+        default=0.00,
+        help_text="Amount approved by Account Team"
+    ) 
     attached_document = models.BooleanField(default=False)
     attached_document_file = models.FileField(upload_to='expense_documents/', null=True, blank=True)
-    
+    created_at = models.DateTimeField(default=timezone.now)  # Add created_at field
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')  # Add status field with default 'Pending'
+
     # Reference to the Employee model
     employee = models.ForeignKey(
         'Employee', 
@@ -515,7 +565,182 @@ class Expense(models.Model):
     )
 
     def __str__(self):
-        return f"Expense {self.expense_id} - {self.details}"
+        return f"Expense {self.id} - {self.details}"
 
     class Meta:
         ordering = ['from_date']
+
+
+class NewExpenseGenerated(models.Model):
+    # Reference to the original Expense
+    expense = models.ForeignKey(
+        Expense,
+        on_delete=models.CASCADE,
+        related_name='generated_reports'
+    )
+    
+    # Reference to the Employee (could also get this through expense.employee)
+    employee = models.ForeignKey(
+        'Employee',
+        on_delete=models.CASCADE,
+        related_name='expense_reports'
+    )
+    
+    # Email information
+    email_address = models.EmailField()
+    email_sent = models.BooleanField(default=False)
+    email_sending_time = models.DateTimeField(null=True, blank=True)
+    
+    # PDF file storage
+    new_expense_pdf = models.FileField(
+        upload_to='new_expense_generated/%Y/%m/',
+        null=True,
+        blank=True
+    )
+    
+    # Timestamps
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"Generated Report for {self.expense.expense_id} - {self.employee.name}"
+    
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Generated Expense Report'
+        verbose_name_plural = 'Generated Expense Reports'
+    
+    def mark_as_sent(self):
+        """Mark the report as sent and update the sending time"""
+        self.email_sent = True
+        self.email_sending_time = timezone.now()
+        self.save()
+
+    def get_pdf_filename(self):
+        """Generate a standardized filename for the PDF"""
+        if self.new_expense_pdf:
+            return self.new_expense_pdf.name.split('/')[-1]
+        # New filename format: expense_report_employeeName_YYYY-MM-DD_to_YYYY-MM-DD.pdf
+        employee_name = self.employee.name.replace(" ", "_")
+        start_date = self.expense.from_date.strftime('%Y-%m-%d')
+        end_date = self.expense.to_date.strftime('%Y-%m-%d')
+        return f"expense_report_{employee_name}_{start_date}_to_{end_date}.pdf"
+
+
+class VerifyProcessExpense(models.Model):
+    expense = models.ForeignKey(
+        Expense,
+        on_delete=models.CASCADE,
+        related_name='verifications'
+    )
+    employee = models.ForeignKey(
+        Employee,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
+    )
+    approved_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0.00
+    )
+    remarks = models.TextField(blank=True, null=True)
+    approver_comments = models.TextField(blank=True, null=True)
+    email_sent = models.BooleanField(default=True)
+    email_sent_date = models.DateTimeField(null=True, blank=True)
+    verified_at = models.DateTimeField(auto_now=True)
+    version = models.PositiveIntegerField(default=1)
+
+    def __str__(self):
+        return f"Verification for {self.expense.expense_id}"
+    
+    class Meta:
+        unique_together = ('expense', 'version')  
+       
+
+class ExpenseFinanceProcess(models.Model):
+    PAYMENT_MODES = [
+        ('Bank Transfer', 'Bank Transfer'),
+        ('Cheque', 'Cheque'),
+        ('Cash', 'Cash'),
+        ('Digital Payment', 'Digital Payment'),
+        ('Other', 'Other'),
+    ]
+
+    # Changed to ForeignKey to match your pattern
+    expense = models.ForeignKey(
+        Expense,
+        on_delete=models.CASCADE,
+        related_name='finance_processes'
+    )
+    
+    processed_by = models.ForeignKey(
+        Employee,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='processed_expenses'
+    )
+    
+    payment_mode = models.CharField(
+        max_length=20,
+        choices=PAYMENT_MODES,
+        blank=True,
+        null=True
+    )
+    
+    payment_date = models.DateField(
+        blank=True,
+        null=True
+    )
+    
+    payment_file = models.FileField(
+        upload_to='expense_payments/',
+        blank=True,
+        null=True,
+        help_text="Payment proof/document"
+    )
+    
+    finance_comment = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Finance team comments"
+    )
+    
+    payment_email_sent = models.BooleanField(
+        default=False
+    )
+    
+    email_sent_date = models.DateTimeField(
+        blank=True,
+        null=True
+    )
+    
+    created_at = models.DateTimeField(
+        default=timezone.now,
+        editable=False
+    )
+    
+    updated_at = models.DateTimeField(
+        auto_now=True
+    )
+
+    def __str__(self):
+        return f"Payment Process #{self.id} for Expense {self.expense.expense_id}"
+    
+    @property
+    def total_calculation(self):
+        return self.expense.total_calculation
+    
+    @property
+    def total_approved_amount(self):
+        return self.expense.total_approved_amount
+    
+    @property
+    def status(self):
+        return self.expense.status
+
+    class Meta:
+        verbose_name = "Expense Payment Process"
+        verbose_name_plural = "Expense Payment Processes"
+        ordering = ['-created_at']

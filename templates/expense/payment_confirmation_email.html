@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Confirmation</title>
+    <style type="text/css">
+        /* Modern Reset */
+        body, html {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.5;
+            color: #2d3748;
+            background-color: #f8fafc;
+        }
+        
+        /* Email Container */
+        .email-wrapper {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Header */
+        .email-header {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            padding: 32px;
+            text-align: center;
+        }
+        
+        .email-header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            margin-top: 16px;
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        /* Content */
+        .email-content {
+            padding: 32px;
+        }
+        
+        .greeting {
+            font-size: 16px;
+            margin-bottom: 24px;
+        }
+        
+        /* Card */
+        .info-card {
+            background: #f9fafb;
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 24px;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .info-row {
+            display: flex;
+            margin-bottom: 12px;
+        }
+        
+        .info-label {
+            font-weight: 500;
+            color: #6b7280;
+            width: 140px;
+            flex-shrink: 0;
+        }
+        
+        .info-value {
+            font-weight: 500;
+        }
+        
+        .amount {
+            font-family: 'Space Mono', monospace;
+            font-weight: 600;
+        }
+        
+        /* Payment Details */
+        .payment-details {
+            padding: 16px;
+            border-radius: 8px;
+            margin: 24px 0;
+            background-color: #f0fdf4;
+            border-left: 4px solid #10b981;
+        }
+        
+        /* Footer */
+        .email-footer {
+            padding: 24px;
+            text-align: center;
+            background: #f9fafb;
+            border-top: 1px solid #e5e7eb;
+            font-size: 14px;
+            color: #6b7280;
+        }
+        
+        .company-name {
+            font-weight: 600;
+            color: #059669;
+            margin-bottom: 8px;
+        }
+        
+        .contact-info {
+            margin-top: 12px;
+            font-size: 13px;
+        }
+        
+        /* Responsive */
+        @media screen and (max-width: 480px) {
+            .email-header, .email-content {
+                padding: 24px;
+            }
+            
+            .info-row {
+                flex-direction: column;
+            }
+            
+            .info-label {
+                width: 100%;
+                margin-bottom: 4px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-wrapper">
+        <div class="email-header">
+            <h1>Payment Confirmation</h1>
+            <div class="status-badge">Payment Successful</div>
+        </div>
+        
+        <div class="email-content">
+            <div class="greeting">
+                Dear {{ employee_name }},
+            </div>
+            
+            <p>We're pleased to confirm your expense reimbursement has been processed. Here are the details:</p>
+            
+            <div class="info-card">
+                <div class="info-row">
+                    <div class="info-label">Expense ID:</div>
+                    <div class="info-value">{{ expense_id }}</div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">Employee Name:</div>
+                    <div class="info-value">{{ employee_name }}</div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">Claimed Amount:</div>
+                    <div class="info-value amount">₹{{ total_claimed_amount }}</div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">Approved Amount:</div>
+                    <div class="info-value amount">₹{{ total_approved_amount }}</div>
+                </div>
+            </div>
+            
+            <div class="payment-details">
+                <div class="info-row">
+                    <div class="info-label">Payment Mode:</div>
+                    <div class="info-value">{{ payment_mode }}</div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">Payment Date:</div>
+                    <div class="info-value">{{ payment_date }}</div>
+                </div>
+                {% if finance_comment %}
+                <div class="info-row">
+                    <div class="info-label">Finance Notes:</div>
+                    <div class="info-value">{{ finance_comment }}</div>
+                </div>
+                {% endif %}
+            </div>
+            
+            <p>The payment should reflect in your account within 3-5 business days. A payment proof document is attached for your records.</p>
+            
+            <p>If you have any questions about this payment, please contact our accounts team.</p>
+        </div>
+        
+        <div class="email-footer">
+            <div class="company-name">Trisnota Technical Services</div>
+            <div>Accounts Department</div>
+            <div class="contact-info">
+                📞 +91 99325 11315 | 🌐 <a href="https://ttspl.co.in/">ttspl.co.in</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

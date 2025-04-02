@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expense Report Submission Confirmation</title>
+    <style type="text/css">
+        /* Base Styles */
+        body, html {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #2d3748;
+            background-color: #f8fafc;
+        }
+        
+        /* Email Container */
+        .email-wrapper {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Header Section */
+        .email-header {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            padding: 32px;
+            text-align: center;
+        }
+        
+        .email-header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            margin-top: 16px;
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        /* Main Content */
+        .email-content {
+            padding: 32px;
+        }
+        
+        .greeting {
+            font-size: 16px;
+            margin-bottom: 24px;
+            color: #1e293b;
+        }
+        
+        /* Information Card */
+        .info-card {
+            background: #f9fafb;
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 24px;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .info-row {
+            display: flex;
+            margin-bottom: 12px;
+        }
+        
+        .info-label {
+            font-weight: 500;
+            color: #6b7280;
+            width: 140px;
+            flex-shrink: 0;
+        }
+        
+        .info-value {
+            font-weight: 500;
+            color: #1e293b;
+        }
+        
+        .amount {
+            font-family: 'Space Mono', monospace;
+            font-weight: 600;
+            color: #059669;
+        }
+        
+        /* Process Details */
+        .process-details {
+            padding: 16px;
+            border-radius: 8px;
+            margin: 24px 0;
+            background-color: #f0fdf4;
+            border-left: 4px solid #10b981;
+        }
+        
+        .process-details ul {
+            margin: 8px 0 0 0;
+            padding-left: 20px;
+        }
+        
+        .process-details li {
+            margin-bottom: 8px;
+        }
+        
+        /* Footer */
+        .email-footer {
+            padding: 24px;
+            text-align: center;
+            background: #f9fafb;
+            border-top: 1px solid #e5e7eb;
+            font-size: 14px;
+            color: #6b7280;
+        }
+        
+        .company-name {
+            font-weight: 600;
+            color: #059669;
+            margin-bottom: 8px;
+        }
+        
+        .contact-info {
+            margin-top: 12px;
+            font-size: 13px;
+        }
+        
+        .contact-info a {
+            color: #059669;
+            text-decoration: none;
+        }
+        
+        /* Responsive Adjustments */
+        @media screen and (max-width: 480px) {
+            .email-header, .email-content {
+                padding: 24px;
+            }
+            
+            .info-row {
+                flex-direction: column;
+            }
+            
+            .info-label {
+                width: 100%;
+                margin-bottom: 4px;
+            }
+            
+            .info-card, .process-details {
+                padding: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-wrapper">
+        <!-- Header -->
+        <div class="email-header">
+            <h1>Expense Report Submitted</h1>
+            <div class="status-badge">Pending Approval</div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="email-content">
+            <div class="greeting">
+                Dear {{ employee_name }},
+            </div>
+            
+            <p>Your expense report has been successfully submitted and is now pending approval. Below are the submission details:</p>
+            
+            <!-- Information Card -->
+            <div class="info-card">
+                <div class="info-row">
+                    <div class="info-label">Expense ID:</div>
+                    <div class="info-value">{{ expense_id }}</div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">Employee Name:</div>
+                    <div class="info-value">{{ employee_name }}</div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">Total Claimed:</div>
+                    <div class="info-value amount">₹{{ total_claimed_amount }}</div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">Submission Date:</div>
+                    <div class="info-value">{{ submission_date|date:"F j, Y" }}</div>
+                </div>
+            </div>
+            
+            <!-- Process Details -->
+            <div class="process-details">
+                <p><strong>What happens next?</strong></p>
+                <ul>
+                    <li>Your report will be reviewed by our finance team within 2 business days</li>
+                    <li>You'll receive a notification email once your report is approved</li>
+                    <li>Payment will be processed within 5-7 business days after approval</li>
+                </ul>
+            </div>
+            
+            <p>A detailed PDF copy of your expense report is attached for your records. Please:</p>
+            <ul>
+                <li>Review the attached document for accuracy</li>
+                <li>Contact accounts@ttspl.co.in within 24 hours if you find any discrepancies</li>
+                <li>Keep this email for your records</li>
+            </ul>
+            
+            <p>Thank you for submitting your expenses promptly.</p>
+            
+            <p>Best regards,<br>
+            The Accounts Team</p>
+        </div>
+        
+        <!-- Footer -->
+        <div class="email-footer">
+            <div class="company-name">Trisnota Technical Services</div>
+            <div>Accounts Department</div>
+            <div class="contact-info">
+                📞 +91 99325 11315 | 🌐 <a href="https://ttspl.co.in/" target="_blank">ttspl.co.in</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

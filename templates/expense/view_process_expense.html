@@ -1,0 +1,493 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %} Create Expense | TTSPL IMS - Trisnota Technical Services Pvt. Ltd.{% endblock %}
+{% block content %}
+<style>
+   /* Ensure select2 elements have uniform height */
+   .select2-container--default .select2-selection--single .select2-selection__rendered {
+   color: #444;
+   line-height: 34px;
+   }
+   .select2-container--default .select2-selection--single {
+   background-color: #fff;
+   border: 1px solid #aaa;
+   border-radius: 4px;
+   height: 36px; /* Match input height */
+   }
+   /* Style for quantity input and buttons */
+   .input-group .btn {
+   height: 33px !important; /* Ensure buttons match select2 height */
+   line-height: auto;
+   }
+   .input-group input[type="number"] {
+   height:auto; /* Match select2 height */
+   width:140px;
+   }
+   .select2-container--default .select2-selection--single .select2-selection__arrow {
+   height: 30px !important;
+   position: absolute;
+   top: 1px;
+   right: 1px;
+   width: 20px;
+   }
+   .error-text {
+   font-size: 12px; /* Slightly smaller font */
+   color: #dc3545; /* Bootstrap danger color */
+   display: block;
+   margin-top: 5px;
+   font-weight: 200;
+   text-shadow:none;
+   }
+   /* Highlight the input field when there's an error */
+   input.is-invalid, select.is-invalid, textarea.is-invalid {
+   border-color: #dc3545 !important;
+   background-color: #f8d7da !important;
+   }
+   /* Table container */
+   .table-container {
+   margin-top: 20px;
+   overflow-x: auto; /* Enable horizontal scrolling */
+   width: 100%; /* Ensure the container takes full width */
+   }
+   /* Table styling */
+   .table-container table {
+   width: auto; /* Allow table to expand based on content */
+   border-collapse: collapse;
+   min-width: 100%; /* Ensure table takes at least the full width of the container */
+   }
+   /* Table header and cell styling */
+   .table-container th,
+   .table-container td {
+   border: 1px solid #ddd;
+   padding: 8px;
+   white-space: nowrap; /* Prevent text wrapping */
+   }
+   /* Table header background */
+   .table-container th {
+   background-color: #f2f2f2;
+   }
+   /* Input fields default size */
+   .table-container input,
+   .table-container select,
+   .table-container textarea {
+   width: auto; /* Allow inputs to take their default size */
+   min-width: 100px; /* Set a minimum width for inputs */
+   }
+   /* Reduce width of input fields in the first column */
+   .table-container td:first-child input,
+   .table-container td:first-child select,
+   .table-container td:first-child textarea {
+   width: 10px; /* Set a fixed width for inputs in the first column */
+   min-width: 10px; /* Ensure the inputs do not shrink further */
+   max-width: 10px; /* Ensure the inputs do not expand */
+   box-sizing: border-box; /* Include padding and border in the width */
+   }
+   /* Ensure the checkbox fits within the column */
+   .table-container td:first-child input[type="checkbox"] {
+   margin: 0; /* Remove default margin */
+   width: 10px; /* Set a fixed width for the checkbox */
+   height: 16px; /* Set a fixed height for the checkbox */
+   }
+   /* Reduce width of input fields in the second column */
+   .table-container td:nth-child(2) input,
+   .table-container td:nth-child(2) select,
+   .table-container td:nth-child(2) textarea {
+   width: 115px; /* Set a fixed width for inputs in the second column */
+   min-width: 115px; /* Ensure the inputs do not shrink further */
+   max-width: 115px; /* Ensure the inputs do not expand */
+   box-sizing: border-box; /* Include padding and border in the width */
+   }
+   /* Reduce width of input fields in the second column */
+   .table-container td:nth-child(3) input,
+   .table-container td:nth-child(3) select,
+   .table-container td:nth-child(3) textarea {
+   width: 115px; /* Set a fixed width for inputs in the second column */
+   min-width: 115px; /* Ensure the inputs do not shrink further */
+   max-width: 115px; /* Ensure the inputs do not expand */
+   box-sizing: border-box; /* Include padding and border in the width */
+   }
+   /* Reduce width of input fields in the second column */
+   .table-container td:nth-child(4) input,
+   .table-container td:nth-child(4) select,
+   .table-container td:nth-child(4) textarea {
+   width: 100px; /* Set a fixed width for inputs in the second column */
+   min-width: 100px; /* Ensure the inputs do not shrink further */
+   max-width: 100px; /* Ensure the inputs do not expand */
+   box-sizing: border-box; /* Include padding and border in the width */
+   }
+   /* Reduce width of input fields in the 6 column */
+   .table-container td:nth-child(6) input,
+   .table-container td:nth-child(6) select,
+   .table-container td:nth-child(6) textarea {
+   width: 115px; /* Set a fixed width for inputs in the second column */
+   min-width: 115px; /* Ensure the inputs do not shrink further */
+   max-width: 115px; /* Ensure the inputs do not expand */
+   box-sizing: border-box; /* Include padding and border in the width */
+   }
+   /* Reduce width of input fields in the 6 column */
+   .table-container td:nth-child(7) input,
+   .table-container td:nth-child(7) select,
+   .table-container td:nth-child(7) textarea {
+   width: 110px; /* Set a fixed width for inputs in the second column */
+   min-width: 110px; /* Ensure the inputs do not shrink further */
+   max-width: 110px; /* Ensure the inputs do not expand */
+   box-sizing: border-box; /* Include padding and border in the width */
+   }
+   /* Reduce width of input fields in the 10 column */
+   .table-container td:nth-child(10) input,
+   .table-container td:nth-child(10) select,
+   .table-container td:nth-child(10) textarea {
+   width: 100px; /* Set a fixed width for inputs in the second column */
+   min-width: 100px; /* Ensure the inputs do not shrink further */
+   max-width: 100px; /* Ensure the inputs do not expand */
+   box-sizing: border-box; /* Include padding and border in the width */
+   }
+   /* Flexbox layout for the input group */
+   .input-group {
+   display: flex;
+   align-items: center;
+   flex-wrap: nowrap; /* Prevent wrapping to the next line */
+   }
+   /* Default style for currency code */
+   .input-group-text {
+   flex: 0 0 auto; /* Do not grow or shrink */
+   background-color: #e9ecef; /* Light gray background */
+   border: 1px solid #ced4da; /* Border to match input fields */
+   border-radius: 4px; /* Rounded corners */
+   }
+   /* Style for currency code when editable */
+   .input-group-text[contenteditable="true"] {
+   background-color: white; /* White background when editable */
+   border-color: #ced4da; /* Keep the border color consistent */
+   }
+   /* Amount input styling */
+   .amount-input {
+   flex: 1; /* Grow to fill available space */
+   min-width: 80px; /* Minimum width */
+   }
+   /* Currency dropdown styling */
+   .currency-select {
+   flex: 1; /* Grow to fill available space */
+   min-width: 100px; /* Minimum width */
+   }
+   .table-container input,
+   .table-container select,
+   .table-container textarea {
+   width: auto; /* Allow elements to grow as needed */
+   min-width: 15px; /* Ensure a minimum width */
+   }
+   /* Specific styles for the fcy-toggle checkbox */
+   .fcy-toggle {
+   max-width: 20px; /* Set a maximum width for the checkbox */
+   min-width: 20px; /* Ensure the checkbox does not shrink below 20px */
+   flex: 0 0 20px; /* Prevent the checkbox from growing or shrinking */
+   }
+   /* Date input container styling */
+   .date-input-container {
+   flex: 1; /* Grow to fill available space */
+   min-width: 150px; /* Minimum width */
+   display: none; /* Hidden by default */
+   }
+   /* Date input label styling */
+   .date-input-container label {
+   margin-right: 5px; /* Space between label and input */
+   }
+   /* Date input field styling */
+   .date-input-container input {
+   flex: 1; /* Grow to fill available space */
+   }
+   /* Circular buttons */
+   .btn-circle {
+   width: 30px;
+   height: 30px;
+   border-radius: 50%;
+   padding: 0;
+   display: inline-flex;
+   align-items: center;
+   justify-content: center;
+   font-size: 16px;
+   }
+   /* Declaration section */
+   .declaration {
+   margin-top: 20px;
+   padding: 15px;
+   border: 1px solid #ddd;
+   border-radius: 5px;
+   background-color: #f9f9f9;
+   }
+   /* Scrollable table wrapper */
+   .scrollable-table {
+   max-height: 800px; /* Adjust the height as needed */
+   overflow-y: auto;
+   overflow-x: auto; /* Enable horizontal scrolling */
+   border: 1px solid #ddd;
+   border-radius: 5px;
+   }
+   .scrollable-table table {
+   margin-bottom: 0; /* Remove extra margin */
+   }
+   .is-invalid {
+   border-color: #dc3545 !important;
+   }
+   .is-invalid + .error-text {
+   display: block;
+   color: #dc3545;
+   font-size: 0.875em;
+   }
+   select[name="attached_file_yes_no[]"] {
+   min-width: 100px !important;
+   width: auto;
+   max-width: 80%;
+   }
+   .is-invalid {
+   border-color: #dc3545;
+   }
+   .invalid-feedback {
+   color: #dc3545;
+   display: none;
+   }
+   .is-invalid ~ .invalid-feedback {
+   display: block;
+   }
+</style>
+<!-- start page title -->
+<div class="row">
+   <div class="col-12">
+      <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
+         <h4 class="mb-sm-0">View Verify & Process</h4>
+         <div class="page-title-right">
+            <ol class="breadcrumb m-0">
+               <li class="breadcrumb-item"><a href="#">Dashboards</a></li>
+               <li class="breadcrumb-item active">View Verify & Process</li>
+            </ol>
+         </div>
+      </div>
+   </div>
+</div>
+<div class="row">
+   <div class="col-lg-12">
+      <div class="card">
+         <div class="card-header align-items-center d-flex">
+            <h4 class="card-title mb-0 flex-grow-1">View Verify & Process Expense</h4>
+            <div class="flex-shrink-0">
+               <a class="btn btn-secondary" href="/verify_process_page">< Back</a>
+            </div>
+         </div>
+         <div class="card-body">
+            <!-- Toast container (make sure this is somewhere in your HTML body) -->
+            <div id="toast-container" class="position-fixed bottom-0 end-0 p-3" style="z-index: 9999;"></div>
+            <form id="viewExpenseForm" method="post" enctype="multipart/form-data">
+               {% csrf_token %}
+               <div class="row gy-3">
+                  <!-- Expense ID -->
+                  <div class="col-md-4">
+                     <label class="form-label">Expense ID</label>
+                     <input type="text" class="form-control" value="{{ expense_id }}" readonly>
+                  </div>
+                  <!-- Status -->
+                  <div class="col-md-4">
+                     <label class="form-label">Status</label>
+                     <input type="text" class="form-control text-capitalize" value="{{ status }}" readonly>
+                  </div>
+                  <!-- Employee Information -->
+                  <div class="col-md-4">
+                     <label class="form-label">Employee Code</label>
+                     <input type="text" class="form-control" value="{{ employee.employee_code }}" readonly>
+                  </div>
+                  <div class="col-md-4">
+                     <label class="form-label">Employee Name</label>
+                     <input type="text" class="form-control" value="{{ employee.name }}" readonly>
+                  </div>
+                  <div class="col-md-4">
+                     <label class="form-label">Location</label>
+                     <input type="text" class="form-control" value="{{ employee.work_location }}" readonly>
+                  </div>
+                  <div class="col-md-4">
+                     <label class="form-label">Designation</label>
+                     <input type="text" class="form-control" value="{{ employee.designation }}" readonly>
+                  </div>
+                  <div class="col-md-4">
+                     <label class="form-label">Email</label>
+                     <input type="email" class="form-control" value="{{ employee.email }}" readonly>
+                  </div>
+                  <div class="col-md-4">
+                     <label class="form-label">Mobile Number</label>
+                     <input type="text" class="form-control" value="{{ employee.mobile_number }}" readonly>
+                  </div>
+                  <div class="col-md-4">
+                     <label class="form-label">Expense Duration From</label>
+                     <input type="text" 
+                        class="form-control" 
+                        value="{{ date_range.start_date|date:'M d, Y' }}" 
+                        readonly>
+                  </div>
+                  <div class="col-md-4">
+                     <label class="form-label">Expense Duration To</label>
+                     <input type="text" 
+                        class="form-control" 
+                        value="{{ date_range.end_date|date:'M d, Y' }}" 
+                        readonly>
+                  </div>
+                  <!-- Created Date field -->
+                  <div class="col-md-4">
+                     <label class="form-label">Created At</label>
+                     <input type="text" class="form-control" value="{{ created_date }}" readonly>
+                  </div>
+               </div>
+               <!-- Expense Table -->
+               <div class="table-container mt-4">
+                  <div class="scrollable-table">
+                     <table id="expenseTable" class="table table-bordered">
+                        <thead>
+                           <tr>
+                              <th>Sr. No.</th>
+                              <th>Start Date</th>
+                              <th>End Date</th>
+                              <th>Travel Mode</th>
+                              <th>Details</th>
+                              <th>Total Amt (FCY)</th>
+                              <th>Total Amt (INR)</th>
+                              <th>Approved Amount</th>
+                              <th>Remarks</th>
+                              <th>File Attached</th>
+                              <th>Attachment</th>
+                           </tr>
+                        </thead>
+                        <tbody>
+                           {% for item in expense_items %}
+                           <tr>
+                              <!-- Sr. No. -->
+                              <td class="text-center align-middle">
+                                 <input type="text" class="form-control-plaintext text-center" 
+                                    value="{{ item.sr_no }}" 
+                                    readonly>
+                              </td>
+                              <!-- Start Date -->
+                              <td>
+                                 <input type="text" class="form-control" value="{{ item.from_date|date:'Y-m-d' }}" readonly>
+                              </td>
+                              <!-- End Date -->
+                              <td>
+                                 <input type="text" class="form-control" value="{{ item.to_date|date:'Y-m-d' }}" readonly>
+                              </td>
+                              <!-- Travel Mode -->
+                              <td>
+                                 <input type="text" class="form-control" value="{{ item.get_travel_modes_display }}" readonly>
+                              </td>
+                              <!-- Details -->
+                              <td>
+                                 <textarea class="form-control" readonly>{{ item.details }}</textarea>
+                              </td>
+                              <!-- FCY Amount -->
+                              <td>
+                                 <input type="text" class="form-control" value="{{ item.total_amount_foreign_currency|default:'-' }}" readonly>
+                              </td>
+                              <!-- INR Amount -->
+                              <td>
+                                 <div class="input-group">
+                                    <span class="input-group-text">₹</span>
+                                    <input type="number" step="0.01" class="form-control" 
+                                       value="{{ item.total_amount_inr }}"
+                                       readonly>
+                                 </div>
+                              </td>
+                              <!-- Approved Amount -->
+                              <td>
+                                 <div class="input-group">
+                                    <span class="input-group-text">₹</span>
+                                    <input type="number" step="0.01" class="form-control"
+                                       value="{{ item.verification.approved_amount }}"
+                                       readonly>
+                                 </div>
+                              </td>
+                              <!-- Remarks -->
+                              <td>
+                                 <textarea class="form-control" readonly>{{ item.verification.remarks }}</textarea>
+                              </td>
+                              <!-- File Attached -->
+                              <td>
+                                 <input type="text" class="form-control" value="{{ item.attached_document|yesno:"Yes,No" }}" readonly>
+                              </td>
+                              <!-- Attachment Link -->
+                              <td>
+                                 {% if item.attached_document and item.attached_document_file %}
+                                 <a href="{{ item.attached_document_file.url }}" 
+                                    target="_blank" 
+                                    class="btn btn-md btn-outline-primary">
+                                 View
+                                 </a>
+                                 {% endif %}
+                              </td>
+                           </tr>
+                           {% endfor %}
+                        </tbody>
+                     </table>
+                  </div>
+               </div>
+               <!-- Totals Section -->
+               <div class="row gy-3 mt-3">
+                  <div class="col-lg-3">
+                     <label class="form-label">Total Claimed Amount</label>
+                     <div class="input-group">
+                        <span class="input-group-text">₹</span>
+                        <input type="text" class="form-control" value="{{ total_calculation }}" readonly>
+                     </div>
+                  </div>
+                  <div class="col-lg-3">
+                     <label class="form-label">Total Approved Amount</label>
+                     <div class="input-group">
+                        <span class="input-group-text">₹</span>
+                        <input type="text" class="form-control" 
+                           value="{{ first_item_total_approved }}"
+                           readonly>
+                     </div>
+                  </div>
+                  <div class="col-lg-6">
+                     <label class="form-label">Approver Comments</label>
+                     <textarea class="form-control" readonly>{% if first_verification %}{{ first_verification.approver_comments }}{% endif %}</textarea>
+                  </div>
+                  <!-- Status Dropdown (Disabled) -->
+                  <div class="row gy-3 mt-3">
+                     <div class="col-lg-3">
+                        <label class="form-label">Expense Status</label>
+                        <select class="form-select" name="expense_status" disabled>
+                        <option value="Pending" {% if status == 'Pending' %}selected{% endif %}>Pending</option>
+                        <option value="Approved" {% if status == 'Approved' %}selected{% endif %}>Approved</option>
+                        <option value="Rejected" {% if status == 'Rejected' %}selected{% endif %}>Rejected</option>
+                        </select>
+                     </div>
+                        <!-- Send Email Checkbox (Disabled) -->
+                  <div class="col-lg-6 d-flex align-items-end">
+                    <div class="form-check">
+                       <input class="form-check-input" 
+                       type="checkbox" 
+                       id="sendMailCheckbox" 
+                       name="send_mail_notification" 
+                       {% if first_verification.send_email %}checked{% endif %}
+                       disabled>
+                       <label class="form-check-label" for="sendMailCheckbox">
+                       Send Mail to Notify Expense Status Update
+                       </label>
+                    </div>
+                 </div>
+                  </div>
+               
+               </div>
+               <!-- Buttons Section -->
+               <div class="row mt-4">
+                  <div class="col-12">
+                     <a href="/verify_process_page" class="btn btn-secondary">Back</a>
+                  </div>
+               </div>
+            </form>
+         </div>
+      </div>
+   </div>
+</div>
+</div>
+</div>
+</div>
+<!-- end page title -->
+{% endblock %}
+{% block custom_script %}
+{% endblock %}

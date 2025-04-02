@@ -331,6 +331,32 @@ urlpatterns = [
 
     path('save_expense/', views.save_expense, name='save_expense'),
     path('get_employee_details/', views.get_employee_details, name='get_employee_details'),
+    path('track_status_page', views.track_status_page, name='track-status-page'),
+    path('expense_list/',  views.expense_list, name='expense-list'),
+    path('generate_expense_csv/', views.generate_expense_csv, name='expense-export-csv'),
+    path('generate_expense_excel/', views.generate_expense_excel, name='expense-export-excel'),
+    path('generate_expense_pdf/', views.generate_expense_pdf, name='expense-export-pdf'),
+    path('expenses/<uuid:expense_id>/download-pdf/', views.download_expense_pdf, name='download-expense-pdf'),
+
+    path('verify_process_page', views.verify_process_page, name='verify-process-page'),
+    path('view_verify_and_process_page', views.view_verify_and_process_page, name='view-verify-and-process-page'),
+    path('verify_and_process_list/',  views.verify_and_process_list, name='verify-and-process-list'),
+    path('expense/process/<uuid:expense_id>/', views.process_expense, name='process_expense'),
+    path('expense/view/<str:expense_id>/', views.view_process_expense, name='view_process_expense'),
+    path('generate_verify_csv/', views.generate_verifyprocess_csv, name='generate_verify_csv'),
+    path('generate_verify_excel/', views.generate_verifyprocess_excel, name='generate_verify_excel'),
+    path('generate_verify_pdf/', views.generate_verifyprocess_pdf, name='generate_verify_pdf'),
+
+    path('finance_process_list_page', views.finance_process_list_page, name='finance-process-list-page'),
+    path('expensefinanceprocess_list/', views.expensefinanceprocess_list, name='expensefinanceprocess_list'),
+    path('get_employee_list/', views.get_employee_list, name='get_employee_list'),
+    path('view_finance_process_page', views.view_finance_process_page, name='view-finance-process-page'),
+    path('expense/<uuid:expense_id>/finance-process/', views.expense_finance_process, name='expense_finance_process'),
+    path('expenses/<uuid:expense_id>/view-finance-process/', views.view_expense_finance_process, name='view_finance_process'),
+    path('generate_expensefinanceprocess_csv/', views.generate_expensefinanceprocess_csv, name='generate_expensefinanceprocess_csv'),
+    path('generate_expensefinanceprocess_excel/', views.generate_expensefinanceprocess_excel, name='generate_expensefinanceprocess_excel'),
+    path('generate_expensefinanceprocess_pdf/', views.generate_expensefinanceprocess_pdf, name='generate_expensefinanceprocess_pdf'),
+
 
 
 

@@ -1,0 +1,162 @@
+{% extends 'base.html' %}
+{% block title %} Finance Process | TTSPL IMS - Trisnota Technical Services Pvt. Ltd.{% endblock %}
+{% block content %}
+<style>
+    /* Ensure select2 elements have uniform height */
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    color: #444;
+    line-height: 34px;
+}
+
+.select2-container--default .select2-selection--single {
+    background-color: #fff;
+    border: 1px solid #aaa;
+    border-radius: 4px;
+    height: 38px; /* Match input height */
+}
+
+/* Style for quantity input and buttons */
+.input-group .btn {
+    height: 38px !important; /* Ensure buttons match select2 height */
+    line-height: auto;
+}
+
+.input-group input[type="number"] {
+    height: 38px !important; /* Match select2 height */
+}
+
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 34px !important;
+    position: absolute;
+    top: 1px;
+    right: 1px;
+    width: 20px;
+}
+</style>
+
+<div class="row">
+   <div class="col-12">
+      <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
+         <h4 class="mb-sm-0">View Finance Process</h4>
+         <div class="page-title-right">
+            <ol class="breadcrumb m-0">
+               <li class="breadcrumb-item"><a href="#">Dashboards</a></li>
+               <li class="breadcrumb-item active">View Finance Process</li>
+            </ol>
+         </div>
+      </div>
+   </div>
+</div>
+<div class="row">
+   <div class="col-lg-12">
+      <div class="card">
+         <div class="card-header d-flex align-items-center">
+            <h5 class="card-title mb-0 flex-grow-1">View Finance Process</h5>
+            <div>
+               <a class="btn btn-primary" href="/finance_process_list_page">Finance Process</a>
+            </div>
+         </div>
+         <div class="card-body">
+            <div id="toast-container" class="position-fixed bottom-0 end-0 p-3" style="z-index: 9999;"></div>
+
+            <form id="financeProcessViewForm">
+                <!-- Existing Expense Fields (readonly) -->
+                <div class="row gy-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Expense ID</label>
+                        <input type="text" class="form-control" value="{{ expense.expense_id }}" readonly>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <label class="form-label">Employee Code</label>
+                        <input type="text" class="form-control" value="{{ expense.employee.employee_code }}" readonly>
+                    </div>
+                    
+                    <div class="col-md-5">
+                        <label class="form-label">Employee Name</label>
+                        <input type="text" class="form-control" value="{{ expense.employee.name }}" readonly>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <label class="form-label">Total Claimed Amount</label>
+                        <div class="input-group">
+                            <span class="input-group-text">₹</span>
+                            <input type="text" class="form-control" value="{{ expense.total_calculation }}" readonly>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <label class="form-label">Total Approved Amount</label>
+                        <div class="input-group">
+                            <span class="input-group-text">₹</span>
+                            <input type="text" class="form-control" value="{{ expense.total_approved_amount }}" readonly>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <label class="form-label">Current Status</label>
+                        <input type="text" class="form-control" value="{{ expense.get_status_display }}" readonly>
+                    </div>
+                </div>
+                
+                <!-- Payment Processing Details (readonly) -->
+                <div class="row gy-3 mt-4">
+                    <h5>Payment Processing Details</h5>
+                    
+                    <div class="col-md-4">
+                        <label class="form-label">Payment Mode</label>
+                        <input type="text" class="form-control" 
+                               value="{{ finance_process.get_payment_mode_display }}" readonly>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <label class="form-label">Payment Date</label>
+                        <input type="text" class="form-control" 
+                               value="{% if finance_process.payment_date %}{{ finance_process.payment_date|date:'d M Y' }}{% endif %}" readonly>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <label class="form-label">Payment Proof</label>
+                        <input type="file" class="form-control" name="payment_file" id="payment_file" accept=".pdf,.jpg,.jpeg,.png">
+                        {% if finance_process.payment_file %}
+                            <small class="text-muted">Current file: <a href="{{ finance_process.payment_file.url }}" target="_blank">View</a></small>
+                        {% endif %}
+                        <div class="invalid-feedback" id="payment_file_error"></div>
+                        <small class="text-muted">Allowed formats: PDF, JPG, JPEG, PNG (max 5MB)</small>
+                    </div>
+                    
+                    <div class="col-md-12">
+                        <label class="form-label">Finance Comments</label>
+                        <textarea class="form-control" rows="3" readonly>{% if finance_process.finance_comment %}{{ finance_process.finance_comment }}{% endif %}</textarea>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" disabled 
+                                   {% if finance_process.payment_email_sent %}checked{% endif %}>
+                            <label class="form-check-label">
+                                Payment Confirmation Email Sent
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <a href="/finance_process_list_page" class="btn btn-secondary">Back</a>
+                    </div>
+                </div>
+            </form>
+           
+         </div>
+      </div>
+   </div>
+</div>
+ 
+<script>
+</script>
+ 
+<!-- end page title -->
+{% endblock %}
+{% block custom_script %}
+{% endblock %}

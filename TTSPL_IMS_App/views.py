@@ -133,21 +133,46 @@ def logout_view(request):
     return redirect('login')  # Redirect to the login page after logout
     
 
+
 def send_reset_otp(request):
     if request.method == 'POST':
-        email = request.POST['email']
+        email = request.POST.get('email')
+        is_resend = request.POST.get('resend') == 'true'
+        
         try:
             user = User.objects.get(email=email)
-            otp = random.randint(100000, 999999)  # Generate a 6-digit OTP
-            user.otp = otp
-            user.otp_generated_time = timezone.now()  # Set the OTP generation time
-            user.save()
+            now = timezone.now()
 
-            # Send OTP via email using the custom email backend
+            # Check resend limits
+            if is_resend:
+                if not user.can_resend_otp():
+                    remaining_time = (user.otp_blocked_until - now).seconds // 60
+                    return JsonResponse({
+                        'success': False,
+                        'message': f'Maximum resend attempts reached. Please try again after {remaining_time} minutes.'
+                    }, status=429)
+
+            # Generate and save OTP
+            otp = random.randint(100000, 999999)
+            user.otp = otp
+            user.otp_generated_time = now
+
+            if is_resend:
+                user.otp_resend_attempts += 1
+                user.last_otp_resend = now
+                
+                # Block for 30 minutes after 4 attempts
+                if user.otp_resend_attempts >= 4:
+                    user.otp_blocked_until = now + timedelta(minutes=30)
+            
+            user.save()
+            user.refresh_from_db()
+
+            # Email sending logic (same as before)
             connection = CustomEmailBackend(use_secondary=False)
             connection.open()
 
-            # Create the HTML message
+           # Create the HTML message
             subject = 'Password Reset OTP'
             html_message = f"""
             <!DOCTYPE html>
@@ -184,27 +209,38 @@ def send_reset_otp(request):
             </html>
             """
 
-            from_email = 'noreply@example.com'  # Change to your email address
+            from_email = 'noreply@example.com'
             recipient_list = [email]
 
-            # Send the email with HTML content
             send_mail(
                 subject,
-                '',  # Leave the plain text version empty
+                '',
                 from_email,
                 recipient_list,
                 connection=connection,
-                html_message=html_message  # Use the HTML content for the email
+                html_message=html_message
             )
             connection.close()
 
-            # Store email in session and display success message
+            if is_resend:
+                remaining_attempts = max(0, 4 - user.otp_resend_attempts)
+                return JsonResponse({
+                    'success': True,
+                    'message': f'OTP resent successfully. Remaining attempts: {remaining_attempts}',
+                    'clear_timer': True,
+                    'remaining_attempts': remaining_attempts
+                })
+
             request.session['email'] = email
-            messages.success(
-                request, f"OTP sent to {email}. Please check your email.")
-            return redirect('auth/verify_otp')
+            messages.success(request, f"OTP sent to {email}. Please check your email.")
+            return redirect('verify_otp')
 
         except User.DoesNotExist:
+            if is_resend:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Email does not exist!'
+                }, status=400)
             messages.error(request, "Email does not exist!")
             return redirect('send_reset_otp')
 
@@ -9856,15 +9892,18 @@ from django.http import JsonResponse
 from .models import Expense
 import uuid
 from decimal import Decimal 
+from django.core.mail import EmailMultiAlternatives
+
+def add_expense_page(request):
+    return render(request, "expense/add_expense.html")
 
 
 def save_expense(request):
     # Generate a unique expense_id when the page is loaded
     expense_id = uuid.uuid4()
     print(f"Generated Expense ID: {expense_id}")
-    employees = Employee.objects.all()  # Fetch all employees
+    employees = Employee.objects.all()
 
-    # Pass the expense_id to the template
     context = {
         'expense_id': expense_id,
         'employees': employees,
@@ -9873,17 +9912,16 @@ def save_expense(request):
     if request.method == 'POST':
         try:
             # Extract form data
-            employee_name = request.POST.get('employee_name')  # Get the selected employee name
+            employee_name = request.POST.get('employee_name')
             employee_code = request.POST.get('employee_code')
             work_location = request.POST.get('work_location')
             designation = request.POST.get('designation')
-            email = request.POST.get('email')
+            email = request.POST.get('email')  # Employee's email
             mobile_number = request.POST.get('mobile_number')
 
-            # Fetch the employee ID based on the selected employee name
             try:
                 employee = Employee.objects.get(name=employee_name)
-                employee_id = employee.employee_id  # Get the employee_id from the Employee model
+                employee_id = employee.employee_id
             except Employee.DoesNotExist:
                 return JsonResponse({'success': False, 'error': 'Selected employee not found.'})
 
@@ -9894,81 +9932,667 @@ def save_expense(request):
             travel_modes = request.POST.getlist('travel_mode[]')
             details_list = request.POST.getlist('details[]')
             total_amounts_inr = request.POST.getlist('total_amount_inr[]')
-            total_amounts_fcy = request.POST.getlist('total_amount_foreign_currency[]')  # Updated to include all rows
-            currency_codes = request.POST.getlist('currency_code[]')  # Get currency codes from hidden input
+            total_amounts_fcy = request.POST.getlist('total_amount_foreign_currency[]')
+            currency_codes = request.POST.getlist('currency_code[]')
             attached_file_yes_nos = request.POST.getlist('attached_file_yes_no[]')
             attached_files = request.FILES.getlist('attached_file[]')
 
-            # Debug: Print lengths of all lists
-            print(f"Number of rows: {len(sr_nos)}")
-            print(f"Start Dates: {len(start_dates)}")
-            print(f"End Dates: {len(end_dates)}")
-            print(f"Travel Modes: {len(travel_modes)}")
-            print(f"Details: {len(details_list)}")
-            print(f"Total Amounts (INR): {len(total_amounts_inr)}")
-            print(f"Total Amounts (FCY): {len(total_amounts_fcy)}")
-            print(f"Currency Codes: {len(currency_codes)}")
-            print(f"Attached File (Y/N): {len(attached_file_yes_nos)}")
-            print(f"Attached Files: {len(attached_files)}")
-
             # Calculate the total of total_amount_inr across all rows
-            total_calculation = Decimal(0)  # Initialize total_calculation
+            total_calculation = Decimal(0)
             for amount_inr in total_amounts_inr:
-                total_calculation += Decimal(amount_inr)  # Add each total_amount_inr to the total
+                total_calculation += Decimal(amount_inr)
 
             # Save each row to the Expense model
+            expenses = []  # To store all created expense objects
             for i in range(len(sr_nos)):
-                # Handle empty total_amount_foreign_currency and currency code
+                # Convert string dates to date objects
+                try:
+                    from_date = datetime.strptime(start_dates[i], '%Y-%m-%d').date()
+                    to_date = datetime.strptime(end_dates[i], '%Y-%m-%d').date()
+                except (ValueError, TypeError) as e:
+                    return JsonResponse({
+                        'success': False, 
+                        'error': f'Invalid date format: {str(e)}'
+                    })
+
+                # Handle foreign currency amount
                 total_amount_fcy = total_amounts_fcy[i] if i < len(total_amounts_fcy) else None
                 currency_code = currency_codes[i] if i < len(currency_codes) else None
 
-                # Format total_amount_foreign_currency as "amount-(currencycode)" or "(currencycode)"
                 if total_amount_fcy and currency_code:
                     total_amount_fcy_formatted = f"{total_amount_fcy}-({currency_code})"
                 elif currency_code:
-                    # If currency code is present but amount is empty, include only the currency code
                     total_amount_fcy_formatted = f"({currency_code})"
                 else:
-                    total_amount_fcy_formatted = None  # Set to None if empty
+                    total_amount_fcy_formatted = None
 
                 # Handle attached file
                 attached_document = attached_file_yes_nos[i] == 'yes' if i < len(attached_file_yes_nos) else False
                 attached_file = attached_files[i] if i < len(attached_files) else None
 
-                # Create Expense object
+                # Create Expense object with proper date objects
                 expense = Expense(
-                    expense_id=expense_id,  # Use the same expense_id for all records in this submission
-                    from_date=start_dates[i],
-                    to_date=end_dates[i],
+                    expense_id=expense_id,
+                    from_date=from_date,  # Use converted date object
+                    to_date=to_date,    # Use converted date object
                     sr_no=sr_nos[i],
                     details=details_list[i],
                     travel_modes=travel_modes[i],
-                    total_amount_inr=Decimal(total_amounts_inr[i]),  # Save total_amount_inr
-                    total_amount_foreign_currency=total_amount_fcy_formatted,  # Save formatted total_amount_foreign_currency
-                    total_calculation=total_calculation,  # Save the total of all total_amount_inr
+                    total_amount_inr=Decimal(total_amounts_inr[i]),
+                    total_amount_foreign_currency=total_amount_fcy_formatted,
+                    total_calculation=total_calculation,
+                    total_approved_amount=Decimal(0.00),
                     attached_document=attached_document,
-                    employee_id=employee_id,  # Use the fetched employee_id
-                    created_at=timezone.now(),  # Add created_at timestamp
+                    employee_id=employee_id,
+                    created_at=timezone.now(),
                 )
 
-                # Save the attached file if it exists
                 if attached_file:
                     file_name = default_storage.save(f'expense_documents/{attached_file.name}', attached_file)
                     expense.attached_document_file = file_name
 
-                # Save the Expense object to the database
                 expense.save()
+                expenses.append(expense)
 
-            # Return success response
+            # After all expenses are saved, create the NewExpenseGenerated record
+            if expenses:
+                    # Generate the PDF
+                    pdf_content = generate_expense_pdf_content(expenses[0])
+                    
+                    # Get date range for all expenses
+                    grouped_dates = Expense.objects.filter(expense_id=expense_id).aggregate(
+                        start_date=Min('from_date'),
+                        end_date=Max('to_date')
+                    )
+                    
+                    # Create the NewExpenseGenerated record
+                    new_report = NewExpenseGenerated.objects.create(
+                        expense=expenses[0],
+                        employee=employee,
+                        email_address=email
+                    )
+                    
+                    # Generate PDF filename
+                    employee_name = employee.name.replace(" ", "_")
+                    start_date_str = grouped_dates['start_date'].strftime('%Y-%m-%d')
+                    end_date_str = grouped_dates['end_date'].strftime('%Y-%m-%d')
+                    pdf_filename = f"expense_report_{employee_name}_{start_date_str}_to_{end_date_str}.pdf"
+                    
+                    # Save the PDF file
+                    new_report.new_expense_pdf.save(pdf_filename, ContentFile(pdf_content))
+
+                    # Prepare email context
+                    email_context = {
+                        'employee_name': employee.name,
+                        'expense_id': str(expense_id),
+                        'total_claimed_amount': total_calculation,
+                        'submission_date': timezone.now(),
+                    }
+
+                    # Render HTML email template
+                    html_content = render_to_string('expense/email_template.html', email_context)
+                    text_content = strip_tags(html_content)
+
+                    # Create email message
+                    subject = f"Expense Report Submission - {expense_id}"
+                    from_email = settings.DEFAULT_FROM_EMAIL
+                    to_email = [email]
+
+                    email_msg = EmailMultiAlternatives(
+                        subject=subject,
+                        body=text_content,
+                        from_email=from_email,
+                        to=to_email,
+                    )
+                    email_msg.attach_alternative(html_content, "text/html")
+                    
+                    # Attach PDF
+                    email_msg.attach(
+                        filename=pdf_filename,
+                        content=pdf_content,
+                        mimetype='application/pdf'
+                    )
+
+                    # Send email
+                    try:
+                        email_msg.send()
+                        new_report.mark_as_sent()  # Update sent status
+                        print(f"Email sent successfully to {email}")
+                    except Exception as e:
+                        print(f"Failed to send email: {str(e)}")
+                        # You might want to log this error
+
+                # You can mark as sent here if you're sending immediately
+                # new_report.mark_as_sent()
+
             return JsonResponse({'success': True, 'expense_id': str(expense_id)})
 
         except Exception as e:
-            # Return error response
             return JsonResponse({'success': False, 'error': str(e)})
 
-    # Render the template with the expense_id for GET requests
     return render(request, 'expense/add_expense.html', context)
 
+
+
+
+def generate_expense_pdf_content(expense):
+    """Generate modern expense report with dual-column layout"""
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import A4, inch
+    from reportlab.lib import colors
+    from io import BytesIO
+    from datetime import datetime
+    from reportlab.platypus import (Table, TableStyle, SimpleDocTemplate, NextPageTemplate,
+                                   Paragraph, Spacer, Frame, Image, PageBreak)
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+    import os
+    from django.conf import settings
+    from decimal import Decimal
+    from PIL import Image as PILImage
+
+    buffer = BytesIO()
+    
+    # Create PDF Document with wider margins for modern look
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        leftMargin=0.5*inch,
+        rightMargin=0.5*inch,
+        topMargin=1.25*inch,
+        bottomMargin=1*inch
+    )
+    
+    elements = []
+    styles = getSampleStyleSheet()
+
+    # Load header/footer images
+    header_path = os.path.join(settings.STATIC_ROOT, "assets/images/pdf/report_header.png")
+    footer_path = os.path.join(settings.STATIC_ROOT, "assets/images/pdf/report_footer.png")
+    
+    # Get current date/time
+    report_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    current_date = datetime.now().strftime("%d-%b-%Y")
+
+    # Define header/footer function for main document
+    def on_page(canvas, doc):
+        width, height = A4
+
+        # Draw header image
+        if os.path.exists(header_path):
+            header_img = Image(header_path, width=width, height=1.25*inch)
+            header_img.drawOn(canvas, 0, height - 1.25*inch)
+
+        # Draw footer image
+        if os.path.exists(footer_path):
+            footer_img = Image(footer_path, width=width, height=0.75*inch)
+            footer_img.drawOn(canvas, 0, 0)
+
+        # Add report date
+        canvas.setFont("Helvetica", 8)
+        canvas.drawRightString(width - 0.5*inch, height - 1.4*inch, f"Generated: {report_date}")
+
+    # Define empty header/footer function for attachment pages
+    def on_attachment_page(canvas, doc):
+        pass  # No headers/footers for attachment pages
+
+    # Define page template with frames
+    frame = Frame(
+        x1=0.5*inch, y1=1.25*inch,
+        width=A4[0] - 1*inch,
+        height=A4[1] - 2*inch,
+        id='normal'
+    )
+    template = PageTemplate(id='custom', frames=frame, onPage=on_page)
+    attachment_template = PageTemplate(id='attachment', frames=frame, onPage=on_attachment_page)
+    doc.addPageTemplates([template, attachment_template])
+
+     # Custom styles for modern look
+    title_style = ParagraphStyle(
+        'title_style',
+        parent=styles['Heading1'],
+        fontName='Helvetica-Bold',
+        fontSize=14,
+        alignment=TA_CENTER,
+        textColor=colors.HexColor('#333333'),
+        spaceAfter=12
+    )
+    
+    section_header_style = ParagraphStyle(
+        'section_header',
+        parent=styles['Heading2'],
+        fontName='Helvetica-Bold',
+        fontSize=12,
+        textColor=colors.HexColor('#4472C4'),
+        spaceAfter=8
+    )
+    
+    bullet_style = ParagraphStyle(
+        'bullet_style',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=10,
+        leading=12,
+        leftIndent=0,
+        spaceAfter=6
+    )
+    
+    table_text_style = ParagraphStyle(
+        'table_text',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=9,
+        leading=10,
+        wordWrap='LTR',  # Enable word wrapping
+        spaceBefore=2,
+        spaceAfter=2
+    )
+
+    # ========== CONTENT ==========
+    # Add spacer to account for header
+    elements.append(Spacer(1, 30))
+
+    # Modern title with border
+    title_table = Table([
+        [Paragraph("EXPENSE REIMBURSEMENT FORM", title_style)]
+    ], colWidths=[doc.width])
+    title_table.setStyle(TableStyle([
+        ('LINEBELOW', (0,0), (-1,-1), 1, colors.HexColor('#4472C4')),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 10),
+    ]))
+    elements.append(title_table)
+    
+    # Get all expense entries at the beginning of the function
+    expenses = Expense.objects.filter(expense_id=expense.expense_id).order_by('from_date')
+
+    # Then later in your code where you create doc_info:
+    doc_info = Table([
+        [
+            Paragraph(
+                f"<b>TRISNOTA TECHNICAL SERVICES PVT. LTD.</b><br/>"
+               f"<b>Address:</b> 1110, Mayuresh Cosmos, Plot no. 37<br/>"
+                f"Sector - 11, CBD Belapur, Navi Mumbai - 400614<br/>"
+                f"Maharashtra, India<br/>"
+                f"<b>Phone:</b> +91 22 4605 5448<br/>"
+                f"<b>Email:</b> accounts@ttspl.co.in",
+                styles['Normal']
+            ),
+            Paragraph(
+                f"<b>Expense ID:</b> {expense.expense_id}<br/>"
+                f"<b>Expense From:</b> {expenses.first().from_date.strftime('%d-%b-%Y') if expenses.exists() else 'N/A'}<br/>"
+                f"<b>Expense To:</b> {expenses.last().to_date.strftime('%d-%b-%Y') if expenses.exists() else 'N/A'}<br/>"
+                f"<b>Created on:</b> {current_date}<br/>"
+                f"<b>Current Status:</b> {expense.status}",
+                styles['Normal']
+            )
+        ]
+    ], colWidths=[doc.width/2]*2)
+
+    elements.append(doc_info)
+    elements.append(Spacer(1, 15))
+
+    # ========== DUAL COLUMN EMPLOYEE & SUMMARY SECTION ==========
+    # Calculate tax and net payable using Decimal
+    tax_rate = Decimal('0.18')  # 18% tax rate
+    tax_amount = expense.total_calculation * tax_rate
+    net_payable = expense.total_approved_amount * (Decimal('1') - tax_rate)
+
+    dual_column = Table([
+    [
+        # Left Column - Employee Information
+        Paragraph("<b>EMPLOYEE INFORMATION</b>", section_header_style),
+        # Right Column - Expense Summary
+        Paragraph("<b>EXPENSE SUMMARY</b>", section_header_style)
+    ],
+    [
+        # Employee details with bold labels
+        Paragraph(
+            f"<b>Name:</b> {expense.employee.name}<br/>"
+            f"<b>Employee Code:</b> {expense.employee.employee_code}<br/>"
+            f"<b>Designation:</b> {expense.employee.designation}<br/>"
+            f"<b>Location:</b> {expense.employee.location}<br/>"
+            f"<b>Work Location:</b> {str(expense.employee.work_location) if expense.employee.work_location else 'N/A'}<br/>"
+            f"<b>Email:</b> {expense.employee.email}<br/>"
+            f"<b>Mobile:</b> {expense.employee.mobile_number}",
+            styles['Normal']
+        ),
+        # Expense summary with bold labels
+        Paragraph(
+            f"<b>Total Claimed:</b> Rs.{expense.total_calculation:,.2f}<br/>"
+            f"<b>Approved Amount:</b> Rs.{expense.total_approved_amount:,.2f}<br/>",
+            styles['Normal']
+        )
+    ]
+    ], colWidths=[doc.width/2]*2)
+    
+    dual_column.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('LEFTPADDING', (0,0), (-1,-1), 5),
+        ('RIGHTPADDING', (0,0), (-1,-1), 5),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 8),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.lightgrey),
+    ]))
+    
+    elements.append(dual_column)
+    elements.append(Spacer(1, 7))
+
+    # ========== EXPENSE DETAILS TABLE ==========
+    elements.append(Paragraph("<b>EXPENSE DETAILS</b>", section_header_style))
+    elements.append(Spacer(1, 2))
+
+    # Get all expense entries
+    expenses = Expense.objects.filter(expense_id=expense.expense_id).order_by('sr_no')
+
+    # Table headers with all requested columns
+    data = [
+        [
+            "Sr.No", 
+            "Start Date", 
+            "End Date", 
+            "Travel Mode", 
+            "Details", 
+            "Total Amt (INR)", 
+            "Total Amt (FCY)", 
+            "FA"
+        ]
+    ]
+
+    # Add expense rows
+    for exp in expenses:
+        # Format foreign currency amount if exists
+        fcy_amount = exp.total_amount_foreign_currency if exp.total_amount_foreign_currency else "-"
+        
+        # Determine file attachment status
+        if exp.attached_document_file:
+            file_status = "Yes" if exp.attached_document else "No"
+        else:
+            file_status = "No"
+        
+        data.append([
+            f"{exp.sr_no:02d}",  # Zero-padded numbers
+            exp.from_date.strftime("%d-%b-%y"),
+            exp.to_date.strftime("%d-%b-%y"),
+            exp.travel_modes,
+            Paragraph(exp.details, table_text_style),  # Full details with wrapping
+            f"Rs.{exp.total_amount_inr:,.2f}",
+            fcy_amount,
+            file_status
+        ])
+
+    # Table styling - modern look with auto-adjusted row heights
+    col_widths = [
+        0.4*inch,   # Sr.No
+        0.7*inch,   # Start Date
+        0.7*inch,   # End Date
+        0.8*inch,   # Travel Mode
+        2.0*inch,   # Details (increased width for better wrapping)
+        1.1*inch,   # Total Amt (INR)
+        1.1*inch,   # Total Amt (FCY)
+        0.5*inch    # File Attached
+    ]
+
+    # Create table with automatic row heights
+    table = Table(data, colWidths=col_widths, repeatRows=1, hAlign='LEFT')
+
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4472C4')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('ALIGN', (4, 0), (4, -1), 'LEFT'),  # Left align details
+        ('ALIGN', (5, 0), (6, -1), 'RIGHT'), # Right align amounts
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.lightgrey),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('WORDWRAP', (4, 1), (4, -1), True),  # Enable word wrapping for details column
+        ('MINIMUMHEIGHT', (0, 1), (-1, -1), 0.25*inch),  # Minimum row height
+        ('LEADING', (0, 1), (-1, -1), 12),  # Line spacing
+    ]))
+
+    elements.append(table)
+    elements.append(Spacer(1, 15))
+
+    # ========== ATTACHMENTS SECTION ==========
+    # Get attachments info with serial numbers
+    attachments = []
+    for exp in expenses:
+        if exp.attached_document and exp.attached_document_file:
+            file_name = os.path.basename(exp.attached_document_file.name)
+            attachments.append(f"{exp.sr_no:02d} - {file_name}")
+
+    # Only add attachments section if there are any attachments
+    if attachments:
+        elements.append(Paragraph("<b>ATTACHMENTS</b>", section_header_style))
+        elements.append(Paragraph("<br/>".join(attachments), bullet_style))
+        elements.append(Spacer(1, 15))
+
+    # ========== APPROVAL WORKFLOW ==========
+    elements.append(Paragraph("<b>APPROVAL WORKFLOW</b>", section_header_style))
+
+    # Determine the approval status text
+    approval_status = f"Status: {expense.status}"
+    if expense.status.lower() == 'approved':
+        approval_status = "Approved By Account Team"
+
+    approval_data = [
+        ["Submitted By", "Approved By", "Status"],
+        [expense.employee.name, "Account Team", approval_status],
+        [current_date, expense.approved_date.strftime('%d-%b-%Y') if hasattr(expense, 'approved_date') and expense.approved_date else "______/______/____", 
+        expense.processed_date.strftime('%d-%b-%Y') if hasattr(expense, 'processed_date') and expense.processed_date else "______/______/____"]
+    ]
+
+    approval_table = Table(approval_data, colWidths=[doc.width/3]*3, rowHeights=[20, 25, 20])
+    approval_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#F1F1F1')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#4472C4')),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.lightgrey),
+        ('LINEBELOW', (0, 1), (-1, 1), 1, colors.lightgrey),
+        ('FONTNAME', (2, 1), (2, 1), 'Helvetica-Bold'),  # Make status text bold
+        ('TEXTCOLOR', (2, 1), (2, 1), colors.green if expense.status.lower() == 'approved' else colors.black),
+    ]))
+
+    elements.append(approval_table)
+    elements.append(Spacer(1, 15))
+
+    # ========== NOTES SECTION ==========
+    notes = [
+        "• Payment will be processed within 5-7 working days after approval",
+        "• Original receipts must be submitted for auditing",
+        "• Unapproved expenses will be deducted from salary"
+    ]
+    
+    elements.append(Paragraph("<b>NOTES</b>", section_header_style))
+    elements.append(Paragraph("<br/>".join(notes), bullet_style))
+
+
+    # ========== ATTACHMENT PREVIEW SECTION ==========
+    supported_extensions = ['.pdf', '.jpg', '.jpeg', '.png']
+    has_attachments_to_preview = False
+
+    # First check for attachments
+    for exp in expenses:
+        if exp.attached_document and exp.attached_document_file:
+            file_ext = os.path.splitext(exp.attached_document_file.name)[1].lower()
+            if file_ext in supported_extensions:
+                has_attachments_to_preview = True
+                break
+
+    if has_attachments_to_preview:
+        # Switch to attachment template (no headers/footers)
+        elements.append(NextPageTemplate('attachment'))
+        elements.append(Paragraph("<b>ATTACHMENT PREVIEW</b>", section_header_style))
+        elements.append(Spacer(1, 10))
+        
+        # Define page dimensions with safe margins (more conservative margins)
+        PAGE_WIDTH = A4[0] - 2.5 * inch  # Increased margins
+        PAGE_HEIGHT = A4[1] - 2.5 * inch
+        
+        # Process each attachment
+        for exp in expenses:
+            if exp.attached_document and exp.attached_document_file:
+                file_path = exp.attached_document_file.path
+                file_ext = os.path.splitext(file_path)[1].lower()
+                
+                if file_ext in supported_extensions:
+                    try:
+                        file_name = os.path.basename(file_path)
+                        elements.append(Paragraph(
+                            f"<b>Attachment {exp.sr_no:02d}: {file_name}</b>", 
+                            bullet_style
+                        ))
+                        
+                        if file_ext == '.pdf':
+                            try:
+                                import fitz  # PyMuPDF
+                                try:
+                                    pdf_document = fitz.open(file_path)
+                                    
+                                    # Process ALL pages
+                                    for page_num in range(len(pdf_document)):
+                                        page = pdf_document.load_page(page_num)
+                                        
+                                        # Render page to image (lower DPI for smaller size)
+                                        pix = page.get_pixmap(dpi=150)  # Reduced from 200 to 150
+                                        
+                                        # Convert to PIL Image
+                                        img = PILImage.frombytes("RGB", [pix.width, pix.height], pix.samples)
+                                        
+                                        # Create output buffer
+                                        img_data = BytesIO()
+                                        img.save(img_data, format='JPEG', quality=85)
+                                        img_data.seek(0)
+                                        
+                                        # Calculate dimensions with DPI conversion
+                                        img_width = pix.width / 150 * inch
+                                        img_height = pix.height / 150 * inch
+                                        
+                                        # Calculate scaling with maximum size constraints
+                                        scale = min(
+                                            PAGE_WIDTH / img_width,
+                                            PAGE_HEIGHT / img_height,
+                                            0.95  # Slightly smaller than available space
+                                        )
+                                        
+                                        # Ensure minimum dimensions
+                                        final_width = max(img_width * scale, 0.5 * inch)
+                                        final_height = max(img_height * scale, 0.5 * inch)
+                                        
+                                        # Add image to elements
+                                        elements.append(Image(
+                                            img_data,
+                                            width=final_width,
+                                            height=final_height,
+                                            hAlign='CENTER'
+                                        ))
+                                        
+                                        elements.append(Paragraph(
+                                            f"[Page {page_num+1} of {len(pdf_document)}]", 
+                                            styles['Italic']
+                                        ))
+                                        
+                                        # Add page break except for last page
+                                        if page_num < len(pdf_document)-1:
+                                            elements.append(PageBreak())
+                                            
+                                except Exception as pdf_error:
+                                    elements.append(Paragraph(
+                                        f"[PDF Error: {str(pdf_error)}]", 
+                                        styles['Italic']
+                                    ))
+                                finally:
+                                    if 'pdf_document' in locals():
+                                        pdf_document.close()
+                            except ImportError:
+                                elements.append(Paragraph(
+                                    "[Install PyMuPDF: pip install pymupdf]", 
+                                    styles['Italic']
+                                ))
+                        else:
+                            # Process image files (JPG, PNG, etc.)
+                            try:
+                                with open(file_path, 'rb') as f:
+                                    img_data = BytesIO(f.read())
+                                
+                                with PILImage.open(img_data) as img:
+                                    if img.mode in ('P', 'RGBA'):
+                                        img = img.convert('RGB')
+                                    
+                                    output_buffer = BytesIO()
+                                    img.save(output_buffer, format='JPEG', quality=90)
+                                    output_buffer.seek(0)
+                                    
+                                    dpi = img.info.get('dpi', (150, 150))[0]
+                                    img_width = img.width / dpi * inch
+                                    img_height = img.height / dpi * inch
+                                    
+                                    # More conservative scaling for images
+                                    scale = min(
+                                        PAGE_WIDTH / img_width,
+                                        PAGE_HEIGHT / img_height,
+                                        0.9  # Smaller scaling factor
+                                    )
+                                    
+                                    elements.append(Image(
+                                        output_buffer,
+                                        width=img_width * scale,
+                                        height=img_height * scale,
+                                        hAlign='CENTER'
+                                    ))
+                                    
+                            except Exception as img_error:
+                                elements.append(Paragraph(
+                                    f"[Image Error: {str(img_error)}]", 
+                                    styles['Italic']
+                                ))
+                        
+                        elements.append(Spacer(1, 12))
+                        
+                    except Exception as e:
+                        elements.append(Paragraph(
+                            f"[Error: {str(e)}]", 
+                            styles['Italic']
+                        ))
+
+        # Switch back to main template
+        elements.append(NextPageTemplate('custom'))
+
+    # ========== FOOTER ==========
+    footer = Table([
+        ["CONFIDENTIAL - Property of Trisnota Technical Services Pvt. Ltd."]
+    ], colWidths=[doc.width])
+    footer.setStyle(TableStyle([
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('FONTSIZE', (0,0), (-1,-1), 7),
+        ('TEXTCOLOR', (0,0), (-1,-1), colors.grey),
+        ('LINEABOVE', (0,0), (-1,-1), 0.5, colors.lightgrey),
+    ]))
+    elements.append(footer)
+
+    # Build PDF
+    doc.build(elements)
+
+    pdf_content = buffer.getvalue()
+    buffer.close()
+    return pdf_content
+
+
+def download_expense_pdf(request, expense_id):
+    # Get the latest generated report for this expense
+    report = NewExpenseGenerated.objects.filter(
+        expense__expense_id=expense_id
+    ).order_by('-created_at').first()  # Changed to apply order_by on the queryset
+    
+    if not report or not report.new_expense_pdf:
+        return HttpResponse("PDF not found", status=404)
+    
+    response = FileResponse(report.new_expense_pdf.open('rb'))
+    response['Content-Disposition'] = f'attachment; filename="{report.get_pdf_filename()}"'
+    return response
 
 
 def get_employee_details(request):
@@ -9989,6 +10613,1751 @@ def get_employee_details(request):
             print(f"Employee not found: {employee_name}")  # Debugging
             return JsonResponse({'success': False, 'error': 'Employee not found.'})
     return JsonResponse({'success': False, 'error': 'Invalid request method.'})
+
+
+def track_status_page(request):
+    return render(request, "expense/track_status.html")
+
+
+def expense_list(request):
+    # Get filter parameters from request
+    status = request.GET.get('status', '')
+    start_date = request.GET.get('start_date', '')
+    end_date = request.GET.get('end_date', '')
+    
+    # Get DataTables parameters
+    draw = int(request.GET.get('draw', 1))
+    start = int(request.GET.get('start', 0))
+    length = int(request.GET.get('length', 10))  # Default to 10 items per page
+
+    # Start with base queryset
+    queryset = Expense.objects.select_related('employee')
+
+    # Apply filters
+    if status:
+        queryset = queryset.filter(status=status)
+    
+    if start_date:
+        try:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            queryset = queryset.filter(from_date__gte=start_date)
+        except ValueError:
+            pass
+    
+    if end_date:
+        try:
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+            queryset = queryset.filter(to_date__lte=end_date)
+        except ValueError:
+            pass
+
+    # Group and annotate
+    grouped_expenses = queryset.values(
+        'expense_id',
+        'employee__name',
+        'employee__employee_code',
+        'total_calculation',
+        'total_approved_amount',
+        'status'
+    ).annotate(
+        start_date=Min('from_date'),
+        end_date=Max('to_date')
+    ).order_by('-start_date')
+
+    # Get total count before pagination
+    total_records = grouped_expenses.count()
+
+    # Apply pagination
+    paginator = Paginator(grouped_expenses, length)
+    page = (start // length) + 1
+    paginated_expenses = paginator.get_page(page)
+
+    # Convert to JSON format
+    data = []
+    for expense in paginated_expenses:
+        data.append({
+            'expense_id': str(expense['expense_id']),
+            'employee_info': f"{expense['employee__employee_code']} - {expense['employee__name']}",
+            'start_date': expense['start_date'].strftime('%Y-%m-%d'),
+            'end_date': expense['end_date'].strftime('%Y-%m-%d'),
+            'total_calculation': str(expense['total_calculation']),
+            'total_approved_amount': str(expense.get('total_approved_amount', '0.00')),
+            'status': expense['status']
+        })
+
+    return JsonResponse({
+        'draw': draw,
+        'recordsTotal': total_records,
+        'recordsFiltered': total_records,
+        'data': data
+    })
+
+
+
+
+def generate_expense_csv(request):
+    # Get filter parameters
+    status = request.GET.get('status', '')
+    start_date = request.GET.get('start_date', '')
+    end_date = request.GET.get('end_date', '')
+
+    # Start with base queryset
+    expenses = Expense.objects.select_related('employee')
+
+    # Apply filters
+    if status:
+        expenses = expenses.filter(status=status)
+    
+    if start_date:
+        try:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            expenses = expenses.filter(from_date__gte=start_date)
+        except ValueError:
+            pass
+    
+    if end_date:
+        try:
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+            expenses = expenses.filter(to_date__lte=end_date)
+        except ValueError:
+            pass
+
+    # Group and annotate
+    expenses = expenses.values(
+        'expense_id',
+        'employee__name',
+        'employee__employee_code',
+        'total_calculation',
+        'total_approved_amount',
+        'status'
+    ).annotate(
+        start_date=Min('from_date'),
+        end_date=Max('to_date')
+    ).order_by('-start_date')
+
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="expense_report.csv"'
+
+    writer = csv.writer(response)
+    writer.writerow([
+        'Expense ID', 'Employee Code', 'Employee Name', 'Start Date', 
+        'End Date', 'Amount Claimed (₹)', 'Amount Approved (₹)', 'Status'
+    ])
+
+    for expense in expenses:
+        writer.writerow([
+            expense['expense_id'],
+            expense['employee__employee_code'],
+            expense['employee__name'],
+            expense['start_date'].strftime('%Y-%m-%d'),
+            expense['end_date'].strftime('%Y-%m-%d'),
+            expense['total_calculation'],
+            expense['total_approved_amount'],
+            expense['status']
+        ])
+
+    return response
+
+
+def generate_expense_excel(request):
+    # Get filter parameters
+    status = request.GET.get('status', '')
+    start_date = request.GET.get('start_date', '')
+    end_date = request.GET.get('end_date', '')
+
+    # Start with base queryset
+    expenses = Expense.objects.select_related('employee')
+
+    # Apply filters
+    if status:
+        expenses = expenses.filter(status=status)
+    
+    if start_date:
+        try:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            expenses = expenses.filter(from_date__gte=start_date)
+        except ValueError:
+            pass
+    
+    if end_date:
+        try:
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+            expenses = expenses.filter(to_date__lte=end_date)
+        except ValueError:
+            pass
+
+    # Group and annotate
+    expenses = expenses.values(
+        'expense_id',
+        'employee__name',
+        'employee__employee_code',
+        'total_calculation',
+        'total_approved_amount',
+        'status'
+    ).annotate(
+        start_date=Min('from_date'),
+        end_date=Max('to_date')
+    ).order_by('-start_date')
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Expense Report"
+
+    headers = [
+        'Expense ID', 'Employee Code', 'Employee Name', 'Start Date', 
+        'End Date', 'Amount Claimed (₹)', 'Amount Approved (₹)', 'Status'
+    ]
+
+    for col_num, header in enumerate(headers, 1):
+        ws.cell(row=1, column=col_num, value=header).font = openpyxl.styles.Font(bold=True)
+
+    for row_num, expense in enumerate(expenses, 2):
+        ws.cell(row=row_num, column=1, value=str(expense['expense_id']))
+        ws.cell(row=row_num, column=2, value=expense['employee__employee_code'])
+        ws.cell(row=row_num, column=3, value=expense['employee__name'])
+        ws.cell(row=row_num, column=4, value=expense['start_date'].strftime('%Y-%m-%d'))
+        ws.cell(row=row_num, column=5, value=expense['end_date'].strftime('%Y-%m-%d'))
+        ws.cell(row=row_num, column=6, value=float(expense['total_calculation']))
+        ws.cell(row=row_num, column=7, value=float(expense['total_approved_amount']))
+        ws.cell(row=row_num, column=8, value=expense['status'])
+
+    response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    response["Content-Disposition"] = 'attachment; filename="expense_report.xlsx"'
+
+    wb.save(response)
+    return response
+
+
+
+def generate_expense_pdf(request):
+    # Get filter parameters
+    status = request.GET.get('status', '')
+    start_date = request.GET.get('start_date', '')
+    end_date = request.GET.get('end_date', '')
+
+    # Start with base queryset
+    expenses = Expense.objects.select_related('employee')
+
+    # Apply filters
+    if status:
+        expenses = expenses.filter(status=status)
+    
+    if start_date:
+        try:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            expenses = expenses.filter(from_date__gte=start_date)
+        except ValueError:
+            pass
+    
+    if end_date:
+        try:
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+            expenses = expenses.filter(to_date__lte=end_date)
+        except ValueError:
+            pass
+
+    # Group and annotate
+    expenses = expenses.values(
+        'expense_id',
+        'employee__name',
+        'employee__employee_code',
+        'total_calculation',
+        'total_approved_amount',
+        'status'
+    ).annotate(
+        start_date=Min('from_date'),
+        end_date=Max('to_date')
+    ).order_by('-start_date')
+
+    # Create response object for PDF
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="expense_report.pdf"'
+
+    # Define PDF Document
+    doc = SimpleDocTemplate(response, pagesize=A4)
+    elements = []
+    styles = getSampleStyleSheet()
+    
+    # Custom styles for wrapping text
+    custom_style = ParagraphStyle(
+        'custom_style',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=10,
+        leading=12,
+        spaceAfter=6
+    )
+
+    # Header Image Path
+    header_path = os.path.join(settings.STATIC_ROOT, "assets/images/pdf/report_header.png")
+
+    # Get Current Date
+    report_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Header function
+    def on_page(canvas, doc):
+        width, height = A4
+        if os.path.exists(header_path):
+            header_img = Image(header_path, width=width, height=1.5 * inch)
+            header_img.drawOn(canvas, 0, height - 1.5 * inch)
+
+        canvas.setFont("Helvetica", 9)
+        canvas.drawRightString(width - 0.8 * inch, height - 1.7 * inch, f"Generated On: {report_date}")
+
+    # Report Title
+    elements.append(Spacer(1, 80))
+    elements.append(Paragraph('<para align="center"><b><font size=16>EXPENSE REPORT</font></b></para>', styles["Normal"]))
+    elements.append(Spacer(1, 20))
+
+    # Report Description
+    elements.append(Paragraph('<font size=11>This report contains details of expenses including employee information, dates, and amounts.</font>', custom_style))
+    elements.append(Spacer(1, 10))
+
+    # Table Headers
+    data = [
+        [
+            "Expense ID", 
+            "Employee", 
+            "Period", 
+            "Amount Claimed", 
+            "Amount Approved", 
+            "Status"
+        ]
+    ]
+    
+    # Fetch Expenses and Append to Table Data
+    if expenses.exists():
+        for expense in expenses:
+            employee_info = f"{expense['employee__employee_code']} - {expense['employee__name']}"
+            period = f"{expense['start_date'].strftime('%Y-%m-%d')} to {expense['end_date'].strftime('%Y-%m-%d')}"
+            
+            # Use Paragraph for text wrapping
+            data.append([
+                Paragraph(str(expense['expense_id']), custom_style),
+                Paragraph(employee_info, custom_style),
+                Paragraph(period, custom_style),
+                Paragraph(f"₹{float(expense['total_calculation']):,.2f}", custom_style),
+                Paragraph(f"₹{float(expense['total_approved_amount']):,.2f}", custom_style),
+                Paragraph(expense['status'], custom_style)
+            ])
+    else:
+        data.append(["No Data", "-", "-", "-", "-", "-"])  
+
+    # Table Column Widths (adjust as needed)
+    col_widths = [
+        1.2 * inch,  # Expense ID
+        1.5 * inch,  # Employee
+        1.2 * inch,  # Period
+        1.2 * inch,  # Amount Claimed
+        1.2 * inch,  # Amount Approved
+        1.0 * inch   # Status
+    ]
+    
+    table = Table(data, colWidths=col_widths, repeatRows=1)
+
+    # Table Styling
+    style = TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4472C4')),  # Blue header
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#D9E1F2')),  # Light blue rows
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#8EA9DB')),  # Light grid
+        ('WORDWRAP', (0, 0), (-1, -1), True),  # Enable word wrap
+    ])
+    table.setStyle(style)
+
+    # Add table to elements
+    elements.append(table)
+    elements.append(Spacer(1, 15))
+
+    # Footer Note
+    elements.append(Paragraph("<strong>Note:</strong> This is a system-generated expense report.", custom_style))
+    
+    # Build PDF
+    doc.build(elements, onFirstPage=on_page, onLaterPages=on_page)
+
+    return response
+
+
+
+def verify_process_page(request):
+    return render(request, "expense/verify_and_process.html")
+
+def view_verify_and_process_page(request):
+    return render(request, "expense/view_verify_and_process.html")
+
+
+
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from .models import Expense, VerifyProcessExpense, ExpenseFinanceProcess
+
+
+def process_expense(request, expense_id):
+    expense_items = Expense.objects.filter(expense_id=expense_id)
+    
+    if not expense_items.exists():
+        return render(request, '404.html', status=404)
+    
+    if request.method == 'POST':
+        try:
+            print("\n===== FORM DATA RECEIVED =====")
+            print("POST data:", request.POST)
+            
+            # Get form data
+            total_approved = request.POST.get('total_approved', '0')
+            approver_comments = request.POST.get('approver_comments', '')
+            expense_status = request.POST.get('expense_status', 'Pending')
+            send_email = request.POST.get('send_mail_notification') == 'on'
+            
+            print(f"\nTotal Approved: {total_approved}")
+            print(f"Expense Status: {expense_status}")
+            print(f"Send Email: {send_email}")
+            print(f"Approver Comments: {approver_comments}")
+            
+            # Get the employee from the first expense item
+            processing_employee = expense_items.first().employee
+            employee = processing_employee  # For email context
+            
+            # Update each expense item
+            for item in expense_items:
+                print(f"\nProcessing Expense Item ID: {item.id}")
+                
+                # Get individual approved amount and remarks for each item
+                approved_amount = request.POST.get(f'approved_amount_{item.id}', '0')
+                remarks = request.POST.get(f'remarks_{item.id}', '')
+                
+                print(f"Approved Amount: {approved_amount}")
+                print(f"Remarks: {remarks}")
+                
+                # Update or create VerifyProcessExpense record
+                verification, created = VerifyProcessExpense.objects.update_or_create(
+                    expense=item,
+                    defaults={
+                        'employee': processing_employee,
+                        'approved_amount': approved_amount,
+                        'remarks': remarks,
+                        'approver_comments': approver_comments,
+                        'verified_at': timezone.now()  # Update verification timestamp
+                    }
+                )
+                
+                # Update Expense model
+                item.total_approved_amount = approved_amount
+                item.status = expense_status
+                item.save()
+            
+            # Update total approved amount in all related expense items
+            expense_items.update(total_approved_amount=total_approved)
+            
+            # Send email only if status is Approved/Rejected AND send_email is checked
+            if send_email and expense_status in ['Approved', 'Rejected']:
+                try:
+                    # Prepare email context
+                    context = {
+                        'expense_id': expense_id,
+                        'employee_name': employee.name,
+                        'total_claimed_amount': sum(float(item.total_amount_inr) for item in expense_items),
+                        'total_approved_amount': total_approved,
+                        'current_status': expense_status,
+                        'approver_comments': approver_comments,
+                        'expense_period': f"{min(item.from_date for item in expense_items).strftime('%b %d, %Y')} to {max(item.to_date for item in expense_items).strftime('%b %d, %Y')}",
+                    }
+                    
+                    # Render HTML email template
+                    html_message = render_to_string('expense/expense_status_email.html', context)
+                    plain_message = strip_tags(html_message)
+                    
+                    # Create email
+                    email = EmailMessage(
+                      f'Expense #{expense_id} {expense_status}' + (' - Payment in Process' if expense_status != 'Rejected' else ''),
+                        plain_message,
+                        settings.DEFAULT_FROM_EMAIL,
+                        [employee.email],  # Send to the employee's email
+                    )
+                    
+                    # Attach HTML content
+                    email.content_subtype = "html"
+                    email.body = html_message
+                    
+                    # Send email
+                    email.send()
+                    
+                    # Update verification records to mark email as sent
+                    VerifyProcessExpense.objects.filter(expense__in=expense_items).update(
+                        email_sent=True,
+                        email_sent_date=timezone.now()
+                    )
+                    
+                    print(f"Email notification sent to {employee.email}")
+                except Exception as email_error:
+                    print(f"Failed to send email: {str(email_error)}")
+                    # Continue processing even if email fails
+            
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': True})
+            
+            messages.success(request, 'Expense successfully verified and processed!')
+            return redirect('expense_list')
+            
+        except Exception as e:
+            print(f"\nERROR: {str(e)}")
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'error': str(e)}, status=400)
+            messages.error(request, f'Error processing expense: {str(e)}')
+            return redirect('process_expense', expense_id=expense_id)
+    
+    # GET request handling
+    first_item = expense_items.first()
+    employee = first_item.employee
+    total_calculation = sum(item.total_amount_inr for item in expense_items)
+    
+    # Create a list to store items with attached verification data
+    expense_items_with_verification = []
+    
+    for item in expense_items:
+        try:
+            verification = VerifyProcessExpense.objects.get(expense=item)
+            # Attach verification data directly to the item
+            item.approved_amount = str(verification.approved_amount)
+            item.remarks = verification.remarks or ''
+            item.approver_comments = verification.approver_comments or ''
+            item.email_sent = verification.email_sent
+        except VerifyProcessExpense.DoesNotExist:
+            item.approved_amount = '0.00'
+            item.remarks = ''
+            item.approver_comments = ''
+            item.email_sent = False
+        
+        expense_items_with_verification.append(item)
+    
+    date_range = expense_items.aggregate(
+        start_date=Min('from_date'),
+        end_date=Max('to_date')
+    )
+    
+    # Calculate total approved amount
+    total_approved = sum(
+        float(item.approved_amount)
+        for item in expense_items_with_verification
+    )
+    
+    context = {
+        'expense_id': expense_id,
+        'employee': employee,
+        'expense_items': expense_items_with_verification,
+        'total_calculation': total_calculation,
+        'created_date': first_item.created_at.strftime('%Y-%m-%d'),
+        'expense_period': f"{date_range['start_date'].strftime('%Y-%m-%d')} to {date_range['end_date'].strftime('%Y-%m-%d')}",
+        'date_range': date_range,
+        'readonly': False,
+        'first_verification': {
+            'approved_amount': expense_items_with_verification[0].approved_amount if expense_items_with_verification else '0.00',
+            'remarks': expense_items_with_verification[0].remarks if expense_items_with_verification else '',
+            'approver_comments': expense_items_with_verification[0].approver_comments if expense_items_with_verification else '',
+            'email_sent': expense_items_with_verification[0].email_sent if expense_items_with_verification else False
+        },
+        'first_item_total_approved': str(total_approved) if total_approved > 0 else str(first_item.total_approved_amount or '0.00'),
+        'status': first_item.status
+    }
+    
+    return render(request, 'expense/view_verify_and_process.html', context)
+
+
+
+def view_process_expense(request, expense_id):
+    expense_items = Expense.objects.filter(expense_id=expense_id)
+    
+    if not expense_items.exists():
+        return render(request, '404.html', status=404)
+    
+    # Get verification data and attach to each expense item
+    expense_items_with_verification = []
+    for item in expense_items:
+        try:
+            verification = VerifyProcessExpense.objects.get(expense=item)
+            item.verification = {
+                'approved_amount': str(verification.approved_amount),
+                'remarks': verification.remarks or '',
+                'approver_comments': verification.approver_comments or '',
+                'email_sent': verification.email_sent
+            }
+        except VerifyProcessExpense.DoesNotExist:
+            item.verification = {
+                'approved_amount': '0.00',
+                'remarks': '',
+                'approver_comments': '',
+                'email_sent': False
+            }
+        expense_items_with_verification.append(item)
+    
+    first_item = expense_items.first()
+    employee = first_item.employee
+    total_calculation = sum(item.total_amount_inr for item in expense_items)
+    
+    date_range = expense_items.aggregate(
+        start_date=Min('from_date'),
+        end_date=Max('to_date')
+    )
+    
+    # Calculate total approved amount
+    total_approved = sum(
+        float(item.verification['approved_amount'])
+        for item in expense_items_with_verification
+    )
+    
+    context = {
+        'expense_id': expense_id,
+        'employee': employee,
+        'expense_items': expense_items_with_verification,
+        'total_calculation': total_calculation,
+        'created_date': first_item.created_at.strftime('%Y-%m-%d'),
+        'expense_period': f"{date_range['start_date'].strftime('%Y-%m-%d')} to {date_range['end_date'].strftime('%Y-%m-%d')}",
+        'date_range': date_range,
+        'readonly': True,
+        'first_verification': expense_items_with_verification[0].verification,
+        'first_item_total_approved': str(total_approved) if total_approved > 0 else str(first_item.total_approved_amount or '0.00'),
+        'status': first_item.status
+    }
+    
+    return render(request, 'expense/view_process_expense.html', context)
+
+
+
+def finance_process_list_page(request):
+    return render(request, "expense/finance_process_list.html")
+
+from django.db.models import Q
+
+def expensefinanceprocess_list(request):
+    # Get filter parameters from request
+    employee_id = request.GET.get('employee_id', '')  # Changed from employee_name to employee_id
+    start_date = request.GET.get('start_date', '')
+    end_date = request.GET.get('end_date', '')
+    
+    # Get DataTables parameters
+    draw = int(request.GET.get('draw', 1))
+    start = int(request.GET.get('start', 0))
+    length = int(request.GET.get('length', 10))
+
+    # Start with base queryset - Approved or Payment Successful expenses
+    queryset = Expense.objects.filter(status__in=['Approved', 'Payment Successful']).select_related('employee')
+
+    # Apply filters
+    if employee_id:
+        queryset = queryset.filter(employee_id=employee_id)
+    
+    if start_date:
+        try:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            queryset = queryset.filter(from_date__gte=start_date)
+        except ValueError:
+            pass
+    
+    if end_date:
+        try:
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+            queryset = queryset.filter(to_date__lte=end_date)
+        except ValueError:
+            pass
+
+    # Group and annotate
+    grouped_expenses = queryset.values(
+        'expense_id',
+        'employee__name',
+        'employee__employee_code',
+        'total_calculation',
+        'total_approved_amount',
+        'status'
+    ).annotate(
+        start_date=Min('from_date'),
+        end_date=Max('to_date')
+    ).order_by('-status', '-start_date')  # Payment Successful first, then Approved
+
+    # Get total count before pagination
+    total_records = grouped_expenses.count()
+
+    # Apply pagination
+    paginator = Paginator(grouped_expenses, length)
+    page = (start // length) + 1
+    paginated_expenses = paginator.get_page(page)
+
+    # Convert to JSON format
+    data = []
+    for expense in paginated_expenses:
+        data.append({
+            'expense_id': str(expense['expense_id']),
+            'employee_info': f"{expense['employee__employee_code']} - {expense['employee__name']}",
+            'start_date': expense['start_date'].strftime('%Y-%m-%d'),
+            'end_date': expense['end_date'].strftime('%Y-%m-%d'),
+            'total_calculation': str(expense['total_calculation']),
+            'total_approved_amount': str(expense.get('total_approved_amount', '0.00')),
+            'status': expense['status']
+        })
+
+    return JsonResponse({
+        'draw': draw,
+        'recordsTotal': total_records,
+        'recordsFiltered': total_records,
+        'data': data
+    })
+
+
+def get_employee_list(request):
+    """New view to provide employee data for Select2 dropdown"""
+    search = request.GET.get('search', '')
+    
+    # Query employees with search term (both name and code)
+    employees = Employee.objects.filter(
+        Q(name__icontains=search) | Q(employee_code__icontains=search)
+    ).values('employee_id', 'name', 'employee_code')[:20]  # Use employee_id instead of id
+    
+    # Format results for Select2
+    results = [{
+        'id': emp['employee_id'],  # Use employee_id here
+        'text': f"{emp['employee_code']} - {emp['name']}"
+    } for emp in employees]
+    
+    return JsonResponse({'results': results})
+
+def view_finance_process_page(request):
+    return render(request, "expense/view_finance_process.html")
+
+
+
+# def expense_finance_process(request, expense_id):
+#     # Get all expenses with this ID (should normally be just one)
+#     expenses = Expense.objects.filter(expense_id=expense_id)
+    
+#     if not expenses.exists():
+#         return render(request, '404.html', status=404)
+    
+#     # For safety, we'll use the first expense
+#     expense = expenses.first()
+    
+#     # Get or create finance process for this expense
+#     finance_process, created = ExpenseFinanceProcess.objects.get_or_create(expense=expense)
+    
+#     if request.method == 'POST':
+#         try:
+#             # Process form data
+#             finance_process.payment_mode = request.POST.get('payment_mode')
+#             finance_process.payment_date = request.POST.get('payment_date')
+#             finance_process.finance_comment = request.POST.get('finance_comment', '')
+#             finance_process.payment_email_sent = 'payment_email_sent' in request.POST
+            
+#             # Handle file upload
+#             if 'payment_file' in request.FILES:
+#                 finance_process.payment_file = request.FILES['payment_file']
+            
+#             finance_process.save()
+            
+#             # Update ALL expense records with this ID
+#             expenses.update(status='Payment Successful')
+            
+#             messages.success(request, 'Payment details saved successfully!')
+#             return redirect('expense_detail', expense_id=expense.expense_id)
+            
+#         except Exception as e:
+#             messages.error(request, f'Error processing payment: {str(e)}')
+    
+#     context = {
+#         'expense': expense,
+#         'finance_process': finance_process,
+#         'payment_modes': ExpenseFinanceProcess.PAYMENT_MODES,
+#         # Add this to show warning if duplicates exist
+#         'has_duplicates': expenses.count() > 1  
+#     }
+    
+#     return render(request, 'expense/process_finance_process.html', context)
+
+from django.core.mail import EmailMessage
+from django.template.loader import render_to_string
+from django.utils.html import strip_tags
+
+def expense_finance_process(request, expense_id):
+    # Get all expenses with this ID (should normally be just one)
+    expenses = Expense.objects.filter(expense_id=expense_id)
+    
+    if not expenses.exists():
+        return render(request, '404.html', status=404)
+    
+    # For safety, we'll use the first expense
+    expense = expenses.first()
+    
+    # Get or create finance process for this expense
+    finance_process, created = ExpenseFinanceProcess.objects.get_or_create(expense=expense)
+    
+    if request.method == 'POST':
+        try:
+            # Process form data
+            finance_process.payment_mode = request.POST.get('payment_mode')
+            finance_process.payment_date = request.POST.get('payment_date')
+            finance_process.finance_comment = request.POST.get('finance_comment', '')
+            send_email = 'payment_email_sent' in request.POST
+            
+            # Handle file upload
+            if 'payment_file' in request.FILES:
+                finance_process.payment_file = request.FILES['payment_file']
+            
+            finance_process.save()
+            
+            # Update ALL expense records with this ID
+            expenses.update(status='Payment Successful')
+            
+            # Send email if checkbox was checked
+            if send_email:
+                # Prepare email content
+                context = {
+                    'expense_id': expense.expense_id,
+                    'employee_name': expense.employee.name,
+                    'total_claimed_amount': expense.total_calculation,
+                    'total_approved_amount': expense.total_approved_amount,
+                    'current_status': 'Payment Successful',
+                    'payment_mode': finance_process.payment_mode,
+                    'payment_date': finance_process.payment_date,
+                    'finance_comment': finance_process.finance_comment,
+                }
+                
+                # Render HTML email template
+                html_message = render_to_string('expense/payment_confirmation_email.html', context)
+                plain_message = strip_tags(html_message)
+                
+                # Create email
+                email = EmailMessage(
+                    f'Payment Confirmation for Expense #{expense.expense_id}',
+                    plain_message,
+                    settings.DEFAULT_FROM_EMAIL,
+                    [expense.employee.email],  # Send to the employee's email
+                )
+                
+                # Attach HTML content
+                email.content_subtype = "html"
+                email.body = html_message
+                
+                # Attach payment proof file if exists
+                if finance_process.payment_file:
+                    email.attach_file(finance_process.payment_file.path)
+                
+                # Send email
+                email.send()
+                
+                # Update email sent status
+                finance_process.payment_email_sent = True
+                finance_process.email_sent_date = timezone.now()
+                finance_process.save()
+                
+                messages.success(request, 'Payment details saved and confirmation email sent successfully!')
+            else:
+                messages.success(request, 'Payment details saved successfully!')
+            
+            return redirect('expense_detail', expense_id=expense.expense_id)
+            
+        except Exception as e:
+            messages.error(request, f'Error processing payment: {str(e)}')
+    
+    context = {
+        'expense': expense,
+        'finance_process': finance_process,
+        'payment_modes': ExpenseFinanceProcess.PAYMENT_MODES,
+        # Add this to show warning if duplicates exist
+        'has_duplicates': expenses.count() > 1  
+    }
+    
+    return render(request, 'expense/process_finance_process.html', context)
+
+def view_expense_finance_process(request, expense_id):
+    """
+    View-only version of the finance process details
+    """
+    # Get all expenses with this ID (should normally be just one)
+    expenses = Expense.objects.filter(expense_id=expense_id)
+    
+    if not expenses.exists():
+        return render(request, '404.html', status=404)
+    
+    # For safety, we'll use the first expense
+    expense = expenses.first()
+    
+    # Get finance process for this expense (don't create if doesn't exist)
+    try:
+        finance_process = ExpenseFinanceProcess.objects.get(expense=expense)
+    except ExpenseFinanceProcess.DoesNotExist:
+        # If no finance process exists, create an empty one for display purposes
+        finance_process = ExpenseFinanceProcess(expense=expense)
+    
+    context = {
+        'expense': expense,
+        'finance_process': finance_process,
+        'payment_modes': ExpenseFinanceProcess.PAYMENT_MODES,
+        'has_duplicates': expenses.count() > 1,
+        'view_only': True  # Add this flag to indicate view-only mode
+    }
+    
+    return render(request, 'expense/view_finance_process.html', context)
+
+
+def verify_and_process_list(request):
+    # Get filter parameters from request
+    status = request.GET.get('status', '')
+    employee_id = request.GET.get('employee_id', '')  # Changed to employee_id
+    start_date = request.GET.get('start_date', '')
+    end_date = request.GET.get('end_date', '')
+    
+    # Get DataTables parameters
+    draw = int(request.GET.get('draw', 1))
+    start = int(request.GET.get('start', 0))
+    length = int(request.GET.get('length', 10))
+    search_value = request.GET.get('search[value]', '')
+
+    # Start with base queryset - exclude Payment Successful by default
+    queryset = Expense.objects.select_related('employee').exclude(status='Payment Successful')
+
+    # Apply filters
+    if status:
+        queryset = queryset.filter(status=status)
+    
+    if employee_id:
+        queryset = queryset.filter(employee__employee_id=employee_id)
+    
+    if start_date:
+        try:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            queryset = queryset.filter(from_date__gte=start_date)
+        except ValueError:
+            pass
+    
+    if end_date:
+        try:
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+            queryset = queryset.filter(to_date__lte=end_date)
+        except ValueError:
+            pass
+
+    # Apply global search if needed
+    if search_value:
+        queryset = queryset.filter(
+            Q(expense_id__icontains=search_value) |
+            Q(employee__name__icontains=search_value) |
+            Q(employee__employee_code__icontains=search_value) |
+            Q(status__icontains=search_value)
+        )
+
+    # Group and annotate
+    grouped_expenses = queryset.values(
+        'expense_id',
+        'employee__name',
+        'employee__employee_code',
+        'total_calculation',
+        'total_approved_amount',
+        'status'
+    ).annotate(
+        start_date=Min('from_date'),
+        end_date=Max('to_date')
+    ).order_by('-start_date')
+
+    # Get total count before pagination
+    total_records = grouped_expenses.count()
+
+    # Apply pagination
+    paginator = Paginator(grouped_expenses, length)
+    page = (start // length) + 1
+    try:
+        paginated_expenses = paginator.get_page(page)
+    except:
+        paginated_expenses = paginator.get_page(1)
+
+    # Convert to JSON format
+    data = []
+    for expense in paginated_expenses:
+        data.append({
+            'expense_id': str(expense['expense_id']),
+            'employee_info': f"{expense['employee__employee_code']} - {expense['employee__name']}",
+            'start_date': expense['start_date'].strftime('%Y-%m-%d'),
+            'end_date': expense['end_date'].strftime('%Y-%m-%d'),
+            'total_calculation': str(expense['total_calculation']),
+            'total_approved_amount': str(expense.get('total_approved_amount', '0.00')),
+            'status': expense['status']
+        })
+
+    return JsonResponse({
+        'draw': draw,
+        'recordsTotal': total_records,
+        'recordsFiltered': total_records,
+        'data': data
+    })
+
+
+def generate_expensefinanceprocess_csv(request):
+    """Generate CSV report for Finance Process expenses"""
+    # Get filter parameters
+    employee_id = request.GET.get('employee_id', '')
+    start_date = request.GET.get('start_date', '')
+    end_date = request.GET.get('end_date', '')
+
+    # Prefetch the finance process data
+    finance_process_qs = ExpenseFinanceProcess.objects.select_related('processed_by')
+    
+    # Start with base queryset
+    expenses = Expense.objects.select_related('employee') \
+        .prefetch_related(
+            Prefetch('finance_processes', queryset=finance_process_qs)
+        ) \
+        .filter(status='Payment Successful') \
+        .exclude(finance_processes__isnull=True)
+
+    # Apply filters
+    if employee_id:
+        expenses = expenses.filter(employee__employee_id=employee_id)
+    
+    if start_date:
+        try:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            expenses = expenses.filter(from_date__gte=start_date)
+        except ValueError:
+            pass
+    
+    if end_date:
+        try:
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+            expenses = expenses.filter(to_date__lte=end_date)
+        except ValueError:
+            pass
+
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="finance_process_report.csv"'
+
+    writer = csv.writer(response)
+    # Write headers
+    writer.writerow([
+        'Expense ID', 'Employee Code', 'Employee Name', 
+        'Payment Date', 'Payment Mode', 'Amount Claimed (₹)', 
+        'Amount Approved (₹)', 'Payment Status', 'Finance Comments',
+        'Processed By', 'Period Start', 'Period End'
+    ])
+
+    # Write data rows
+    for expense in expenses:
+        # Get the first finance process (there should be only one per expense)
+        finance_process = expense.finance_processes.first()
+        
+        writer.writerow([
+            expense.expense_id,
+            expense.employee.employee_code,
+            expense.employee.name,
+            finance_process.payment_date.strftime('%Y-%m-%d') if finance_process.payment_date else '',
+            finance_process.payment_mode,
+            expense.total_calculation,
+            expense.total_approved_amount,
+            expense.status,
+            finance_process.finance_comment or '',
+            finance_process.processed_by.name if finance_process.processed_by else '',
+            expense.from_date.strftime('%Y-%m-%d'),
+            expense.to_date.strftime('%Y-%m-%d')
+        ])
+
+    return response
+
+def generate_expensefinanceprocess_excel(request):
+    """Generate Excel report for Finance Process expenses"""
+    # Get filter parameters
+    employee_id = request.GET.get('employee_id', '')
+    start_date = request.GET.get('start_date', '')
+    end_date = request.GET.get('end_date', '')
+
+    # Prefetch the finance process data
+    finance_process_qs = ExpenseFinanceProcess.objects.select_related('processed_by')
+    
+    # Start with base queryset
+    expenses = Expense.objects.select_related('employee') \
+        .prefetch_related(
+            Prefetch('finance_processes', queryset=finance_process_qs)
+        ) \
+        .filter(status='Payment Successful') \
+        .exclude(finance_processes__isnull=True)
+
+    # Apply filters
+    if employee_id:
+        expenses = expenses.filter(employee__employee_id=employee_id)
+    
+    if start_date:
+        try:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            expenses = expenses.filter(from_date__gte=start_date)
+        except ValueError:
+            pass
+    
+    if end_date:
+        try:
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+            expenses = expenses.filter(to_date__lte=end_date)
+        except ValueError:
+            pass
+
+    # Create Excel workbook
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Finance Process Report"
+
+    # Define headers
+    headers = [
+        'Expense ID', 'Employee Code', 'Employee Name', 
+        'Payment Date', 'Payment Mode', 'Amount Claimed (₹)', 
+        'Amount Approved (₹)', 'Payment Status', 'Finance Comments',
+        'Processed By', 'Period Start', 'Period End'
+    ]
+
+    # Write headers with styling
+    for col_num, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_num, value=header)
+        cell.font = openpyxl.styles.Font(bold=True)
+        cell.fill = openpyxl.styles.PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
+
+    # Write data rows
+    for row_num, expense in enumerate(expenses, 2):
+        finance_process = expense.finance_processes.first()
+        
+        ws.cell(row=row_num, column=1, value=str(expense.expense_id))
+        ws.cell(row=row_num, column=2, value=expense.employee.employee_code)
+        ws.cell(row=row_num, column=3, value=expense.employee.name)
+        ws.cell(row=row_num, column=4, value=finance_process.payment_date.strftime('%Y-%m-%d') if finance_process.payment_date else '')
+        ws.cell(row=row_num, column=5, value=finance_process.payment_mode)
+        ws.cell(row=row_num, column=6, value=float(expense.total_calculation))
+        ws.cell(row=row_num, column=7, value=float(expense.total_approved_amount))
+        ws.cell(row=row_num, column=8, value=expense.status)
+        ws.cell(row=row_num, column=9, value=finance_process.finance_comment or '')
+        ws.cell(row=row_num, column=10, value=finance_process.processed_by.name if finance_process.processed_by else '')
+        ws.cell(row=row_num, column=11, value=expense.from_date.strftime('%Y-%m-%d'))
+        ws.cell(row=row_num, column=12, value=expense.to_date.strftime('%Y-%m-%d'))
+
+    # Auto-size columns
+    for column in ws.columns:
+        max_length = 0
+        column_letter = column[0].column_letter
+        for cell in column:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        adjusted_width = (max_length + 2) * 1.2
+        ws.column_dimensions[column_letter].width = adjusted_width
+
+    # Format currency columns
+    for row in ws.iter_rows(min_row=2, min_col=6, max_col=7):
+        for cell in row:
+            cell.number_format = '₹#,##0.00'
+
+    # Create response
+    response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    response["Content-Disposition"] = 'attachment; filename="finance_process_report.xlsx"'
+
+    wb.save(response)
+    return response
+
+
+def generate_expensefinanceprocess_pdf(request):
+    # Get filter parameters
+    employee_id = request.GET.get('employee_id', '')
+    start_date = request.GET.get('start_date', '')
+    end_date = request.GET.get('end_date', '')
+
+    # Prefetch the finance process data
+    finance_process_qs = ExpenseFinanceProcess.objects.select_related('processed_by')
+    
+    # Start with base queryset
+    expenses = Expense.objects.select_related('employee') \
+        .prefetch_related(
+            Prefetch('finance_processes', queryset=finance_process_qs)
+        ) \
+        .filter(status='Payment Successful') \
+        .exclude(finance_processes__isnull=True)
+
+    # Apply filters
+    if employee_id:
+        expenses = expenses.filter(employee__employee_id=employee_id)
+    
+    if start_date:
+        try:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            expenses = expenses.filter(from_date__gte=start_date)
+        except ValueError:
+            pass
+    
+    if end_date:
+        try:
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+            expenses = expenses.filter(to_date__lte=end_date)
+        except ValueError:
+            pass
+
+    # Create response object for PDF
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="finance_process_report.pdf"'
+
+    # Define PDF Document
+    doc = SimpleDocTemplate(response, pagesize=A4)
+    elements = []
+    styles = getSampleStyleSheet()
+    
+    # Custom styles for wrapping text
+    custom_style = ParagraphStyle(
+        'custom_style',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=9,
+        leading=11,
+        spaceAfter=6
+    )
+
+    # Header Image Path
+    header_path = os.path.join(settings.STATIC_ROOT, "assets/images/pdf/report_header.png")
+
+    # Get Current Date
+    report_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Header function
+    def on_page(canvas, doc):
+        width, height = A4
+        if os.path.exists(header_path):
+            header_img = Image(header_path, width=width, height=1.5 * inch)
+            header_img.drawOn(canvas, 0, height - 1.5 * inch)
+
+        canvas.setFont("Helvetica", 9)
+        canvas.drawRightString(width - 0.8 * inch, height - 1.7 * inch, f"Generated On: {report_date}")
+
+    # Report Title
+    elements.append(Spacer(1, 80))
+    elements.append(Paragraph('<para align="center"><b><font size=16>FINANCE PROCESS REPORT</font></b></para>', styles["Normal"]))
+    elements.append(Spacer(1, 20))
+
+    # Report Description
+    elements.append(Paragraph('<font size=11>This report contains details of processed payments including payment modes and dates.</font>', custom_style))
+    elements.append(Spacer(1, 10))
+
+    # Table Headers
+    data = [
+        [
+            "Expense ID", 
+            "Employee", 
+            "Period", 
+            "Amount Claimed", 
+            "Amount Approved", 
+            "Payment Mode",
+            "Payment Date",
+            "Status"
+        ]
+    ]
+    
+    # Fetch Expenses and Append to Table Data
+    if expenses.exists():
+        for expense in expenses:
+            finance_process = expense.finance_processes.first()
+            employee_info = f"{expense.employee.employee_code} - {expense.employee.name}"
+            period = f"{expense.from_date.strftime('%d-%b-%Y')} to {expense.to_date.strftime('%d-%b-%Y')}"
+            
+            # Use Paragraph for text wrapping
+            data.append([
+                Paragraph(str(expense.expense_id), custom_style),
+                Paragraph(employee_info, custom_style),
+                Paragraph(period, custom_style),
+                Paragraph(f"Rs.{float(expense.total_calculation):,.2f}", custom_style),
+                Paragraph(f"Rs.{float(expense.total_approved_amount):,.2f}", custom_style),
+                Paragraph(finance_process.payment_mode if finance_process.payment_mode else "-", custom_style),
+                Paragraph(finance_process.payment_date.strftime('%d-%b-%Y') if finance_process.payment_date else "-", custom_style),
+                Paragraph(expense.status, custom_style)
+            ])
+    else:
+        data.append(["No Data", "-", "-", "-", "-", "-", "-", "-"])  
+
+    # Table Column Widths (adjust as needed)
+    col_widths = [
+        1.0 * inch,  # Expense ID
+        1.0 * inch,  # Employee
+        1.2 * inch,  # Period
+        1.0 * inch,  # Amount Claimed
+        1.0 * inch,  # Amount Approved
+        1.0 * inch,  # Payment Mode
+        1.0 * inch,  # Payment Date
+        0.8 * inch   # Status
+    ]
+    
+    table = Table(data, colWidths=col_widths, repeatRows=1)
+
+    # Table Styling
+    style = TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4472C4')),  # Blue header
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#D9E1F2')),  # Light blue rows
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#8EA9DB')),  # Light grid
+        ('WORDWRAP', (0, 0), (-1, -1), True),  # Enable word wrap
+    ])
+    table.setStyle(style)
+
+    # Add table to elements
+    elements.append(table)
+    elements.append(Spacer(1, 15))
+
+    # Footer Note
+    elements.append(Paragraph("<strong>Note:</strong> This is a system-generated finance process report.", custom_style))
+    
+    # Build PDF
+    doc.build(elements, onFirstPage=on_page, onLaterPages=on_page)
+
+    return response
+
+
+
+def generate_verifyprocess_csv(request):
+    """Generate CSV report for verified expenses (excluding Payment Successful)"""
+    # Get filter parameters
+    status = request.GET.get('status', '')
+    employee_id = request.GET.get('employee_id', '')
+    start_date = request.GET.get('start_date', '')
+    end_date = request.GET.get('end_date', '')
+
+    # Prefetch verification data
+    verification_qs = VerifyProcessExpense.objects.select_related('employee')
+    
+    # Start with base queryset - exclude Payment Successful
+    expenses = Expense.objects.select_related('employee') \
+        .prefetch_related(
+            Prefetch('verifications', queryset=verification_qs)
+        ) \
+        .exclude(status='Payment Successful')
+
+    # Apply filters
+    if status:
+        expenses = expenses.filter(status=status)
+    elif not status:
+        # If no status filter is selected, only show Pending/Approved/Rejected
+        expenses = expenses.filter(status__in=['Pending', 'Approved', 'Rejected'])
+    
+    if employee_id:
+        expenses = expenses.filter(employee__employee_id=employee_id)
+    
+    if start_date:
+        try:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            expenses = expenses.filter(from_date__gte=start_date)
+        except ValueError:
+            pass
+    
+    if end_date:
+        try:
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+            expenses = expenses.filter(to_date__lte=end_date)
+        except ValueError:
+            pass
+
+    # Group expenses by expense_id and get min/max dates
+    grouped_expenses = expenses.values('expense_id').annotate(
+        min_from_date=Min('from_date'),
+        max_to_date=Max('to_date')
+    )
+
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="verified_expenses_report.csv"'
+
+    writer = csv.writer(response)
+    # Write headers
+    writer.writerow([
+        'Expense ID', 'Employee Code', 'Employee Name', 
+        'Expense Status', 'Amount Claimed (₹)', 'Amount Approved (₹)', 
+        'Approver Comments', 'Verification Remarks', 'Processed By',
+        'Period Start', 'Period End', 'Created Date'
+    ])
+
+    # Get distinct expense IDs with their date ranges
+    expense_ids = [group['expense_id'] for group in grouped_expenses]
+    
+    # Get the first expense record for each expense_id (for other fields)
+    first_expenses = {}
+    for expense in expenses.filter(expense_id__in=expense_ids):
+        if expense.expense_id not in first_expenses:
+            first_expenses[expense.expense_id] = expense
+
+    # Write data rows
+    for group in grouped_expenses:
+        expense_id = group['expense_id']
+        expense = first_expenses.get(expense_id)
+        
+        if expense:
+            verification = expense.verifications.first()
+            
+            writer.writerow([
+                expense_id,
+                expense.employee.employee_code,
+                expense.employee.name,
+                expense.status,
+                expense.total_calculation,
+                expense.total_approved_amount,
+                verification.approver_comments if verification else '',
+                verification.remarks if verification else '',
+                verification.employee.name if verification and verification.employee else '',
+                group['min_from_date'].strftime('%Y-%m-%d'),  # Earliest from_date
+                group['max_to_date'].strftime('%Y-%m-%d'),   # Latest to_date
+                expense.created_at.strftime('%Y-%m-%d')
+            ])
+
+    return response
+
+
+
+def generate_verifyprocess_excel(request):
+    """Generate Excel report for verified expenses (excluding Payment Successful)"""
+    # Get filter parameters
+    status = request.GET.get('status', '')
+    employee_id = request.GET.get('employee_id', '')
+    start_date = request.GET.get('start_date', '')
+    end_date = request.GET.get('end_date', '')
+
+    # Prefetch verification data
+    verification_qs = VerifyProcessExpense.objects.select_related('employee')
+    
+    # Start with base queryset - exclude Payment Successful
+    expenses = Expense.objects.select_related('employee') \
+        .prefetch_related(
+            Prefetch('verifications', queryset=verification_qs)
+        ) \
+        .exclude(status='Payment Successful')
+
+    # Apply filters
+    if status:
+        expenses = expenses.filter(status=status)
+    elif not status:
+        # If no status filter is selected, only show Pending/Approved/Rejected
+        expenses = expenses.filter(status__in=['Pending', 'Approved', 'Rejected'])
+    
+    if employee_id:
+        expenses = expenses.filter(employee__employee_id=employee_id)
+    
+    if start_date:
+        try:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            expenses = expenses.filter(from_date__gte=start_date)
+        except ValueError:
+            pass
+    
+    if end_date:
+        try:
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+            expenses = expenses.filter(to_date__lte=end_date)
+        except ValueError:
+            pass
+
+    # Group expenses by expense_id and get min/max dates
+    grouped_expenses = expenses.values('expense_id').annotate(
+        min_from_date=Min('from_date'),
+        max_to_date=Max('to_date')
+    )
+
+    # Create Excel workbook
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Verified Expenses Report"
+
+    # Define headers
+    headers = [
+        'Expense ID', 'Employee Code', 'Employee Name', 
+        'Expense Status', 'Amount Claimed (₹)', 'Amount Approved (₹)', 
+        'Approver Comments', 'Verification Remarks', 'Processed By',
+        'Period Start', 'Period End', 'Created Date'
+    ]
+
+    # Write headers with styling
+    for col_num, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_num, value=header)
+        cell.font = openpyxl.styles.Font(bold=True)
+        cell.fill = openpyxl.styles.PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
+
+    # Get distinct expense IDs with their date ranges
+    expense_ids = [group['expense_id'] for group in grouped_expenses]
+    
+    # Get the first expense record for each expense_id (for other fields)
+    first_expenses = {}
+    for expense in expenses.filter(expense_id__in=expense_ids):
+        if expense.expense_id not in first_expenses:
+            first_expenses[expense.expense_id] = expense
+
+    # Write data rows
+    row_num = 2
+    for group in grouped_expenses:
+        expense_id = group['expense_id']
+        expense = first_expenses.get(expense_id)
+        
+        if expense:
+            verification = expense.verifications.first()
+            
+            ws.cell(row=row_num, column=1, value=str(expense_id))
+            ws.cell(row=row_num, column=2, value=expense.employee.employee_code)
+            ws.cell(row=row_num, column=3, value=expense.employee.name)
+            ws.cell(row=row_num, column=4, value=expense.status)
+            ws.cell(row=row_num, column=5, value=float(expense.total_calculation))
+            ws.cell(row=row_num, column=6, value=float(expense.total_approved_amount))
+            ws.cell(row=row_num, column=7, value=verification.approver_comments if verification else '')
+            ws.cell(row=row_num, column=8, value=verification.remarks if verification else '')
+            ws.cell(row=row_num, column=9, value=verification.employee.name if verification and verification.employee else '')
+            ws.cell(row=row_num, column=10, value=group['min_from_date'].strftime('%Y-%m-%d'))  # Earliest from_date
+            ws.cell(row=row_num, column=11, value=group['max_to_date'].strftime('%Y-%m-%d'))     # Latest to_date
+            ws.cell(row=row_num, column=12, value=expense.created_at.strftime('%Y-%m-%d'))
+            
+            row_num += 1
+
+    # Auto-size columns
+    for column in ws.columns:
+        max_length = 0
+        column_letter = column[0].column_letter
+        for cell in column:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        adjusted_width = (max_length + 2) * 1.2
+        ws.column_dimensions[column_letter].width = adjusted_width
+
+    # Format currency columns
+    for row in ws.iter_rows(min_row=2, min_col=5, max_col=6):
+        for cell in row:
+            cell.number_format = '₹#,##0.00'
+
+    # Create response
+    response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    response["Content-Disposition"] = 'attachment; filename="verified_expenses_report.xlsx"'
+
+    wb.save(response)
+    return response
+
+
+
+def generate_verifyprocess_pdf(request):
+    """Generate PDF report for verified expenses (excluding Payment Successful)"""
+    # Get filter parameters
+    status = request.GET.get('status', '')
+    employee_id = request.GET.get('employee_id', '')
+    start_date = request.GET.get('start_date', '')
+    end_date = request.GET.get('end_date', '')
+
+    # Prefetch verification data
+    verification_qs = VerifyProcessExpense.objects.select_related('employee')
+    
+    # Start with base queryset - exclude Payment Successful
+    expenses = Expense.objects.select_related('employee') \
+        .prefetch_related(
+            Prefetch('verifications', queryset=verification_qs)
+        ) \
+        .exclude(status='Payment Successful')
+
+    # Apply filters
+    if status:
+        expenses = expenses.filter(status=status)
+    elif not status:
+        # If no status filter is selected, only show Pending/Approved/Rejected
+        expenses = expenses.filter(status__in=['Pending', 'Approved', 'Rejected'])
+    
+    if employee_id:
+        expenses = expenses.filter(employee__employee_id=employee_id)
+    
+    if start_date:
+        try:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            expenses = expenses.filter(from_date__gte=start_date)
+        except ValueError:
+            pass
+    
+    if end_date:
+        try:
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+            expenses = expenses.filter(to_date__lte=end_date)
+        except ValueError:
+            pass
+
+    # Group expenses by expense_id and get min/max dates
+    grouped_expenses = expenses.values('expense_id').annotate(
+        min_from_date=Min('from_date'),
+        max_to_date=Max('to_date')
+    )
+
+    # Get distinct expense IDs with their date ranges
+    expense_ids = [group['expense_id'] for group in grouped_expenses]
+    
+    # Get the first expense record for each expense_id (for other fields)
+    first_expenses = {}
+    for expense in expenses.filter(expense_id__in=expense_ids):
+        if expense.expense_id not in first_expenses:
+            first_expenses[expense.expense_id] = expense
+
+    # Create response object for PDF
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="verified_expenses_report.pdf"'
+
+    # Define PDF Document
+    doc = SimpleDocTemplate(response, pagesize=A4)
+    elements = []
+    styles = getSampleStyleSheet()
+    
+    # Custom styles for wrapping text
+    custom_style = ParagraphStyle(
+        'custom_style',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=9,
+        leading=11,
+        spaceAfter=6
+    )
+
+    # Header Image Path
+    header_path = os.path.join(settings.STATIC_ROOT, "assets/images/pdf/report_header.png")
+
+    # Get Current Date
+    report_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Header function
+    def on_page(canvas, doc):
+        width, height = A4
+        if os.path.exists(header_path):
+            header_img = Image(header_path, width=width, height=1.5 * inch)
+            header_img.drawOn(canvas, 0, height - 1.5 * inch)
+
+        canvas.setFont("Helvetica", 9)
+        canvas.drawRightString(width - 0.8 * inch, height - 1.7 * inch, f"Generated On: {report_date}")
+
+    # Report Title
+    elements.append(Spacer(1, 80))
+    elements.append(Paragraph('<para align="center"><b><font size=16>VERIFIED EXPENSES REPORT</font></b></para>', styles["Normal"]))
+    elements.append(Spacer(1, 20))
+
+    # Report Description
+    elements.append(Paragraph('<font size=11>This report contains details of verified expenses including approval status and comments.</font>', custom_style))
+    elements.append(Spacer(1, 10))
+
+    # Add filter information if any filters are applied
+    filter_info = []
+    if status:
+        filter_info.append(f"Status: {status}")
+    if employee_id:
+        filter_info.append(f"Employee ID: {employee_id}")
+    if start_date:
+        filter_info.append(f"From: {start_date}")
+    if end_date:
+        filter_info.append(f"To: {end_date}")
+    
+    if filter_info:
+        elements.append(Paragraph(f"<b>Filters Applied:</b> {', '.join(filter_info)}", custom_style))
+        elements.append(Spacer(1, 10))
+
+    # Table Headers
+    data = [
+        [
+            "Expense ID", 
+            "Employee", 
+            "Period", 
+            "Claimed", 
+            "Approved", 
+            "Status",
+            "Approver cmt",
+            "Remarks"
+        ]
+    ]
+    
+    # Fetch Expenses and Append to Table Data
+    if grouped_expenses:
+        for group in grouped_expenses:
+            expense_id = group['expense_id']
+            expense = first_expenses.get(expense_id)
+            
+            if expense:
+                verification = expense.verifications.first()
+                employee_info = f"{expense.employee.employee_code} - {expense.employee.name}"
+                period = f"{group['min_from_date'].strftime('%d-%b-%Y')} to {group['max_to_date'].strftime('%d-%b-%Y')}"
+                
+                # Use Paragraph for text wrapping
+                data.append([
+                    Paragraph(str(expense_id), custom_style),
+                    Paragraph(employee_info, custom_style),
+                    Paragraph(period, custom_style),
+                    Paragraph(f"{float(expense.total_calculation):,.2f}", custom_style),
+                    Paragraph(f"{float(expense.total_approved_amount):,.2f}", custom_style),
+                    Paragraph(expense.status, custom_style),
+                    Paragraph(verification.approver_comments if verification and verification.approver_comments else "-", custom_style),
+                    Paragraph(verification.remarks if verification and verification.remarks else "-", custom_style)
+                ])
+    else:
+        data.append(["No Data", "-", "-", "-", "-", "-", "-", "-"])  
+
+    # Table Column Widths (adjust as needed)
+    col_widths = [
+        1.2 * inch,  # Expense ID
+        1.0 * inch,  # Employee
+        1.2 * inch,  # Period
+        0.8 * inch,  # Claimed
+        0.8 * inch,  # Approved
+        0.8 * inch,  # Status
+        1.0 * inch,  # Approver Comments
+        1.0 * inch   # Remarks
+    ]
+    
+    table = Table(data, colWidths=col_widths, repeatRows=1)
+
+    # Table Styling
+    style = TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4472C4')),  # Blue header
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#D9E1F2')),  # Light blue rows
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#8EA9DB')),  # Light grid
+        ('WORDWRAP', (0, 0), (-1, -1), True),  # Enable word wrap
+    ])
+    table.setStyle(style)
+
+    # Add table to elements
+    elements.append(table)
+    elements.append(Spacer(1, 15))
+
+    # Summary Information
+    total_claimed = sum(expense.total_calculation for expense in first_expenses.values())
+    total_approved = sum(float(expense.total_approved_amount) for expense in first_expenses.values())
+    
+    summary_data = [
+        ["", "Total Claimed", "Total Approved"],
+        ["Amount (₹)", f"{total_claimed:,.2f}", f"{total_approved:,.2f}"]
+    ]
+    
+    summary_table = Table(summary_data, colWidths=[2*inch, 1.5*inch, 1.5*inch])
+    summary_style = TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+    ])
+    summary_table.setStyle(summary_style)
+    elements.append(summary_table)
+    
+    # Footer Note
+    elements.append(Spacer(1, 15))
+    elements.append(Paragraph("<strong>Note:</strong> This report includes only Pending, Approved, or Rejected expenses (Payment Successful records excluded).", custom_style))
+    
+    # Build PDF
+    doc.build(elements, onFirstPage=on_page, onLaterPages=on_page)
+
+    return response
+
+
+
 
 
 

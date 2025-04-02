@@ -270,10 +270,7 @@ urlpatterns = [
     path('generate-role-permission-audit-excel/', views.generate_role_permission_audit_excel, name='generate_role_permission_audit_excel'),
     path('generate-role-permission-audit-pdf/', views.generate_role_permission_audit_pdf, name='generate_role_permission_audit_pdf'),
 
-    path('master_reports_page', views.master_reports_page, name='master-reports-page'),
-    path('report-generate-employee-csv/', views.report_generate_employee_csv, name='report_generate_employee_csv'),
-    path('report-generate-employee-excel/', views.report_generate_employee_excel, name='report_generate_employee_excel'),
-    path('report-generate-employee-pdf/', views.report_generate_employee_pdf, name='report_generate_employee_pdf'),
+
 
 
     path('backup_recovery_page', views.backup_recovery_page, name='backup-recovery-page'),
@@ -285,6 +282,56 @@ urlpatterns = [
     path('get-scheduled-backups/', views.get_scheduled_backups, name='get_scheduled_backups'),
     path('download-sql/<int:backup_id>/', views.download_sql_file, name='download_sql_file'),
     path('download-txt/<int:backup_id>/', views.download_txt_file, name='download_txt_file'),
+
+
+
+    path('master_reports_page', views.master_reports_page, name='master-reports-page'),
+    path('report-generate-employee-csv/', views.report_generate_employee_csv, name='report_generate_employee_csv'),
+    path('report-generate-employee-excel/', views.report_generate_employee_excel, name='report_generate_employee_excel'),
+    path('report-generate-employee-pdf/', views.report_generate_employee_pdf, name='report_generate_employee_pdf'),
+    
+    path('get_locations_filter/', views.get_locations_filter, name='get_locations_filter'),
+    path('report-generate-location-csv/', views.report_generate_location_csv, name='report_generate_location_csv'),
+    path('report-generate-location-excel/', views.report_generate_location_excel, name='report_generate_location_excel'),
+    path('report-generate-location-pdf/', views.report_generate_location_pdf, name='report_generate_location_pdf'),
+
+    path('get-companies-filter/', views.get_companies_filter, name='get_companies_filter'),
+    path('report-generate-company-pdf/', views.report_generate_company_pdf, name='report_generate_company_pdf'),
+    path('report-generate-company-csv/', views.report_generate_company_csv, name='report_generate_company_csv'),
+    path('report-generate-company-excel/', views.report_generate_company_excel, name='report_generate_company_excel'),
+
+
+    path('get_exhibitions_filter/', views.get_exhibitions_filter, name='get_exhibitions_filter'),
+    path('get_locations_exhibition_filter/', views.get_locations_exhibition_filter, name='get_locations_exhibition_filter'),
+    path('report-generate-exhibition-pdf/', views.report_generate_exhibition_pdf, name='report_generate_exhibition_pdf'),
+    path('report-generate-exhibition-csv/', views.report_generate_exhibition_csv, name='report_generate_exhibition_csv'),
+    path('report-generate-exhibition-excel/', views.report_generate_exhibition_excel, name='report_generate_exhibition_excel'),
+    
+    path('get_customers_filter/', views.get_customers_filter, name='get_customers_filter'),
+    path('report-generate-customer-pdf/', views.report_generate_customer_pdf, name='report_generate_customer_pdf'),
+    path('report-generate-customer-csv/', views.report_generate_customer_csv, name='report_generate_customer_csv'),
+    path('report-generate-customer-excel/', views.report_generate_customer_excel, name='report_generate_customer_excel'),
+    
+    
+    path('get_suppliers_filter/', views.get_suppliers_filter, name='get_suppliers_filter'),
+    path('report-generate-supplier-pdf/', views.report_generate_supplier_pdf, name='report_generate_supplier_pdf'),
+    path('report-generate-supplier-csv/', views.report_generate_supplier_csv, name='report_generate_supplier_csv'),
+    path('report-generate-supplier-excel/', views.report_generate_supplier_excel, name='report_generate_supplier_excel'),
+    
+    path('get_products_filter/', views.get_products_filter, name='get_products_filter'),
+    path('get_categories_filter/', views.get_categories_filter, name='get_categories_filter'),
+    path('get_subcategories_filter/', views.get_subcategories_filter, name='get_subcategories_filter'),
+    path('report-generate-product-csv/', views.report_generate_product_csv, name='report_generate_product_csv'),
+    path('report-generate-product-excel/', views.report_generate_product_excel, name='report_generate_product_excel'),
+    path('report-generate-product-pdf/', views.report_generate_product_pdf, name='report_generate_product_pdf'),
+    
+    path('user_profile_page', views.user_profile_page, name='user-profile-page'),
+    path('get-user-data/<int:user_id>/', views.get_user_data, name='get_user_data'),
+    path('update-user-profile/<int:user_id>/', views.update_user_profile, name='update_user_profile'),   
+
+    path('save_expense/', views.save_expense, name='save_expense'),
+    path('get_employee_details/', views.get_employee_details, name='get_employee_details'),
+
 
 
 

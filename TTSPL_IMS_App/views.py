@@ -57,6 +57,8 @@ from django.contrib.auth import logout
 from django.contrib.sessions.models import Session
 from django.utils import timezone
 from django.db.models import Q
+from django.views.decorators.http import require_GET
+
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import LongTable, KeepTogether
 import qrcode
@@ -6714,264 +6716,6 @@ def generate_role_permission_pdf(request):
     return response
 
 
-
-def master_reports_page(request):
-    return render(request, "reports/master_reports.html")
-
-
-def report_generate_employee_csv(request):   
-    employee_name = request.GET.get('employee_name', '').strip()
-    work_location = request.GET.get('work_location', '').strip()
-    start_date = request.GET.get('from_date', '')
-    end_date = request.GET.get('to_date', '')
-    selected_columns = request.GET.get('columns', '').split(',')
-
-    print(f"Filters received: Employee Name: {employee_name}, Work Location: {work_location}, Dates: {start_date} - {end_date}")
-
-    employees = Employee.objects.all()
-
-    # Print all employees before filtering
-    print(f"Total employees in DB: {employees.count()}")
-
-    # Filter by Employee Name
-    if employee_name:
-        if employee_name.isdigit():  
-            employees = employees.filter(employee_id=int(employee_name))
-        else:
-            employees = employees.filter(name__icontains=employee_name)
-
-    # Filter by Work Location
-    if work_location:
-        employees = employees.filter(work_location__id=work_location)
-
-    # Filter by Date Range
-    if start_date and end_date:
-        start_date = parse_date(start_date)  # Convert to proper date object
-        end_date = parse_date(end_date)
-        if start_date and end_date:
-            employees = employees.filter(created_at__date__gte=start_date, created_at__date__lte=end_date)
-
-    print(f"Filtered employees count: {employees.count()}")
-
-    # Filter by Employee Name
-    if employee_name:
-        if employee_name.isdigit():  
-            employees = employees.filter(employee_id=int(employee_name))  
-        else:  
-            employees = employees.filter(name__icontains=employee_name)
-
-    # Filter by Work Location (ID or Name)
-    if work_location:
-        try:
-            if work_location.isdigit():  
-                employees = employees.filter(work_location_id=int(work_location))  # Filtering by ID
-            else:  
-                employees = employees.filter(work_location__name__icontains=work_location)  # Filtering by Name
-        except Exception as e:
-            print(f"Error filtering work location: {e}")
-
-    print(f"After filtering by work location: {employees.count()}")
-
-    # Filter by Date Range
-    if start_date and end_date:
-        employees = employees.filter(created_at__range=[start_date, end_date])
-        print(f"After filtering by date range: {employees.count()}")
-
-    # Print filtered results before returning response
-    print("Filtered employees:", list(employees.values()))
-
-    if not employees.exists():
-        print("No data found after filtering.")
-        return HttpResponse("No data found", content_type="text/plain")
-
-    # Generate CSV
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="employees.csv"'
-    writer = csv.writer(response)
-
-    if not selected_columns or selected_columns == ['']:
-        selected_columns = [
-            "employee_code", "name", "designation",
-            "location", "work_location", "mobile_number", "email"
-        ]
-
-    writer.writerow(selected_columns)
-
-    for employee in employees:
-        writer.writerow([getattr(employee, col, '') for col in selected_columns])
-
-    return response
-
-
-def report_generate_employee_excel(request):
-    employee_name = request.GET.get('employee_name', '').strip()
-    work_location = request.GET.get('work_location', '').strip()
-    start_date = request.GET.get('from_date', '')
-    end_date = request.GET.get('to_date', '')
-    selected_columns = request.GET.get('columns', '').split(',')
-
-    # Fetch data based on filters
-    employees = Employee.objects.all()
-    
-    if employee_name:
-        employees = employees.filter(name__icontains=employee_name)
-    if work_location:
-        employees = employees.filter(work_location__id=work_location)  # Filter by work_location ID
-    if start_date and end_date:
-        employees = employees.filter(created_at__range=[start_date, end_date])
-
-    # Define column mappings
-    column_map = {
-        "employee_id": "ID",
-        "employee_code": "Code",
-        "name": "Name",
-        "designation": "Designation",
-        "location": "Location",
-        "work_location": "Work Location",
-        "date_of_birth": "Date of Birth",
-        "mobile_number": "Mobile",
-        "email": "Email",
-        "aadhaar_card": "Aadhaar",
-        "pan_card": "PAN",
-        "created_at": "Created At",
-        "updated_at": "Updated At"
-    }
-
-    # Create an Excel workbook and sheet
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = "Employee Report"
-
-    # Set the header row
-    header_row = [column_map[col] for col in selected_columns if col in column_map]
-    ws.append(header_row)
-
-    # Populate data rows
-    for emp in employees:
-        row_data = []
-        for col in selected_columns:
-            if hasattr(emp, col):
-                value = getattr(emp, col)
-
-                # Convert ForeignKey (Location) to string
-                if isinstance(value, Location):
-                    value = str(value.name)  # Assuming Location model has a `name` field
-
-                # Handle datetime and date fields separately
-                elif isinstance(value, datetime.datetime):
-                    value = localtime(value).strftime("%Y-%m-%d %H:%M:%S")
-                elif isinstance(value, datetime.date):
-                    value = value.strftime("%Y-%m-%d")  # No time part
-
-                row_data.append(value)
-
-        ws.append(row_data)
-
-    # Prepare response
-    response = HttpResponse(
-        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    )
-    response['Content-Disposition'] = 'attachment; filename="employee_report.xlsx"'
-    wb.save(response)
-    
-    return response
-
-from datetime import datetime
-
-
-def report_generate_employee_pdf(request):
-    employee_name = request.GET.get('employee_name', '').strip()
-    work_location = request.GET.get('work_location', '').strip()
-    start_date = request.GET.get('from_date', '').strip()
-    end_date = request.GET.get('to_date', '').strip()
-
-    # Fetch all employees
-    employees = Employee.objects.all()
-
-    # Filter by Employee Name
-    if employee_name:
-        employees = employees.filter(name__icontains=employee_name)
-
-    # Filter by Work Location
-    if work_location:
-        if work_location.isdigit():
-            employees = employees.filter(work_location_id=int(work_location))
-        else:
-            employees = employees.filter(work_location__name__icontains=work_location)
-
-    # Filter by Date Range
-    if start_date and end_date:
-        start_date = parse_date(start_date)  # Convert to date object
-        end_date = parse_date(end_date)      # Convert to date object
-        if start_date and end_date:
-            employees = employees.filter(created_at__date__gte=start_date, created_at__date__lte=end_date)
-
-    # Create response object for PDF
-    response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename="employee_details.pdf"'
-
-    # Define PDF Document
-    doc = SimpleDocTemplate(response, pagesize=A4)
-    elements = []
-    styles = getSampleStyleSheet()
-
-    # Custom Style
-    custom_style = ParagraphStyle('custom_style', parent=styles['Normal'], fontName='Helvetica', fontSize=11, leading=14, spaceAfter=8)
-
-    # Header Image Path
-    header_path = os.path.join(settings.STATIC_ROOT, "assets/images/pdf/report_header.png")
-
-    # Get Current Date
-    report_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    # Header function
-    def on_page(canvas, doc):
-        width, height = A4
-        if os.path.exists(header_path):
-            header_img = Image(header_path, width=width, height=1.5 * inch)
-            header_img.drawOn(canvas, 0, height - 1.5 * inch)
-        canvas.setFont("Helvetica", 9)
-        canvas.drawRightString(width - 0.8 * inch, height - 1.7 * inch, f"Generated On: {report_date}")
-
-    # Report Title
-    elements.append(Spacer(1, 12))
-    elements.append(Paragraph("Employee Details Report", styles['Title']))
-    elements.append(Spacer(1, 12))
-
-    # Table Header
-    data = [["Employee ID", "Name", "Designation", "Work Location", "Email", "Mobile Number"]]
-
-    for emp in employees:
-        data.append([
-            emp.employee_id,
-            emp.name,
-            emp.designation,
-            emp.work_location.name if emp.work_location else "",
-            emp.email,
-            emp.mobile_number
-        ])
-
-    # Create table
-    table = Table(data, colWidths=[80, 120, 100, 100, 140, 100])
-    table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black)
-    ]))
-
-    elements.append(table)
-
-    # Build PDF
-    doc.build(elements, onFirstPage=on_page, onLaterPages=on_page)
-
-    return response
-
-
-
 def backup_recovery_page(request):
     return render(request, "settings/backup_recovery.html")
 
@@ -7316,3 +7060,2935 @@ def download_txt_file(request, backup_id):
         return FileResponse(open(file_path, 'rb'), as_attachment=True, filename=backup.txt_file_name)
     except (ScheduledBackupDetails.DoesNotExist, FileNotFoundError):
         raise Http404("Text file not found.")
+    
+
+
+def master_reports_page(request):
+    return render(request, "reports/master_reports.html")
+
+
+def report_generate_employee_csv(request):   
+    employee_name = request.GET.get('employee_name', '').strip()
+    work_location = request.GET.get('work_location', '').strip()
+    start_date = request.GET.get('from_date', '')
+    end_date = request.GET.get('to_date', '')
+    selected_columns = request.GET.get('columns', '').split(',')
+
+    print(f"Filters received: Employee Name: {employee_name}, Work Location: {work_location}, Dates: {start_date} - {end_date}")
+
+    employees = Employee.objects.all()
+
+    # Print all employees before filtering
+    print(f"Total employees in DB: {employees.count()}")
+
+    # Filter by Employee Name
+    if employee_name:
+        if employee_name.isdigit():  
+            employees = employees.filter(employee_id=int(employee_name))
+        else:
+            employees = employees.filter(name__icontains=employee_name)
+
+    # Filter by Work Location
+    if work_location:
+        employees = employees.filter(work_location__id=work_location)
+
+    # Filter by Date Range
+    if start_date and end_date:
+        start_date = parse_date(start_date)  # Convert to proper date object
+        end_date = parse_date(end_date)
+        if start_date and end_date:
+            employees = employees.filter(created_at__date__gte=start_date, created_at__date__lte=end_date)
+
+    print(f"Filtered employees count: {employees.count()}")
+
+    # Filter by Employee Name
+    if employee_name:
+        if employee_name.isdigit():  
+            employees = employees.filter(employee_id=int(employee_name))  
+        else:  
+            employees = employees.filter(name__icontains=employee_name)
+
+    # Filter by Work Location (ID or Name)
+    if work_location:
+        try:
+            if work_location.isdigit():  
+                employees = employees.filter(work_location_id=int(work_location))  # Filtering by ID
+            else:  
+                employees = employees.filter(work_location__name__icontains=work_location)  # Filtering by Name
+        except Exception as e:
+            print(f"Error filtering work location: {e}")
+
+    print(f"After filtering by work location: {employees.count()}")
+
+    # Filter by Date Range
+    if start_date and end_date:
+        employees = employees.filter(created_at__range=[start_date, end_date])
+        print(f"After filtering by date range: {employees.count()}")
+
+    # Print filtered results before returning response
+    print("Filtered employees:", list(employees.values()))
+
+    if not employees.exists():
+        print("No data found after filtering.")
+        return HttpResponse("No data found", content_type="text/plain")
+
+    # Generate CSV
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="employees.csv"'
+    writer = csv.writer(response)
+
+    if not selected_columns or selected_columns == ['']:
+        selected_columns = [
+            "employee_code", "name", "designation",
+            "location", "work_location", "mobile_number", "email"
+        ]
+
+    writer.writerow(selected_columns)
+
+    for employee in employees:
+        writer.writerow([getattr(employee, col, '') for col in selected_columns])
+
+    return response
+
+from django.utils.timezone import localtime
+from datetime import datetime, date
+
+def report_generate_employee_excel(request):
+    employee_id = request.GET.get('employee_name', '').strip()
+    work_location = request.GET.get('work_location', '').strip()
+    start_date = request.GET.get('from_date', '')
+    end_date = request.GET.get('to_date', '')
+    selected_columns = request.GET.get('columns', '').split(',')
+
+    # Fetch data based on filters
+    employees = Employee.objects.all()
+    
+    # Filter by Employee ID
+    if employee_id:
+        employees = employees.filter(employee_id=employee_id)
+
+    # Filter by Work Location
+    if work_location:
+        employees = employees.filter(work_location__id=work_location)
+
+    # Filter by Date Range
+    if start_date and end_date:
+        employees = employees.filter(created_at__range=[start_date, end_date])
+
+    # Define column mappings
+    column_map = {
+        "employee_id": "ID",
+        "employee_code": "Code",
+        "name": "Name",
+        "designation": "Designation",
+        "location": "Location",
+        "work_location": "Work Location",
+        "date_of_birth": "Date of Birth",
+        "mobile_number": "Mobile",
+        "email": "Email",
+        "aadhaar_card": "Aadhaar",
+        "pan_card": "PAN",
+        "created_at": "Created At",
+        "updated_at": "Updated At"
+    }
+
+    # Create an Excel workbook and sheet
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Employee Report"
+
+    # Set the header row
+    header_row = [column_map[col] for col in selected_columns if col in column_map]
+    ws.append(header_row)
+
+    # Populate data rows
+    for emp in employees:
+        row_data = []
+        for col in selected_columns:
+            if hasattr(emp, col):
+                value = getattr(emp, col)
+
+                # Convert ForeignKey (Location) to string
+                if isinstance(value, Location):
+                    value = str(value.name)  # Assuming Location model has a `name` field
+
+                # Handle datetime and date fields separately
+                elif isinstance(value, datetime):  # Check for datetime.datetime
+                    value = localtime(value).strftime("%Y-%m-%d %H:%M:%S")
+                elif isinstance(value, date):  # Check for datetime.date
+                    value = value.strftime("%Y-%m-%d")  # No time part
+
+                row_data.append(value)
+
+        ws.append(row_data)
+
+    # Prepare response
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename="employee_report.xlsx"'
+    wb.save(response)
+    
+    return response
+
+
+def calculate_column_widths(data):
+    # Calculate the maximum length of content in each column
+    max_lengths = [max(len(str(row[i])) for row in data for i in range(len(data[0])))]
+    # Normalize widths to fit the page
+    total_width = sum(max_lengths)
+    column_widths = [((A4[0] - 1.4 * inch) * (length / total_width)) for length in max_lengths]
+    return column_widths
+    
+
+def report_generate_employee_pdf(request):
+    employee_id = request.GET.get('employee_name', '').strip()
+    work_location = request.GET.get('work_location', '').strip()
+    start_date = request.GET.get('from_date', '').strip()
+    end_date = request.GET.get('to_date', '').strip()
+    selected_columns = request.GET.get('columns', '').strip().split(',')
+
+    # Fetch all employees
+    employees = Employee.objects.all()
+
+    # Filter by Employee ID
+    if employee_id:
+        employees = employees.filter(employee_id=employee_id)
+
+    # Filter by Work Location
+    if work_location:
+        if work_location.isdigit():
+            employees = employees.filter(work_location_id=int(work_location))
+        else:
+            employees = employees.filter(work_location__name__icontains=work_location)
+
+    # Filter by Date Range
+    if start_date and end_date:
+        start_date = parse_date(start_date)  # Convert to date object
+        end_date = parse_date(end_date)      # Convert to date object
+        if start_date and end_date:
+            employees = employees.filter(created_at__date__gte=start_date, created_at__date__lte=end_date)
+
+    # Create response object for PDF
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="employee_details.pdf"'
+
+    # Define PDF Document
+    doc = SimpleDocTemplate(
+        response,
+        pagesize=A4,
+        leftMargin=0.7 * inch,
+        rightMargin=0.7 * inch,
+        topMargin=1.5 * inch,
+        bottomMargin=1.5 * inch
+    )
+
+    elements = []
+    styles = getSampleStyleSheet()
+
+    # Custom Style
+    custom_style = ParagraphStyle(
+        'custom_style',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=11,
+        leading=14,
+        spaceAfter=8
+    )
+
+    # Header Image Path
+    header_path = os.path.join(settings.STATIC_ROOT, "assets/images/pdf/report_header.png")
+
+    # Get Current Date
+    report_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Header function
+    def on_page(canvas, doc):
+        width, height = A4
+        if os.path.exists(header_path):
+            header_img = Image(header_path, width=width, height=1.5 * inch)
+            header_img.drawOn(canvas, 0, height - 1.5 * inch)
+        canvas.setFont("Helvetica", 9)
+        canvas.drawRightString(width - 0.8 * inch, height - 1.7 * inch, f"Generated On: {report_date}")
+
+    # Define Page Template
+    frame = Frame(
+        x1=0.7 * inch,
+        y1=1.5 * inch,
+        width=A4[0] - 1.4 * inch,
+        height=A4[1] - 3 * inch,
+        id='normal'
+    )
+    template = PageTemplate(id='custom', frames=frame, onPage=on_page)
+    doc.addPageTemplates([template])
+
+    # Report Title
+    elements.append(Spacer(1, 45))
+    elements.append(Paragraph('<para align="center"><b><font size=16>EMPLOYEE DETAILS REPORT</font></b></para>', styles["Normal"]))
+    elements.append(Spacer(1, 30))
+
+    # Report Description
+    elements.append(Paragraph('<font size=11>This report contains employee details including their personal and work-related information.</font>', custom_style))
+    elements.append(Spacer(1, 10))
+
+   # Define column headers and corresponding data fields
+    column_mapping = {
+        'employee_id': 'Employee ID',
+        'employee_code': 'Employee Code',
+        'name': 'Name',
+        'designation': 'Designation',
+        'location': 'Location',
+        'work_location': 'Work Location',
+        'date_of_birth': 'Date of Birth',
+        'mobile_number': 'Mobile Number',
+        'email': 'Email',
+        'aadhaar_card': 'Aadhaar Card',
+        'pan_card': 'PAN Card',
+        'created_at': 'Created At',
+        'updated_at': 'Updated At'
+    }
+
+    # Filter column headers based on selected columns
+    headers = [column_mapping[col] for col in selected_columns if col in column_mapping]
+
+    # Table Data
+    data = [headers]
+
+    # Add employee data to the table
+    if employees.exists():
+        for emp in employees:
+            row = []
+            for col in selected_columns:
+                if col == 'employee_id':
+                    row.append(str(emp.employee_id))
+                elif col == 'employee_code':
+                    row.append(str(emp.employee_code))
+                elif col == 'name':
+                    row.append(str(emp.name))
+                elif col == 'designation':
+                    row.append(str(emp.designation))
+                elif col == 'location':
+                    row.append(str(emp.location))
+                elif col == 'work_location':
+                    row.append(str(emp.work_location.name if emp.work_location else ""))
+                elif col == 'date_of_birth':
+                    row.append(str(emp.date_of_birth.strftime('%Y-%m-%d') if emp.date_of_birth else ""))
+                elif col == 'mobile_number':
+                    row.append(str(emp.mobile_number))
+                elif col == 'email':
+                    row.append(str(emp.email))
+                elif col == 'aadhaar_card':
+                    row.append(str(emp.aadhaar_card))
+                elif col == 'pan_card':
+                    row.append(str(emp.pan_card))
+                elif col == 'created_at':
+                    row.append(str(emp.created_at.strftime('%Y-%m-%d %H:%M:%S') if emp.created_at else ""))
+                elif col == 'updated_at':
+                    row.append(str(emp.updated_at.strftime('%Y-%m-%d %H:%M:%S') if emp.updated_at else ""))
+            data.append(row)
+    else:
+        # If no data is found, add a "No data found" row
+        data.append(["No data found for the selected filters."])
+
+    # Calculate column widths proportionally
+    total_width = A4[0] - 1.4 * inch  # Total available width (page width minus margins)
+    num_columns = len(headers)
+    column_widths = [total_width / num_columns] * num_columns
+
+    # Create table
+    table = Table(data, colWidths=column_widths)
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('WORDWRAP', (0, 0), (-1, -1)),  # Enable text wrapping
+    ]))
+
+    # Add Table to PDF
+    elements.append(table)
+
+    # Build PDF
+    doc.build(elements, onFirstPage=on_page, onLaterPages=on_page)
+
+    return response
+
+
+def get_locations_filter(request):
+    locations = Location.objects.all().values('id', 'name', 'shortcode')
+    return JsonResponse({'locations': list(locations)})
+
+
+def report_generate_location_csv(request):
+    location_name = request.GET.get('location_name', '').strip()
+    status = request.GET.get('status', '').strip()
+    start_date = request.GET.get('from_date', '')
+    end_date = request.GET.get('to_date', '')
+    selected_columns = request.GET.get('columns', '').split(',')
+
+    print(f"Filters received: Location Name: {location_name}, Status: {status}, Dates: {start_date} - {end_date}")
+
+    locations = Location.objects.all()
+
+    # Print all locations before filtering
+    print(f"Total locations in DB: {locations.count()}")
+
+    # Filter by Location Name
+    if location_name:
+        if location_name.isdigit():  
+            locations = locations.filter(id=int(location_name))
+        else:
+            locations = locations.filter(name__icontains=location_name)
+
+    # Filter by Status
+    if status:
+        locations = locations.filter(status=status)
+
+    # Filter by Date Range
+    if start_date and end_date:
+        start_date = parse_date(start_date)  # Convert to proper date object
+        end_date = parse_date(end_date)
+        if start_date and end_date:
+            locations = locations.filter(created_at__date__gte=start_date, created_at__date__lte=end_date)
+
+    print(f"Filtered locations count: {locations.count()}")
+
+    # Print filtered results before returning response
+    print("Filtered locations:", list(locations.values()))
+
+    if not locations.exists():
+        print("No data found after filtering.")
+        return HttpResponse("No data found", content_type="text/plain")
+
+    # Generate CSV
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="locations.csv"'
+    writer = csv.writer(response)
+
+    # Define default columns if none are selected
+    if not selected_columns or selected_columns == ['']:
+        selected_columns = [
+            "id", "name", "details", "shortcode", "status", "created_at"
+        ]
+
+    # Write headers
+    writer.writerow(selected_columns)
+
+    # Write data rows
+    for location in locations:
+        writer.writerow([getattr(location, col, '') for col in selected_columns])
+
+    return response
+
+
+def report_generate_location_excel(request):
+    location_name = request.GET.get('location_name', '').strip()
+    status = request.GET.get('status', '').strip()
+    start_date = request.GET.get('from_date', '')
+    end_date = request.GET.get('to_date', '')
+    selected_columns = request.GET.get('columns', '').split(',')
+
+    print(f"Filters received: Location Name: {location_name}, Status: {status}, Dates: {start_date} - {end_date}")
+    print(f"Selected columns: {selected_columns}")
+
+    # Fetch data based on filters
+    locations = Location.objects.all()
+
+    # Print all locations before filtering
+    print(f"Total locations in DB: {locations.count()}")
+
+    # Filter by Location Name
+    if location_name:
+        if location_name.isdigit():
+            locations = locations.filter(id=int(location_name))
+        else:
+            locations = locations.filter(name__icontains=location_name)
+        print(f"After filtering by location name: {locations.count()}")
+
+    # Filter by Status
+    if status:
+        locations = locations.filter(status=status)
+        print(f"After filtering by status: {locations.count()}")
+
+    # Filter by Date Range
+    if start_date and end_date:
+        start_date = parse_date(start_date)  # Convert to date object
+        end_date = parse_date(end_date)      # Convert to date object
+        if start_date and end_date:
+            locations = locations.filter(created_at__date__gte=start_date, created_at__date__lte=end_date)
+            print(f"After filtering by date range: {locations.count()}")
+
+    print(f"Filtered locations count: {locations.count()}")
+
+    # Print filtered results before generating Excel
+    print("Filtered locations:", list(locations.values()))
+
+    if not locations.exists():
+        print("No data found after filtering.")
+        return HttpResponse("No data found", content_type="text/plain")
+
+    # Define column mappings
+    column_map = {
+        "id": "ID",
+        "name": "Name",
+        "details": "Details",
+        "shortcode": "Shortcode",
+        "status": "Status",
+        "created_at": "Created At",
+        "updated_at": "Updated At"
+    }
+
+    # Validate selected columns
+    valid_columns = [col for col in selected_columns if col in column_map]
+    if not valid_columns:
+        print("No valid columns selected. Using default columns.")
+        valid_columns = ["id", "name", "details", "shortcode", "status", "created_at"]
+
+    print(f"Valid columns: {valid_columns}")
+
+    # Create an Excel workbook and sheet
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Location Report"
+
+    # Set the header row
+    header_row = [column_map[col] for col in valid_columns]
+    ws.append(header_row)
+
+    # Populate data rows
+    for location in locations:
+        row_data = []
+        for col in valid_columns:
+            if hasattr(location, col):
+                value = getattr(location, col)
+
+                # Handle datetime and date fields separately
+                if isinstance(value, datetime):  # Check for datetime.datetime
+                    value = localtime(value).strftime("%Y-%m-%d %H:%M:%S")
+                elif isinstance(value, date):  # Check for datetime.date
+                    value = value.strftime("%Y-%m-%d")  # No time part
+
+                row_data.append(value)
+            else:
+                # If the column does not exist, append an empty string
+                row_data.append('')
+                print(f"Warning: Column '{col}' does not exist for location ID {location.id}")
+
+        print(f"Row data: {row_data}")  # Debugging: Print each row's data
+        ws.append(row_data)
+
+    # Debugging: Print the entire worksheet data
+    print("Worksheet data:")
+    for row in ws.iter_rows(values_only=True):
+        print(row)
+
+    # Prepare response
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename="location_report.xlsx"'
+    wb.save(response)
+    
+    return response
+
+
+def report_generate_location_pdf(request):
+    location_name = request.GET.get('location_name', '').strip()
+    status = request.GET.get('status', '').strip()
+    start_date = request.GET.get('from_date', '').strip()
+    end_date = request.GET.get('to_date', '').strip()
+    selected_columns = request.GET.get('columns', '').strip().split(',')
+
+    # Fetch all locations
+    locations = Location.objects.all()
+
+    # Filter by Location Name
+    if location_name:
+        if location_name.isdigit():
+            locations = locations.filter(id=int(location_name))
+        else:
+            locations = locations.filter(name__icontains=location_name)
+
+    # Filter by Status
+    if status:
+        locations = locations.filter(status=status)
+
+    # Filter by Date Range
+    if start_date and end_date:
+        start_date = parse_date(start_date)  # Convert to date object
+        end_date = parse_date(end_date)      # Convert to date object
+        if start_date and end_date:
+            locations = locations.filter(created_at__date__gte=start_date, created_at__date__lte=end_date)
+
+    # Create response object for PDF
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="location_details.pdf"'
+
+    # Define PDF Document
+    doc = SimpleDocTemplate(
+        response,
+        pagesize=A4,
+        leftMargin=0.7 * inch,
+        rightMargin=0.7 * inch,
+        topMargin=1.5 * inch,
+        bottomMargin=1.5 * inch
+    )
+
+    elements = []
+    styles = getSampleStyleSheet()
+
+    # Custom Style
+    custom_style = ParagraphStyle(
+        'custom_style',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=11,
+        leading=14,
+        spaceAfter=8
+    )
+
+    # Header Image Path
+    header_path = os.path.join(settings.STATIC_ROOT, "assets/images/pdf/report_header.png")
+
+    # Get Current Date
+    report_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Header function
+    def on_page(canvas, doc):
+        width, height = A4
+        if os.path.exists(header_path):
+            header_img = Image(header_path, width=width, height=1.5 * inch)
+            header_img.drawOn(canvas, 0, height - 1.5 * inch)
+        canvas.setFont("Helvetica", 9)
+        canvas.drawRightString(width - 0.8 * inch, height - 1.7 * inch, f"Generated On: {report_date}")
+
+    # Define Page Template
+    frame = Frame(
+        x1=0.7 * inch,
+        y1=1.5 * inch,
+        width=A4[0] - 1.4 * inch,
+        height=A4[1] - 3 * inch,
+        id='normal'
+    )
+    template = PageTemplate(id='custom', frames=frame, onPage=on_page)
+    doc.addPageTemplates([template])
+
+    # Report Title
+    elements.append(Spacer(1, 45))
+    elements.append(Paragraph('<para align="center"><b><font size=16>LOCATION DETAILS REPORT</font></b></para>', styles["Normal"]))
+    elements.append(Spacer(1, 30))
+
+    # Report Description
+    elements.append(Paragraph('<font size=11>This report contains location details including their name, shortcode, status, and other information.</font>', custom_style))
+    elements.append(Spacer(1, 10))
+
+    # Define column headers and corresponding data fields
+    column_mapping = {
+        'id': 'ID',
+        'name': 'Name',
+        'details': 'Details',
+        'shortcode': 'Shortcode',
+        'status': 'Status',
+        'created_at': 'Created At',
+        'updated_at': 'Updated At'
+    }
+
+    # Filter column headers based on selected columns
+    headers = [column_mapping[col] for col in selected_columns if col in column_mapping]
+
+    # Table Data
+    data = [headers]
+
+    # Add location data to the table
+    if locations.exists():
+        for location in locations:
+            row = []
+            for col in selected_columns:
+                if col == 'id':
+                    row.append(str(location.id))
+                elif col == 'name':
+                    row.append(str(location.name))
+                elif col == 'details':
+                    row.append(str(location.details))
+                elif col == 'shortcode':
+                    row.append(str(location.shortcode))
+                elif col == 'status':
+                    row.append(str(location.status))
+                elif col == 'created_at':
+                    row.append(str(location.created_at.strftime('%Y-%m-%d %H:%M:%S') if location.created_at else ""))
+                elif col == 'updated_at':
+                    row.append(str(location.updated_at.strftime('%Y-%m-%d %H:%M:%S') if location.updated_at else ""))
+            data.append(row)
+    else:
+        # If no data is found, add a "No data found" row
+        data.append(["No data found for the selected filters."])
+
+    # Calculate column widths proportionally
+    total_width = A4[0] - 1.4 * inch  # Total available width (page width minus margins)
+    num_columns = len(headers)
+    column_widths = [total_width / num_columns] * num_columns
+
+    # Create table
+    table = Table(data, colWidths=column_widths)
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('WORDWRAP', (0, 0), (-1, -1)),  # Enable text wrapping
+    ]))
+
+    # Add Table to PDF
+    elements.append(table)
+
+    # Build PDF
+    doc.build(elements, onFirstPage=on_page, onLaterPages=on_page)
+
+    return response
+
+
+def get_companies_filter(request):
+    # Fetch all companies from the database
+    companies = Company.objects.all().values('company_id', 'company_name')
+
+    # Prepare the data to be returned as JSON
+    data = {
+        'companies': list(companies)  # Convert QuerySet to a list of dictionaries
+    }
+
+    # Return the data as a JSON response
+    return JsonResponse(data)
+
+
+@require_GET
+def report_generate_company_csv(request):
+    """
+    Generates a CSV report for companies based on filters and selected columns.
+    """
+    # Extract filters from the request
+    company_name = request.GET.get('company_name', '').strip()
+    location = request.GET.get('location', '').strip()
+    start_date = request.GET.get('from_date', '').strip()
+    end_date = request.GET.get('to_date', '').strip()
+    selected_columns = request.GET.get('columns', '').split(',')
+
+    print(f"Filters received: Company Name: {company_name}, Location: {location}, Dates: {start_date} - {end_date}")
+
+    # Fetch all companies
+    companies = Company.objects.all()
+
+    # Filter by Company Name
+    if company_name:
+        if company_name.isdigit():  # If company_name is an ID
+            companies = companies.filter(company_id=int(company_name))
+        else:
+            companies = companies.filter(company_name__icontains=company_name)
+
+    # Filter by Location
+    if location:
+        companies = companies.filter(location__icontains=location)
+
+    # Filter by Date Range (if applicable)
+    if start_date and end_date:
+        start_date = parse_date(start_date)  # Convert to date object
+        end_date = parse_date(end_date)      # Convert to date object
+        if start_date and end_date:
+            companies = companies.filter(created_on__gte=start_date, created_on__lte=end_date)
+
+    print(f"Filtered companies count: {companies.count()}")
+
+    if not companies.exists():
+        print("No data found after filtering.")
+        return HttpResponse("No data found", content_type="text/plain")
+
+    # Generate CSV
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="companies.csv"'
+    writer = csv.writer(response)
+
+    # Define default columns if none are selected
+    if not selected_columns or selected_columns == ['']:
+        selected_columns = [
+            "company_id", "company_name", "CIN_number", "GST_number", "location", "address", "email", "phone_number", "created_on"
+        ]
+
+    # Write headers
+    writer.writerow(selected_columns)
+
+    # Write data rows
+    for company in companies:
+        writer.writerow([getattr(company, col, '') for col in selected_columns])
+
+    return response
+
+
+@require_GET
+def report_generate_company_excel(request):
+    """
+    Generates an Excel report for companies based on filters and selected columns.
+    """
+    # Extract filters from the request
+    company_name = request.GET.get('company_name', '').strip()
+    location = request.GET.get('location', '').strip()
+    start_date = request.GET.get('from_date', '').strip()
+    end_date = request.GET.get('to_date', '').strip()
+    selected_columns = request.GET.get('columns', '').split(',')
+
+    print(f"Filters received: Company Name: {company_name}, Location: {location}, Dates: {start_date} - {end_date}")
+
+    # Fetch all companies
+    companies = Company.objects.all()
+
+    # Filter by Company Name
+    if company_name:
+        if company_name.isdigit():  # If company_name is an ID
+            companies = companies.filter(company_id=int(company_name))
+        else:
+            companies = companies.filter(company_name__icontains=company_name)
+
+    # Filter by Location
+    if location:
+        companies = companies.filter(location__icontains=location)
+
+    # Filter by Date Range (if applicable)
+    if start_date and end_date:
+        start_date = parse_date(start_date)  # Convert to date object
+        end_date = parse_date(end_date)      # Convert to date object
+        if start_date and end_date:
+            companies = companies.filter(created_on__gte=start_date, created_on__lte=end_date)
+
+    print(f"Filtered companies count: {companies.count()}")
+
+    if not companies.exists():
+        print("No data found after filtering.")
+        return HttpResponse("No data found", content_type="text/plain")
+
+    # Define column mappings
+    column_map = {
+        "company_id": "Company ID",
+        "company_name": "Company Name",
+        "CIN_number": "CIN Number",
+        "GST_number": "GST Number",
+        "location": "Location",
+        "address": "Address",
+        "email": "Email",
+        "phone_number": "Phone Number",
+        "created_on": "Created On"
+    }
+
+    # Validate selected columns
+    valid_columns = [col for col in selected_columns if col in column_map]
+    if not valid_columns:
+        print("No valid columns selected. Using default columns.")
+        valid_columns = [
+            "company_id", "company_name", "CIN_number", "GST_number", "location", "address", "email", "phone_number", "created_on"
+        ]
+
+    print(f"Valid columns: {valid_columns}")
+
+    # Create an Excel workbook and sheet
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Company Report"
+
+    # Set the header row
+    header_row = [column_map[col] for col in valid_columns]
+    ws.append(header_row)
+
+    # Populate data rows
+    for company in companies:
+        row_data = []
+        for col in valid_columns:
+            if hasattr(company, col):
+                value = getattr(company, col)
+                if isinstance(value, (datetime, date)):  # Handle date/datetime fields
+                    value = value.strftime('%Y-%m-%d %H:%M:%S') if isinstance(value, datetime) else value.strftime('%Y-%m-%d')
+                row_data.append(str(value))
+            else:
+                row_data.append('')
+        ws.append(row_data)
+
+    # Prepare response
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="company_report.xlsx"'
+    wb.save(response)
+    
+    return response
+
+
+def report_generate_company_pdf(request):
+    """
+    Generates a PDF report for companies based on filters and selected columns.
+    """
+    # Extract filters from the request
+    company_name = request.GET.get('company_name', '').strip()
+    location = request.GET.get('location', '').strip()
+    start_date = request.GET.get('from_date', '').strip()
+    end_date = request.GET.get('to_date', '').strip()
+    selected_columns = request.GET.get('columns', '').strip().split(',')
+
+    # Fetch all companies
+    companies = Company.objects.all()
+
+    # Filter by Company Name
+    if company_name:
+        if company_name.isdigit():  # If company_name is an ID
+            companies = companies.filter(company_id=int(company_name))
+        else:
+            companies = companies.filter(company_name__icontains=company_name)
+
+    # Filter by Location
+    if location:
+        companies = companies.filter(location__icontains=location)
+
+    # Filter by Date Range (assuming created_on field exists)
+    if start_date and end_date:
+        start_date = parse_date(start_date)  # Convert to date object
+        end_date = parse_date(end_date)      # Convert to date object
+        if start_date and end_date:
+            companies = companies.filter(created_on__gte=start_date, created_on__lte=end_date)
+
+    # Create response object for PDF
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="company_details.pdf"'
+
+    # Define PDF Document
+    doc = SimpleDocTemplate(
+        response,
+        pagesize=A4,
+        leftMargin=0.7 * inch,
+        rightMargin=0.7 * inch,
+        topMargin=1.5 * inch,
+        bottomMargin=1.5 * inch
+    )
+
+    elements = []
+    styles = getSampleStyleSheet()
+
+    # Custom Style
+    custom_style = ParagraphStyle(
+        'custom_style',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=11,
+        leading=14,
+        spaceAfter=8
+    )
+
+    # Header Image Path
+    header_path = os.path.join(settings.STATIC_ROOT, "assets/images/pdf/report_header.png")
+
+    # Get Current Date
+    report_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Header function
+    def on_page(canvas, doc):
+        width, height = A4
+        if os.path.exists(header_path):
+            header_img = Image(header_path, width=width, height=1.5 * inch)
+            header_img.drawOn(canvas, 0, height - 1.5 * inch)
+        canvas.setFont("Helvetica", 9)
+        canvas.drawRightString(width - 0.8 * inch, height - 1.7 * inch, f"Generated On: {report_date}")
+
+    # Define Page Template
+    frame = Frame(
+        x1=0.7 * inch,
+        y1=1.5 * inch,
+        width=A4[0] - 1.4 * inch,
+        height=A4[1] - 3 * inch,
+        id='normal'
+    )
+    template = PageTemplate(id='custom', frames=frame, onPage=on_page)
+    doc.addPageTemplates([template])
+
+    # Report Title
+    elements.append(Spacer(1, 45))
+    elements.append(Paragraph('<para align="center"><b><font size=16>COMPANY DETAILS REPORT</font></b></para>', styles["Normal"]))
+    elements.append(Spacer(1, 30))
+
+    # Report Description
+    elements.append(Paragraph('<font size=11>This report contains company details including their name, CIN number, GST number, location, and other information.</font>', custom_style))
+    elements.append(Spacer(1, 10))
+
+    # Define column headers and corresponding data fields
+    column_mapping = {
+        'company_id': 'Company ID',
+        'company_name': 'Company Name',
+        'CIN_number': 'CIN Number',
+        'GST_number': 'GST Number',
+        'location': 'Location',
+        'address': 'Address',
+        'email': 'Email',
+        'phone_number': 'Phone Number',
+        'created_on': 'Created On'
+    }
+
+    # Filter column headers based on selected columns
+    headers = [column_mapping[col] for col in selected_columns if col in column_mapping]
+
+    # Table Data
+    data = [headers]
+
+    # Add company data to the table
+    if companies.exists():
+        for company in companies:
+            row = []
+            for col in selected_columns:
+                if hasattr(company, col):
+                    value = getattr(company, col)
+                    if isinstance(value, (datetime, date)):  # Handle date/datetime fields
+                        value = value.strftime('%Y-%m-%d %H:%M:%S') if isinstance(value, datetime) else value.strftime('%Y-%m-%d')
+                    row.append(str(value))
+                else:
+                    row.append('')
+            data.append(row)
+    else:
+        # If no data is found, add a "No data found" row
+        data.append(["No data found for the selected filters."])
+
+    # Calculate column widths proportionally
+    total_width = A4[0] - 1.4 * inch  # Total available width (page width minus margins)
+    num_columns = len(headers)
+    column_widths = [total_width / num_columns] * num_columns
+
+    # Create table
+    table = Table(data, colWidths=column_widths)
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('WORDWRAP', (0, 0), (-1, -1)),  # Enable text wrapping
+    ]))
+
+    # Add Table to PDF
+    elements.append(table)
+
+    # Build PDF
+    doc.build(elements, onFirstPage=on_page, onLaterPages=on_page)
+
+    return response
+
+def get_exhibitions_filter(request):
+    # Fetch all exhibitions from the database
+    exhibitions = Exhibition.objects.all().values('exhibition_id', 'exhibition_name')
+
+    # Prepare the data to be returned as JSON
+    data = {
+        'exhibitions': list(exhibitions)  # Convert QuerySet to a list of dictionaries
+    }
+
+    # Return the data as a JSON response
+    return JsonResponse(data)
+
+
+def get_locations_exhibition_filter(request):
+    # Fetch unique locations from the Exhibition model
+    locations = Exhibition.objects.values_list('location', flat=True).distinct()
+
+    # Prepare the data to be returned as JSON
+    data = {
+        'locations': [{'id': idx, 'name': location} for idx, location in enumerate(locations, start=1)]
+    }
+
+    # Return the data as a JSON response
+    return JsonResponse(data)
+
+
+def report_generate_exhibition_csv(request):
+    # Extract filters from the request
+    exhibition_name = request.GET.get('exhibition_name', '').strip()
+    location = request.GET.get('location', '').strip()
+    start_date = request.GET.get('from_date', '')
+    end_date = request.GET.get('to_date', '')
+    selected_columns = request.GET.get('columns', '').split(',')
+
+    print(f"Filters received: Exhibition Name: {exhibition_name}, Location: {location}, Dates: {start_date} - {end_date}")
+
+    # Fetch all exhibitions
+    exhibitions = Exhibition.objects.all()
+
+    # Print all exhibitions before filtering
+    print(f"Total exhibitions in DB: {exhibitions.count()}")
+
+    # Filter by Exhibition Name
+    if exhibition_name:
+        if exhibition_name.isdigit():  # If exhibition_name is an ID
+            exhibitions = exhibitions.filter(exhibition_id=int(exhibition_name))
+        else:
+            exhibitions = exhibitions.filter(exhibition_name__icontains=exhibition_name)
+
+    # Filter by Location
+    if location:
+        exhibitions = exhibitions.filter(location__icontains=location)
+
+    # Filter by Date Range
+    if start_date and end_date:
+        start_date = parse_date(start_date)  # Convert to date object
+        end_date = parse_date(end_date)      # Convert to date object
+        if start_date and end_date:
+            exhibitions = exhibitions.filter(start_date__gte=start_date, end_date__lte=end_date)
+
+    print(f"Filtered exhibitions count: {exhibitions.count()}")
+
+    # Print filtered results before returning response
+    print("Filtered exhibitions:", list(exhibitions.values()))
+
+    if not exhibitions.exists():
+        print("No data found after filtering.")
+        return HttpResponse("No data found", content_type="text/plain")
+
+    # Generate CSV
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="exhibitions.csv"'
+    writer = csv.writer(response)
+
+    # Define default columns if none are selected
+    if not selected_columns or selected_columns == ['']:
+        selected_columns = [
+            "exhibition_id", "exhibition_name", "location", "address", "city", "state", "pincode", "start_date", "end_date", "details"
+        ]
+
+    # Write headers
+    writer.writerow(selected_columns)
+
+    # Write data rows
+    for exhibition in exhibitions:
+        writer.writerow([getattr(exhibition, col, '') for col in selected_columns])
+
+    return response
+
+
+
+def report_generate_exhibition_excel(request):
+    # Extract filters from the request
+    exhibition_name = request.GET.get('exhibition_name', '').strip()
+    location = request.GET.get('location', '').strip()
+    start_date = request.GET.get('from_date', '')
+    end_date = request.GET.get('to_date', '')
+    selected_columns = request.GET.get('columns', '').split(',')
+
+    print(f"Filters received: Exhibition Name: {exhibition_name}, Location: {location}, Dates: {start_date} - {end_date}")
+    print(f"Selected columns: {selected_columns}")
+
+    # Fetch all exhibitions
+    exhibitions = Exhibition.objects.all()
+
+    # Print all exhibitions before filtering
+    print(f"Total exhibitions in DB: {exhibitions.count()}")
+
+    # Filter by Exhibition Name
+    if exhibition_name:
+        if exhibition_name.isdigit():  # If exhibition_name is an ID
+            exhibitions = exhibitions.filter(exhibition_id=int(exhibition_name))
+        else:
+            exhibitions = exhibitions.filter(exhibition_name__icontains=exhibition_name)
+
+    # Filter by Location
+    if location:
+        exhibitions = exhibitions.filter(location__icontains=location)
+
+    # Filter by Date Range
+    if start_date and end_date:
+        start_date = parse_date(start_date)  # Convert to date object
+        end_date = parse_date(end_date)      # Convert to date object
+        if start_date and end_date:
+            exhibitions = exhibitions.filter(start_date__gte=start_date, end_date__lte=end_date)
+
+    print(f"Filtered exhibitions count: {exhibitions.count()}")
+
+    # Print filtered results before generating Excel
+    print("Filtered exhibitions:", list(exhibitions.values()))
+
+    if not exhibitions.exists():
+        print("No data found after filtering.")
+        return HttpResponse("No data found", content_type="text/plain")
+
+    # Define column mappings
+    column_map = {
+        "exhibition_id": "Exhibition ID",
+        "exhibition_name": "Exhibition Name",
+        "location": "Location",
+        "address": "Address",
+        "city": "City",
+        "state": "State",
+        "pincode": "Pincode",
+        "start_date": "Start Date",
+        "end_date": "End Date",
+        "details": "Details",
+        "created_on": "Created On"
+    }
+
+    # Validate selected columns
+    valid_columns = [col for col in selected_columns if col in column_map]
+    if not valid_columns:
+        print("No valid columns selected. Using default columns.")
+        valid_columns = ["exhibition_id", "exhibition_name", "location", "address", "city", "state", "pincode", "start_date", "end_date", "details"]
+
+    print(f"Valid columns: {valid_columns}")
+
+    # Create an Excel workbook and sheet
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Exhibition Report"
+
+    # Set the header row
+    header_row = [column_map[col] for col in valid_columns]
+    ws.append(header_row)
+
+    # Populate data rows
+    for exhibition in exhibitions:
+        row_data = []
+        for col in valid_columns:
+            if hasattr(exhibition, col):
+                value = getattr(exhibition, col)
+
+                # Handle datetime and date fields separately
+                if isinstance(value, datetime):  # Check for datetime.datetime
+                    value = localtime(value).strftime("%Y-%m-%d %H:%M:%S")
+                elif isinstance(value, date):  # Check for datetime.date
+                    value = value.strftime("%Y-%m-%d")  # No time part
+
+                row_data.append(value)
+            else:
+                # If the column does not exist, append an empty string
+                row_data.append('')
+                print(f"Warning: Column '{col}' does not exist for exhibition ID {exhibition.exhibition_id}")
+
+        print(f"Row data: {row_data}")  # Debugging: Print each row's data
+        ws.append(row_data)
+
+    # Debugging: Print the entire worksheet data
+    print("Worksheet data:")
+    for row in ws.iter_rows(values_only=True):
+        print(row)
+
+    # Prepare response
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename="exhibition_report.xlsx"'
+    wb.save(response)
+    
+    return response
+
+
+def report_generate_exhibition_pdf(request):
+    # Extract filters from the request
+    exhibition_name = request.GET.get('exhibition_name', '').strip()
+    location = request.GET.get('location', '').strip()
+    start_date = request.GET.get('from_date', '').strip()
+    end_date = request.GET.get('to_date', '').strip()
+    selected_columns = request.GET.get('columns', '').strip().split(',')
+
+    # Fetch all exhibitions
+    exhibitions = Exhibition.objects.all()
+
+    # Filter by Exhibition Name
+    if exhibition_name:
+        if exhibition_name.isdigit():  # If exhibition_name is an ID
+            exhibitions = exhibitions.filter(exhibition_id=int(exhibition_name))
+        else:
+            exhibitions = exhibitions.filter(exhibition_name__icontains=exhibition_name)
+
+    # Filter by Location
+    if location:
+        exhibitions = exhibitions.filter(location__icontains=location)
+
+    # Filter by Date Range
+    if start_date and end_date:
+        start_date = parse_date(start_date)  # Convert to date object
+        end_date = parse_date(end_date)      # Convert to date object
+        if start_date and end_date:
+            exhibitions = exhibitions.filter(start_date__gte=start_date, end_date__lte=end_date)
+
+    # Create response object for PDF
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="exhibition_details.pdf"'
+
+    # Define PDF Document
+    doc = SimpleDocTemplate(
+        response,
+        pagesize=A4,
+        leftMargin=0.7 * inch,
+        rightMargin=0.7 * inch,
+        topMargin=1.5 * inch,
+        bottomMargin=1.5 * inch
+    )
+
+    elements = []
+    styles = getSampleStyleSheet()
+
+    # Custom Style
+    custom_style = ParagraphStyle(
+        'custom_style',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=11,
+        leading=14,
+        spaceAfter=8
+    )
+
+    # Header Image Path
+    header_path = os.path.join(settings.STATIC_ROOT, "assets/images/pdf/report_header.png")
+
+    # Get Current Date
+    report_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Header function
+    def on_page(canvas, doc):
+        width, height = A4
+        if os.path.exists(header_path):
+            header_img = Image(header_path, width=width, height=1.5 * inch)
+            header_img.drawOn(canvas, 0, height - 1.5 * inch)
+        canvas.setFont("Helvetica", 9)
+        canvas.drawRightString(width - 0.8 * inch, height - 1.7 * inch, f"Generated On: {report_date}")
+
+    # Define Page Template
+    frame = Frame(
+        x1=0.7 * inch,
+        y1=1.5 * inch,
+        width=A4[0] - 1.4 * inch,
+        height=A4[1] - 3 * inch,
+        id='normal'
+    )
+    template = PageTemplate(id='custom', frames=frame, onPage=on_page)
+    doc.addPageTemplates([template])
+
+    # Report Title
+    elements.append(Spacer(1, 45))
+    elements.append(Paragraph('<para align="center"><b><font size=16>EXHIBITION DETAILS REPORT</font></b></para>', styles["Normal"]))
+    elements.append(Spacer(1, 30))
+
+    # Report Description
+    elements.append(Paragraph('<font size=11>This report contains exhibition details including their name, location, address, and other information.</font>', custom_style))
+    elements.append(Spacer(1, 10))
+
+    # Define column headers and corresponding data fields
+    column_mapping = {
+        'exhibition_id': 'Exhibition ID',
+        'exhibition_name': 'Exhibition Name',
+        'location': 'Location',
+        'address': 'Address',
+        'city': 'City',
+        'state': 'State',
+        'pincode': 'Pincode',
+        'start_date': 'Start Date',
+        'end_date': 'End Date',
+        'details': 'Details',
+        'created_on': 'Created On'
+    }
+
+    # Filter column headers based on selected columns
+    headers = [column_mapping[col] for col in selected_columns if col in column_mapping]
+
+    # Table Data
+    data = [headers]
+
+    # Add exhibition data to the table
+    if exhibitions.exists():
+        for exhibition in exhibitions:
+            row = []
+            for col in selected_columns:
+                if col == 'exhibition_id':
+                    row.append(str(exhibition.exhibition_id))
+                elif col == 'exhibition_name':
+                    row.append(str(exhibition.exhibition_name))
+                elif col == 'location':
+                    row.append(str(exhibition.location))
+                elif col == 'address':
+                    row.append(str(exhibition.address))
+                elif col == 'city':
+                    row.append(str(exhibition.city))
+                elif col == 'state':
+                    row.append(str(exhibition.state))
+                elif col == 'pincode':
+                    row.append(str(exhibition.pincode))
+                elif col == 'start_date':
+                    row.append(str(exhibition.start_date.strftime('%Y-%m-%d') if exhibition.start_date else ""))
+                elif col == 'end_date':
+                    row.append(str(exhibition.end_date.strftime('%Y-%m-%d') if exhibition.end_date else ""))
+                elif col == 'details':
+                    row.append(str(exhibition.details))
+                elif col == 'created_on':
+                    row.append(str(exhibition.created_on.strftime('%Y-%m-%d %H:%M:%S') if exhibition.created_on else ""))
+            data.append(row)
+    else:
+        # If no data is found, add a "No data found" row
+        data.append(["No data found for the selected filters."])
+
+    # Calculate column widths proportionally
+    total_width = A4[0] - 1.4 * inch  # Total available width (page width minus margins)
+    num_columns = len(headers)
+    column_widths = [total_width / num_columns] * num_columns
+
+    # Create table
+    table = Table(data, colWidths=column_widths)
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('WORDWRAP', (0, 0), (-1, -1)),  # Enable text wrapping
+    ]))
+
+    # Add Table to PDF
+    elements.append(table)
+
+    # Build PDF
+    doc.build(elements, onFirstPage=on_page, onLaterPages=on_page)
+
+    return response
+
+
+def get_customers_filter(request):
+    """
+    Returns a JSON response containing a list of customers for filtering.
+    """
+    try:
+        # Fetch all customers from the database
+        customers = Customer.objects.all().values('customer_id', 'customer_name')
+        
+        # Convert the queryset to a list of dictionaries
+        customers_list = list(customers)
+        
+        # Return the JSON response
+        return JsonResponse({
+            'customers': customers_list,
+            'status': 'success',
+            'message': 'Customers fetched successfully.'
+        }, status=200)
+    
+    except Exception as e:
+        # Handle any exceptions and return an error response
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+        
+        
+
+@require_GET
+def report_generate_customer_csv(request):
+    """
+    Generates a CSV report for customers based on filters and selected columns.
+    """
+    # Extract filters from the request
+    customer_name = request.GET.get('customer_name', '').strip()
+    company_name = request.GET.get('company_name', '').strip()
+    start_date = request.GET.get('from_date', '').strip()
+    end_date = request.GET.get('to_date', '').strip()
+    selected_columns = request.GET.get('columns', '').split(',')
+
+    print(f"Filters received: Customer Name: {customer_name}, Company Name: {company_name}, Dates: {start_date} - {end_date}")
+
+    # Fetch all customers
+    customers = Customer.objects.all()
+
+    # Filter by Customer Name
+    if customer_name:
+        if customer_name.isdigit():  # If customer_name is an ID
+            customers = customers.filter(customer_id=int(customer_name))
+        else:
+            customers = customers.filter(customer_name__icontains=customer_name)
+
+    # Filter by Company Name
+    if company_name:
+        customers = customers.filter(company__company_name__icontains=company_name)
+
+    # Filter by Date Range (if applicable)
+    if start_date and end_date:
+        start_date = parse_date(start_date)  # Convert to date object
+        end_date = parse_date(end_date)      # Convert to date object
+        if start_date and end_date:
+            customers = customers.filter(created_on__gte=start_date, created_on__lte=end_date)
+
+    print(f"Filtered customers count: {customers.count()}")
+
+    if not customers.exists():
+        print("No data found after filtering.")
+        return HttpResponse("No data found", content_type="text/plain")
+
+    # Generate CSV
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="customers.csv"'
+    writer = csv.writer(response)
+
+    # Define default columns if none are selected
+    if not selected_columns or selected_columns == ['']:
+        selected_columns = [
+            "customer_id", "customer_name", "email", "company", "phone_number", "address", "city", "state", "zip_code", "country", "details", "created_on"
+        ]
+
+    # Write headers
+    writer.writerow(selected_columns)
+
+    # Write data rows
+    for customer in customers:
+        writer.writerow([getattr(customer, col, '') for col in selected_columns])
+
+    return response
+
+@require_GET
+def report_generate_customer_excel(request):
+    """
+    Generates an Excel report for customers based on filters and selected columns.
+    """
+    # Extract filters from the request
+    customer_name = request.GET.get('customer_name', '').strip()
+    company_name = request.GET.get('company_name', '').strip()
+    start_date = request.GET.get('from_date', '').strip()
+    end_date = request.GET.get('to_date', '').strip()
+    selected_columns = request.GET.get('columns', '').split(',')
+
+    print(f"Filters received: Customer Name: {customer_name}, Company Name: {company_name}, Dates: {start_date} - {end_date}")
+
+    # Fetch all customers
+    customers = Customer.objects.all()
+
+    # Filter by Customer Name
+    if customer_name:
+        if customer_name.isdigit():  # If customer_name is an ID
+            customers = customers.filter(customer_id=int(customer_name))
+        else:
+            customers = customers.filter(customer_name__icontains=customer_name)
+
+    # Filter by Company Name
+    if company_name:
+        customers = customers.filter(company__company_name__icontains=company_name)
+
+    # Filter by Date Range (if applicable)
+    if start_date and end_date:
+        start_date = parse_date(start_date)  # Convert to date object
+        end_date = parse_date(end_date)      # Convert to date object
+        if start_date and end_date:
+            customers = customers.filter(created_on__gte=start_date, created_on__lte=end_date)
+
+    print(f"Filtered customers count: {customers.count()}")
+
+    if not customers.exists():
+        print("No data found after filtering.")
+        return HttpResponse("No data found", content_type="text/plain")
+
+    # Define column mappings
+    column_map = {
+        "customer_id": "Customer ID",
+        "customer_name": "Customer Name",
+        "email": "Email",
+        "company": "Company",
+        "phone_number": "Phone Number",
+        "address": "Address",
+        "city": "City",
+        "state": "State",
+        "zip_code": "Zip Code",
+        "country": "Country",
+        "details": "Details",
+        "created_on": "Created On"  # Add "Created On" to the column map
+    }
+
+    # Validate selected columns
+    valid_columns = [col for col in selected_columns if col in column_map]
+    if not valid_columns:
+        print("No valid columns selected. Using default columns.")
+        valid_columns = ["customer_id", "customer_name", "email", "company", "phone_number", "address", "city", "state", "zip_code", "country", "details", "created_on"]
+
+    print(f"Valid columns: {valid_columns}")
+
+    # Create an Excel workbook and sheet
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Customer Report"
+
+    # Set the header row
+    header_row = [column_map[col] for col in valid_columns]
+    ws.append(header_row)
+
+    # Populate data rows
+    for customer in customers:
+        row_data = []
+        for col in valid_columns:
+            if hasattr(customer, col):
+                value = getattr(customer, col)
+                row_data.append(str(value))
+            else:
+                row_data.append('')
+        ws.append(row_data)
+
+    # Prepare response
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="customer_report.xlsx"'
+    wb.save(response)
+    
+    return response
+
+
+@require_GET
+def report_generate_customer_pdf(request):
+    """
+    Generates a PDF report for customers based on filters and selected columns.
+    """
+    # Extract filters from the request
+    customer_name = request.GET.get('customer_name', '').strip()
+    company_name = request.GET.get('company_name', '').strip()
+    start_date = request.GET.get('from_date', '').strip()
+    end_date = request.GET.get('to_date', '').strip()
+    selected_columns = request.GET.get('columns', '').strip().split(',')
+
+    # Fetch all customers
+    customers = Customer.objects.all()
+
+    # Filter by Customer Name
+    if customer_name:
+        if customer_name.isdigit():  # If customer_name is an ID
+            customers = customers.filter(customer_id=int(customer_name))
+        else:
+            customers = customers.filter(customer_name__icontains=customer_name)
+
+    # Filter by Company Name
+    if company_name:
+        customers = customers.filter(company__company_name__icontains=company_name)
+
+    # Filter by Date Range (if applicable)
+    if start_date and end_date:
+        start_date = parse_date(start_date)  # Convert to date object
+        end_date = parse_date(end_date)      # Convert to date object
+        if start_date and end_date:
+            customers = customers.filter(created_on__gte=start_date, created_on__lte=end_date)
+
+    # Create response object for PDF
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="customer_details.pdf"'
+
+    # Define PDF Document
+    doc = SimpleDocTemplate(
+        response,
+        pagesize=A4,
+        leftMargin=0.7 * inch,
+        rightMargin=0.7 * inch,
+        topMargin=1.5 * inch,
+        bottomMargin=1.5 * inch
+    )
+
+    elements = []
+    styles = getSampleStyleSheet()
+
+    # Custom Style
+    custom_style = ParagraphStyle(
+        'custom_style',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=11,
+        leading=14,
+        spaceAfter=8
+    )
+
+    # Header Image Path
+    header_path = os.path.join(settings.STATIC_ROOT, "assets/images/pdf/report_header.png")
+
+    # Get Current Date
+    report_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Header function
+    def on_page(canvas, doc):
+        width, height = A4
+        if os.path.exists(header_path):
+            header_img = Image(header_path, width=width, height=1.5 * inch)
+            header_img.drawOn(canvas, 0, height - 1.5 * inch)
+        canvas.setFont("Helvetica", 9)
+        canvas.drawRightString(width - 0.8 * inch, height - 1.7 * inch, f"Generated On: {report_date}")
+
+    # Define Page Template
+    frame = Frame(
+        x1=0.7 * inch,
+        y1=1.5 * inch,
+        width=A4[0] - 1.4 * inch,
+        height=A4[1] - 3 * inch,
+        id='normal'
+    )
+    template = PageTemplate(id='custom', frames=frame, onPage=on_page)
+    doc.addPageTemplates([template])
+
+    # Report Title
+    elements.append(Spacer(1, 45))
+    elements.append(Paragraph('<para align="center"><b><font size=16>CUSTOMER DETAILS REPORT</font></b></para>', styles["Normal"]))
+    elements.append(Spacer(1, 30))
+
+    # Report Description
+    elements.append(Paragraph('<font size=11>This report contains customer details including their name, email, company, and other information.</font>', custom_style))
+    elements.append(Spacer(1, 10))
+
+    # Define column headers and corresponding data fields
+    column_mapping = {
+        'customer_id': 'Customer ID',
+        'customer_name': 'Customer Name',
+        'email': 'Email',
+        'company': 'Company',
+        'phone_number': 'Phone Number',
+        'address': 'Address',
+        'city': 'City',
+        'state': 'State',
+        'zip_code': 'Zip Code',
+        'country': 'Country',
+        'details': 'Details',
+        'created_on': 'Created On'  # Add "Created On" to the column mapping
+    }
+
+    # Filter column headers based on selected columns
+    headers = [column_mapping[col] for col in selected_columns if col in column_mapping]
+
+    # Table Data
+    data = [headers]
+
+    # Add customer data to the table
+    if customers.exists():
+        for customer in customers:
+            row = []
+            for col in selected_columns:
+                if hasattr(customer, col):
+                    value = getattr(customer, col)
+                    if col == 'created_on':  # Format the "created_on" field
+                        value = value.strftime("%Y-%m-%d %H:%M:%S")
+                    row.append(str(value))
+                else:
+                    row.append('')
+            data.append(row)
+    else:
+        # If no data is found, add a "No data found" row
+        data.append(["No data found for the selected filters."])
+
+    # Calculate column widths proportionally
+    total_width = A4[0] - 1.4 * inch  # Total available width (page width minus margins)
+    num_columns = len(headers)
+    column_widths = [total_width / num_columns] * num_columns
+
+    # Create table
+    table = Table(data, colWidths=column_widths)
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('WORDWRAP', (0, 0), (-1, -1)),  # Enable text wrapping
+    ]))
+
+    # Add Table to PDF
+    elements.append(table)
+
+    # Build PDF
+    doc.build(elements, onFirstPage=on_page, onLaterPages=on_page)
+
+    return response
+
+
+
+def get_suppliers_filter(request):
+    """
+    Returns a JSON response containing a list of suppliers for filtering.
+    """
+    try:
+        # Fetch all suppliers from the database
+        suppliers = Supplier.objects.all().values('supplier_id', 'supplier_name')
+        
+        # Convert the queryset to a list of dictionaries
+        suppliers_list = list(suppliers)
+        
+        # Return the JSON response
+        return JsonResponse({
+            'suppliers': suppliers_list,
+            'status': 'success',
+            'message': 'Suppliers fetched successfully.'
+        }, status=200)
+    
+    except Exception as e:
+        # Handle any exceptions and return an error response
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+        
+
+@require_GET
+def report_generate_supplier_csv(request):
+    """
+    Generates a CSV report for suppliers based on filters and selected columns.
+    """
+    # Extract filters from the request
+    supplier_name = request.GET.get('supplier_name', '').strip()
+    company_name = request.GET.get('company_name', '').strip()
+    start_date = request.GET.get('from_date', '').strip()
+    end_date = request.GET.get('to_date', '').strip()
+    selected_columns = request.GET.get('columns', '').split(',')
+
+    print(f"Filters received: Supplier Name: {supplier_name}, Company Name: {company_name}, Dates: {start_date} - {end_date}")
+
+    # Fetch all suppliers
+    suppliers = Supplier.objects.all()
+
+    # Filter by Supplier Name
+    if supplier_name:
+        if supplier_name.isdigit():  # If supplier_name is an ID
+            suppliers = suppliers.filter(supplier_id=int(supplier_name))
+        else:
+            suppliers = suppliers.filter(supplier_name__icontains=supplier_name)
+
+    # Filter by Company Name
+    if company_name:
+        suppliers = suppliers.filter(company__company_name__icontains=company_name)
+
+    # Filter by Date Range (if applicable)
+    if start_date and end_date:
+        start_date = parse_date(start_date)  # Convert to date object
+        end_date = parse_date(end_date)      # Convert to date object
+        if start_date and end_date:
+            suppliers = suppliers.filter(created_on__gte=start_date, created_on__lte=end_date)
+
+    print(f"Filtered suppliers count: {suppliers.count()}")
+
+    if not suppliers.exists():
+        print("No data found after filtering.")
+        return HttpResponse("No data found", content_type="text/plain")
+
+    # Generate CSV
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="suppliers.csv"'
+    writer = csv.writer(response)
+
+    # Define default columns if none are selected
+    if not selected_columns or selected_columns == ['']:
+        selected_columns = [
+            "supplier_id", "supplier_name", "email", "company", "phone_number", "address", "city", "state", "zip_code", "country", "details", "created_on"
+        ]
+
+    # Write headers
+    writer.writerow(selected_columns)
+
+    # Write data rows
+    for supplier in suppliers:
+        row = []
+        for col in selected_columns:
+            if hasattr(supplier, col):
+                value = getattr(supplier, col)
+                if col == 'created_on':  # Format the "created_on" field
+                    value = value.strftime("%Y-%m-%d %H:%M:%S")
+                row.append(str(value))
+            else:
+                row.append('')
+        writer.writerow(row)
+
+    return response
+
+
+@require_GET
+def report_generate_supplier_excel(request):
+    """
+    Generates an Excel report for suppliers based on filters and selected columns.
+    """
+    # Extract filters from the request
+    supplier_name = request.GET.get('supplier_name', '').strip()
+    company_name = request.GET.get('company_name', '').strip()
+    start_date = request.GET.get('from_date', '').strip()
+    end_date = request.GET.get('to_date', '').strip()
+    selected_columns = request.GET.get('columns', '').split(',')
+
+    print(f"Filters received: Supplier Name: {supplier_name}, Company Name: {company_name}, Dates: {start_date} - {end_date}")
+
+    # Fetch all suppliers
+    suppliers = Supplier.objects.all()
+
+    # Filter by Supplier Name
+    if supplier_name:
+        if supplier_name.isdigit():  # If supplier_name is an ID
+            suppliers = suppliers.filter(supplier_id=int(supplier_name))
+        else:
+            suppliers = suppliers.filter(supplier_name__icontains=supplier_name)
+
+    # Filter by Company Name
+    if company_name:
+        suppliers = suppliers.filter(company__company_name__icontains=company_name)
+
+    # Filter by Date Range (if applicable)
+    if start_date and end_date:
+        start_date = parse_date(start_date)  # Convert to date object
+        end_date = parse_date(end_date)      # Convert to date object
+        if start_date and end_date:
+            suppliers = suppliers.filter(created_on__gte=start_date, created_on__lte=end_date)
+
+    print(f"Filtered suppliers count: {suppliers.count()}")
+
+    if not suppliers.exists():
+        print("No data found after filtering.")
+        return HttpResponse("No data found", content_type="text/plain")
+
+    # Define column mappings
+    column_map = {
+        "supplier_id": "Supplier ID",
+        "supplier_name": "Supplier Name",
+        "email": "Email",
+        "company": "Company",
+        "phone_number": "Phone Number",
+        "address": "Address",
+        "city": "City",
+        "state": "State",
+        "zip_code": "Zip Code",
+        "country": "Country",
+        "details": "Details",
+        "created_on": "Created On"  # Add "Created On" to the column map
+    }
+
+    # Validate selected columns
+    valid_columns = [col for col in selected_columns if col in column_map]
+    if not valid_columns:
+        print("No valid columns selected. Using default columns.")
+        valid_columns = ["supplier_id", "supplier_name", "email", "company", "phone_number", "address", "city", "state", "zip_code", "country", "details", "created_on"]
+
+    print(f"Valid columns: {valid_columns}")
+
+    # Create an Excel workbook and sheet
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Supplier Report"
+
+    # Set the header row
+    header_row = [column_map[col] for col in valid_columns]
+    ws.append(header_row)
+
+    # Populate data rows
+    for supplier in suppliers:
+        row_data = []
+        for col in valid_columns:
+            if hasattr(supplier, col):
+                value = getattr(supplier, col)
+                if col == 'created_on':  # Format the "created_on" field
+                    value = value.strftime("%Y-%m-%d %H:%M:%S")
+                row_data.append(str(value))
+            else:
+                row_data.append('')
+        ws.append(row_data)
+
+    # Prepare response
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="supplier_report.xlsx"'
+    wb.save(response)
+    
+    return response
+
+
+def report_generate_supplier_pdf(request):
+    """
+    Generates a PDF report for suppliers based on filters and selected columns.
+    """
+    # Extract filters from the request
+    supplier_name = request.GET.get('supplier_name', '').strip()
+    company_name = request.GET.get('company_name', '').strip()
+    start_date = request.GET.get('from_date', '').strip()
+    end_date = request.GET.get('to_date', '').strip()
+    selected_columns = request.GET.get('columns', '').strip().split(',')
+
+    # Fetch all suppliers
+    suppliers = Supplier.objects.all()
+
+    # Filter by Supplier Name
+    if supplier_name:
+        if supplier_name.isdigit():  # If supplier_name is an ID
+            suppliers = suppliers.filter(supplier_id=int(supplier_name))
+        else:
+            suppliers = suppliers.filter(supplier_name__icontains=supplier_name)
+
+    # Filter by Company Name
+    if company_name:
+        suppliers = suppliers.filter(company__company_name__icontains=company_name)
+
+    # Filter by Date Range (if applicable)
+    if start_date and end_date:
+        start_date = parse_date(start_date)  # Convert to date object
+        end_date = parse_date(end_date)      # Convert to date object
+        if start_date and end_date:
+            suppliers = suppliers.filter(created_on__gte=start_date, created_on__lte=end_date)
+
+    # Create response object for PDF
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="supplier_details.pdf"'
+
+    # Define PDF Document
+    doc = SimpleDocTemplate(
+        response,
+        pagesize=A4,
+        leftMargin=0.7 * inch,
+        rightMargin=0.7 * inch,
+        topMargin=1.5 * inch,
+        bottomMargin=1.5 * inch
+    )
+
+    elements = []
+    styles = getSampleStyleSheet()
+
+    # Custom Style
+    custom_style = ParagraphStyle(
+        'custom_style',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=11,
+        leading=14,
+        spaceAfter=8
+    )
+
+    # Header Image Path
+    header_path = os.path.join(settings.STATIC_ROOT, "assets/images/pdf/report_header.png")
+
+    # Get Current Date
+    report_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Header function
+    def on_page(canvas, doc):
+        width, height = A4
+        if os.path.exists(header_path):
+            header_img = Image(header_path, width=width, height=1.5 * inch)
+            header_img.drawOn(canvas, 0, height - 1.5 * inch)
+        canvas.setFont("Helvetica", 9)
+        canvas.drawRightString(width - 0.8 * inch, height - 1.7 * inch, f"Generated On: {report_date}")
+
+    # Define Page Template
+    frame = Frame(
+        x1=0.7 * inch,
+        y1=1.5 * inch,
+        width=A4[0] - 1.4 * inch,
+        height=A4[1] - 3 * inch,
+        id='normal'
+    )
+    template = PageTemplate(id='custom', frames=frame, onPage=on_page)
+    doc.addPageTemplates([template])
+
+    # Report Title
+    elements.append(Spacer(1, 45))
+    elements.append(Paragraph('<para align="center"><b><font size=16>SUPPLIER DETAILS REPORT</font></b></para>', styles["Normal"]))
+    elements.append(Spacer(1, 30))
+
+    # Report Description
+    elements.append(Paragraph('<font size=11>This report contains supplier details including their name, email, company, and other information.</font>', custom_style))
+    elements.append(Spacer(1, 10))
+
+    # Define column headers and corresponding data fields
+    column_mapping = {
+        'supplier_id': 'Supplier ID',
+        'supplier_name': 'Supplier Name',
+        'email': 'Email',
+        'company': 'Company',
+        'phone_number': 'Phone Number',
+        'address': 'Address',
+        'city': 'City',
+        'state': 'State',
+        'zip_code': 'Zip Code',
+        'country': 'Country',
+        'details': 'Details'
+    }
+
+    # Filter column headers based on selected columns
+    headers = [column_mapping[col] for col in selected_columns if col in column_mapping]
+
+    # Table Data
+    data = [headers]
+
+    # Add supplier data to the table
+    if suppliers.exists():
+        for supplier in suppliers:
+            row = []
+            for col in selected_columns:
+                if hasattr(supplier, col):
+                    value = getattr(supplier, col)
+                    row.append(str(value))
+                else:
+                    row.append('')
+            data.append(row)
+    else:
+        # If no data is found, add a "No data found" row
+        data.append(["No data found for the selected filters."])
+
+    # Calculate column widths proportionally
+    total_width = A4[0] - 1.4 * inch  # Total available width (page width minus margins)
+    num_columns = len(headers)
+    column_widths = [total_width / num_columns] * num_columns
+
+    # Create table
+    table = Table(data, colWidths=column_widths)
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('WORDWRAP', (0, 0), (-1, -1)),  # Enable text wrapping
+    ]))
+
+    # Add Table to PDF
+    elements.append(table)
+
+    # Build PDF
+    doc.build(elements, onFirstPage=on_page, onLaterPages=on_page)
+
+    return response
+
+
+@require_GET
+def report_generate_supplier_pdf(request):
+    """
+    Generates a PDF report for suppliers based on filters and selected columns.
+    """
+    # Extract filters from the request
+    supplier_name = request.GET.get('supplier_name', '').strip()
+    company_name = request.GET.get('company_name', '').strip()
+    start_date = request.GET.get('from_date', '').strip()
+    end_date = request.GET.get('to_date', '').strip()
+    selected_columns = request.GET.get('columns', '').strip().split(',')
+
+    # Fetch all suppliers
+    suppliers = Supplier.objects.all()
+
+    # Filter by Supplier Name
+    if supplier_name:
+        if supplier_name.isdigit():  # If supplier_name is an ID
+            suppliers = suppliers.filter(supplier_id=int(supplier_name))
+        else:
+            suppliers = suppliers.filter(supplier_name__icontains=supplier_name)
+
+    # Filter by Company Name
+    if company_name:
+        suppliers = suppliers.filter(company__company_name__icontains=company_name)
+
+    # Filter by Date Range (if applicable)
+    if start_date and end_date:
+        start_date = parse_date(start_date)  # Convert to date object
+        end_date = parse_date(end_date)      # Convert to date object
+        if start_date and end_date:
+            suppliers = suppliers.filter(created_on__gte=start_date, created_on__lte=end_date)
+
+    # Create response object for PDF
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="supplier_details.pdf"'
+
+    # Define PDF Document
+    doc = SimpleDocTemplate(
+        response,
+        pagesize=A4,
+        leftMargin=0.7 * inch,
+        rightMargin=0.7 * inch,
+        topMargin=1.5 * inch,
+        bottomMargin=1.5 * inch
+    )
+
+    elements = []
+    styles = getSampleStyleSheet()
+
+    # Custom Style
+    custom_style = ParagraphStyle(
+        'custom_style',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=11,
+        leading=14,
+        spaceAfter=8
+    )
+
+    # Header Image Path
+    header_path = os.path.join(settings.STATIC_ROOT, "assets/images/pdf/report_header.png")
+
+    # Get Current Date
+    report_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Header function
+    def on_page(canvas, doc):
+        width, height = A4
+        if os.path.exists(header_path):
+            header_img = Image(header_path, width=width, height=1.5 * inch)
+            header_img.drawOn(canvas, 0, height - 1.5 * inch)
+        canvas.setFont("Helvetica", 9)
+        canvas.drawRightString(width - 0.8 * inch, height - 1.7 * inch, f"Generated On: {report_date}")
+
+    # Define Page Template
+    frame = Frame(
+        x1=0.7 * inch,
+        y1=1.5 * inch,
+        width=A4[0] - 1.4 * inch,
+        height=A4[1] - 3 * inch,
+        id='normal'
+    )
+    template = PageTemplate(id='custom', frames=frame, onPage=on_page)
+    doc.addPageTemplates([template])
+
+    # Report Title
+    elements.append(Spacer(1, 45))
+    elements.append(Paragraph('<para align="center"><b><font size=16>SUPPLIER DETAILS REPORT</font></b></para>', styles["Normal"]))
+    elements.append(Spacer(1, 30))
+
+    # Report Description
+    elements.append(Paragraph('<font size=11>This report contains supplier details including their name, email, company, and other information.</font>', custom_style))
+    elements.append(Spacer(1, 10))
+
+    # Define column headers and corresponding data fields
+    column_mapping = {
+        'supplier_id': 'Supplier ID',
+        'supplier_name': 'Supplier Name',
+        'email': 'Email',
+        'company': 'Company',
+        'phone_number': 'Phone Number',
+        'address': 'Address',
+        'city': 'City',
+        'state': 'State',
+        'zip_code': 'Zip Code',
+        'country': 'Country',
+        'details': 'Details',
+        'created_on': 'Created On'  # Add "Created On" to the column mapping
+    }
+
+    # Filter column headers based on selected columns
+    headers = [column_mapping[col] for col in selected_columns if col in column_mapping]
+
+    # Table Data
+    data = [headers]
+
+    # Add supplier data to the table
+    if suppliers.exists():
+        for supplier in suppliers:
+            row = []
+            for col in selected_columns:
+                if hasattr(supplier, col):
+                    value = getattr(supplier, col)
+                    if col == 'created_on':  # Format the "created_on" field
+                        value = value.strftime("%Y-%m-%d %H:%M:%S")
+                    row.append(str(value))
+                else:
+                    row.append('')
+            data.append(row)
+    else:
+        # If no data is found, add a "No data found" row
+        data.append(["No data found for the selected filters."])
+
+    # Calculate column widths proportionally
+    total_width = A4[0] - 1.4 * inch  # Total available width (page width minus margins)
+    num_columns = len(headers)
+    column_widths = [total_width / num_columns] * num_columns
+
+    # Create table
+    table = Table(data, colWidths=column_widths)
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('WORDWRAP', (0, 0), (-1, -1)),  # Enable text wrapping
+    ]))
+
+    # Add Table to PDF
+    elements.append(table)
+
+    # Build PDF
+    doc.build(elements, onFirstPage=on_page, onLaterPages=on_page)
+
+    return response
+
+
+
+@require_GET
+def get_products_filter(request):
+    """
+    Returns a JSON response containing a list of products for filtering.
+    """
+    try:
+        # Fetch all products from the database
+        products = Product.objects.all().values('product_id', 'product_name')
+        
+        # Convert the queryset to a list of dictionaries
+        products_list = list(products)
+        
+        # Return the JSON response
+        return JsonResponse({
+            'products': products_list,
+            'status': 'success',
+            'message': 'Products fetched successfully.'
+        }, status=200)
+    
+    except Exception as e:
+        # Handle any exceptions and return an error response
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+        
+        
+@require_GET
+def get_categories_filter(request):
+    """
+    Returns a JSON response containing a list of categories for filtering.
+    """
+    try:
+        # Fetch all categories from the database
+        categories = Category.objects.all().values('category_id', 'category_name')
+        
+        # Convert the queryset to a list of dictionaries
+        categories_list = list(categories)
+        
+        # Return the JSON response
+        return JsonResponse({
+            'categories': categories_list,
+            'status': 'success',
+            'message': 'Categories fetched successfully.'
+        }, status=200)
+    
+    except Exception as e:
+        # Handle any exceptions and return an error response
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+        
+        
+def get_subcategories_filter(request):
+    """
+    Returns a JSON response containing a list of subcategories for a given category.
+    """
+    try:
+        category_id = request.GET.get('category_id')
+        if not category_id:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Category ID is required.'
+            }, status=400)
+        
+        # Fetch subcategories for the given category
+        subcategories = SubCategory.objects.filter(category_id=category_id).values('subcategory_id', 'subcategory_name')
+        
+        # Convert the queryset to a list of dictionaries
+        subcategories_list = list(subcategories)
+        
+        # Return the JSON response
+        return JsonResponse({
+            'subcategories': subcategories_list,
+            'status': 'success',
+            'message': 'Subcategories fetched successfully.'
+        }, status=200)
+    
+    except Exception as e:
+        # Handle any exceptions and return an error response
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+@require_GET
+def report_generate_product_csv(request):
+    """
+    Generates a CSV report for products based on filters and selected columns.
+    """
+    # Extract filters from the request
+    product_name = request.GET.get('product_name', '').strip()
+    category = request.GET.get('category', '').strip()
+    subcategory = request.GET.get('subcategory', '').strip()
+    start_date = request.GET.get('from_date', '').strip()
+    end_date = request.GET.get('to_date', '').strip()
+    selected_columns = request.GET.get('columns', '').split(',')
+
+    print(f"Filters received: Product Name: {product_name}, Category: {category}, Subcategory: {subcategory}, Dates: {start_date} - {end_date}")
+
+    # Fetch all products
+    products = Product.objects.all()
+
+    # Filter by Product Name
+    if product_name:
+        if product_name.isdigit():  # If product_name is an ID
+            products = products.filter(product_id=int(product_name))
+        else:
+            products = products.filter(product_name__icontains=product_name)
+
+    # Filter by Category
+    if category:
+        products = products.filter(category_id=int(category))
+
+    # Filter by Subcategory
+    if subcategory:
+        products = products.filter(subcategory_id=int(subcategory))
+
+    # Filter by Date Range (if applicable)
+    if start_date and end_date:
+        start_date = parse_date(start_date)  # Convert to date object
+        end_date = parse_date(end_date)      # Convert to date object
+        if start_date and end_date:
+            products = products.filter(created_on__gte=start_date, created_on__lte=end_date)
+
+    print(f"Filtered products count: {products.count()}")
+
+    if not products.exists():
+        print("No data found after filtering.")
+        return HttpResponse("No data found", content_type="text/plain")
+
+    # Generate CSV
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="products.csv"'
+    writer = csv.writer(response)
+
+    # Define default columns if none are selected
+    if not selected_columns or selected_columns == ['']:
+        selected_columns = [
+            "product_id", "product_code", "product_name", "category", "subcategory", "date_of_entry",
+            "product_size_length", "product_size_breadth", "product_size_height", "product_weight",
+            "manufacture_name", "description", "vendor", "barcode", "purchase_date", "purchase_amount", "created_on"
+        ]
+
+    # Write headers
+    writer.writerow(selected_columns)
+
+    # Write data rows
+    for product in products:
+        row = []
+        for col in selected_columns:
+            if hasattr(product, col):
+                value = getattr(product, col)
+                if isinstance(value, (datetime, date)):  # Handle date/datetime fields
+                    value = value.strftime('%Y-%m-%d %H:%M:%S') if isinstance(value, datetime) else value.strftime('%Y-%m-%d')
+                row.append(str(value))
+            else:
+                row.append('')
+        writer.writerow(row)
+
+    return response
+
+
+@require_GET
+def report_generate_product_excel(request):
+    """
+    Generates an Excel report for products based on filters and selected columns.
+    """
+    # Extract filters from the request
+    product_name = request.GET.get('product_name', '').strip()
+    category = request.GET.get('category', '').strip()
+    subcategory = request.GET.get('subcategory', '').strip()
+    start_date = request.GET.get('from_date', '').strip()
+    end_date = request.GET.get('to_date', '').strip()
+    selected_columns = request.GET.get('columns', '').split(',')
+
+    print(f"Filters received: Product Name: {product_name}, Category: {category}, Subcategory: {subcategory}, Dates: {start_date} - {end_date}")
+
+    # Fetch all products
+    products = Product.objects.all()
+
+    # Filter by Product Name
+    if product_name:
+        if product_name.isdigit():  # If product_name is an ID
+            products = products.filter(product_id=int(product_name))
+        else:
+            products = products.filter(product_name__icontains=product_name)
+
+    # Filter by Category
+    if category:
+        products = products.filter(category_id=int(category))
+
+    # Filter by Subcategory
+    if subcategory:
+        products = products.filter(subcategory_id=int(subcategory))
+
+    # Filter by Date Range (if applicable)
+    if start_date and end_date:
+        start_date = parse_date(start_date)  # Convert to date object
+        end_date = parse_date(end_date)      # Convert to date object
+        if start_date and end_date:
+            products = products.filter(created_on__gte=start_date, created_on__lte=end_date)
+
+    print(f"Filtered products count: {products.count()}")
+
+    if not products.exists():
+        print("No data found after filtering.")
+        return HttpResponse("No data found", content_type="text/plain")
+
+    # Define column mappings
+    column_map = {
+        "product_id": "Product ID",
+        "product_code": "Product Code",
+        "product_name": "Product Name",
+        "category": "Category",
+        "subcategory": "Subcategory",
+        "date_of_entry": "Date of Entry",
+        "product_size_length": "Size (Length)",
+        "product_size_breadth": "Size (Breadth)",
+        "product_size_height": "Size (Height)",
+        "product_weight": "Weight",
+        "manufacture_name": "Manufacture Name",
+        "description": "Description",
+        "vendor": "Vendor",
+        "barcode": "Barcode",
+        "purchase_date": "Purchase Date",
+        "purchase_amount": "Purchase Amount",
+        "created_on": "Created On"
+    }
+
+    # Validate selected columns
+    valid_columns = [col for col in selected_columns if col in column_map]
+    if not valid_columns:
+        print("No valid columns selected. Using default columns.")
+        valid_columns = [
+            "product_id", "product_code", "product_name", "category", "subcategory", "date_of_entry",
+            "product_size_length", "product_size_breadth", "product_size_height", "product_weight",
+            "manufacture_name", "description", "vendor", "barcode", "purchase_date", "purchase_amount", "created_on"
+        ]
+
+    print(f"Valid columns: {valid_columns}")
+
+    # Create an Excel workbook and sheet
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Product Report"
+
+    # Set the header row
+    header_row = [column_map[col] for col in valid_columns]
+    ws.append(header_row)
+
+    # Populate data rows
+    for product in products:
+        row_data = []
+        for col in valid_columns:
+            if hasattr(product, col):
+                value = getattr(product, col)
+                if isinstance(value, (datetime, date)):  # Handle date/datetime fields
+                    value = value.strftime('%Y-%m-%d %H:%M:%S') if isinstance(value, datetime) else value.strftime('%Y-%m-%d')
+                row_data.append(str(value))
+            else:
+                row_data.append('')
+        ws.append(row_data)
+
+    # Prepare response
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="product_report.xlsx"'
+    wb.save(response)
+    
+    return response
+
+
+def report_generate_product_pdf(request):
+    """
+    Generates a PDF report for products based on filters and selected columns.
+    """
+    # Extract filters from the request
+    product_name = request.GET.get('product_name', '').strip()
+    category = request.GET.get('category', '').strip()
+    subcategory = request.GET.get('subcategory', '').strip()
+    start_date = request.GET.get('from_date', '').strip()
+    end_date = request.GET.get('to_date', '').strip()
+    selected_columns = request.GET.get('columns', '').strip().split(',')
+
+    # Fetch all products
+    products = Product.objects.all()
+
+    # Filter by Product Name
+    if product_name:
+        if product_name.isdigit():  # If product_name is an ID
+            products = products.filter(product_id=int(product_name))
+        else:
+            products = products.filter(product_name__icontains=product_name)
+
+    # Filter by Category
+    if category:
+        products = products.filter(category_id=int(category))
+
+    # Filter by Subcategory
+    if subcategory:
+        products = products.filter(subcategory_id=int(subcategory))
+
+    # Filter by Date Range (if applicable)
+    if start_date and end_date:
+        start_date = parse_date(start_date)  # Convert to date object
+        end_date = parse_date(end_date)      # Convert to date object
+        if start_date and end_date:
+            products = products.filter(created_on__gte=start_date, created_on__lte=end_date)
+
+    # Create response object for PDF
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="product_details.pdf"'
+
+    # Define PDF Document
+    doc = SimpleDocTemplate(
+        response,
+        pagesize=A4,
+        leftMargin=0.7 * inch,
+        rightMargin=0.7 * inch,
+        topMargin=1.5 * inch,
+        bottomMargin=1.5 * inch
+    )
+
+    elements = []
+    styles = getSampleStyleSheet()
+
+    # Custom Style
+    custom_style = ParagraphStyle(
+        'custom_style',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=11,
+        leading=14,
+        spaceAfter=8
+    )
+
+    # Header Image Path
+    header_path = os.path.join(settings.STATIC_ROOT, "assets/images/pdf/report_header.png")
+
+    # Get Current Date
+    report_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Header function
+    def on_page(canvas, doc):
+        width, height = A4
+        if os.path.exists(header_path):
+            header_img = Image(header_path, width=width, height=1.5 * inch)
+            header_img.drawOn(canvas, 0, height - 1.5 * inch)
+        canvas.setFont("Helvetica", 9)
+        canvas.drawRightString(width - 0.8 * inch, height - 1.7 * inch, f"Generated On: {report_date}")
+
+    # Define Page Template
+    frame = Frame(
+        x1=0.7 * inch,
+        y1=1.5 * inch,
+        width=A4[0] - 1.4 * inch,
+        height=A4[1] - 3 * inch,
+        id='normal'
+    )
+    template = PageTemplate(id='custom', frames=frame, onPage=on_page)
+    doc.addPageTemplates([template])
+
+    # Report Title
+    elements.append(Spacer(1, 45))
+    elements.append(Paragraph('<para align="center"><b><font size=16>PRODUCT DETAILS REPORT</font></b></para>', styles["Normal"]))
+    elements.append(Spacer(1, 30))
+
+    # Report Description
+    elements.append(Paragraph('<font size=11>This report contains product details including their name, category, subcategory, and other information.</font>', custom_style))
+    elements.append(Spacer(1, 10))
+
+    # Define column headers and corresponding data fields
+    column_mapping = {
+        'product_id': 'Product ID',
+        'product_code': 'Product Code',
+        'product_name': 'Product Name',
+        'category': 'Category',
+        'subcategory': 'Subcategory',
+        'date_of_entry': 'Date of Entry',
+        'product_size_length': 'Size (Length)',
+        'product_size_breadth': 'Size (Breadth)',
+        'product_size_height': 'Size (Height)',
+        'product_weight': 'Weight',
+        'manufacture_name': 'Manufacture Name',
+        'description': 'Description',
+        'vendor': 'Vendor',
+        'barcode': 'Barcode',
+        'purchase_date': 'Purchase Date',
+        'purchase_amount': 'Purchase Amount',
+        'created_on': 'Created On'
+    }
+
+    # Filter column headers based on selected columns
+    headers = [column_mapping[col] for col in selected_columns if col in column_mapping]
+
+    # Table Data
+    data = [headers]
+
+    # Add product data to the table
+    if products.exists():
+        for product in products:
+            row = []
+            for col in selected_columns:
+                if hasattr(product, col):
+                    value = getattr(product, col)
+                    if isinstance(value, (datetime, date)):  # Handle date/datetime fields
+                        value = value.strftime('%Y-%m-%d %H:%M:%S') if isinstance(value, datetime) else value.strftime('%Y-%m-%d')
+                    row.append(str(value))
+                else:
+                    row.append('')
+            data.append(row)
+    else:
+        # If no data is found, add a "No data found" row
+        data.append(["No data found for the selected filters."])
+
+    # Calculate column widths proportionally
+    total_width = A4[0] - 1.4 * inch  # Total available width (page width minus margins)
+    num_columns = len(headers)
+    column_widths = [total_width / num_columns] * num_columns
+
+    # Create table
+    table = Table(data, colWidths=column_widths)
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('WORDWRAP', (0, 0), (-1, -1)),  # Enable text wrapping
+    ]))
+
+    # Add Table to PDF
+    elements.append(table)
+
+    # Build PDF
+    doc.build(elements, onFirstPage=on_page, onLaterPages=on_page)
+
+    return response
+
+
+
+
+def user_profile_page(request):
+    return render(request, "users/user_profile.html")
+
+
+def get_user_data(request):
+    user = request.user  # Get the currently logged-in user
+
+    # Handle the case where the user might not have a profile
+    try:
+        profile = user.profile
+    except Profile.DoesNotExist:
+        profile = None
+
+    # Handle the case where the user might not have an address
+    try:
+        address = user.addresses
+    except UserAddress.DoesNotExist:
+        address = None
+
+    data = {
+        "username": user.username,
+        "email": user.email,
+        "bio": profile.bio if profile else "",
+        "name": profile.name if profile else "",
+        "mobile": profile.mobile_no if profile else "",
+        "company": profile.company if profile else "",
+        # Corrected to role_name
+        "role": profile.role.role_name if profile and profile.role else "",
+        "address1": address.address1 if address else "",
+        "address2": address.address2 if address else "",
+        "location": profile.location if profile else "",
+        "city": address.city if address else "",
+        "state": address.state if address else "",
+        "zip_code": address.zip_code if address else "",
+        "profile_picture_url": profile.profile_picture.url if profile and profile.profile_picture else "",
+    }
+    return JsonResponse(data)
+
+
+@csrf_exempt
+def update_user_profile(request, user_id):
+    if request.method == 'POST':
+        data = request.POST
+        files = request.FILES
+
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return JsonResponse({"status": "error", "message": "User not found"}, status=404)
+
+        # Handle profile update
+        try:
+            profile = user.profile
+        except Profile.DoesNotExist:
+            profile = Profile(user=user)
+
+        profile.bio = data.get('bio', profile.bio)
+        profile.name = data.get('name', profile.name)
+        profile.mobile_no = data.get('mobile', profile.mobile_no)
+        profile.company = data.get('company', profile.company)
+        profile.location = data.get('location', profile.location)
+
+        # Handle address update
+        try:
+            address = user.addresses
+        except UserAddress.DoesNotExist:
+            address = UserAddress(user=user)
+
+        address.address1 = data.get('address1', address.address1)
+        address.address2 = data.get('address2', address.address2)
+        address.city = data.get('city', address.city)
+        address.state = data.get('state', address.state)
+        address.zip_code = data.get('zip_code', address.zip_code)
+
+        # Handle profile picture upload
+        if 'profilePicture' in files:
+            profile_picture = files['profilePicture']
+            if profile_picture.size < 50 * 1024 or profile_picture.size > 400 * 1024:
+                return JsonResponse({"status": "error", "message": "File size must be between 50KB and 400KB."}, status=400)
+            if profile_picture.content_type not in ['image/jpeg', 'image/png']:
+                return JsonResponse({"status": "error", "message": "Invalid file format. Please upload a .jpg or .png image."}, status=400)
+            profile.profile_picture = profile_picture
+
+        # Save both profile and address
+        profile.save()
+        address.save()
+
+        # Return success response
+        return JsonResponse({"status": "success", "message": "Profile updated successfully"})
+    else:
+        return JsonResponse({"status": "error", "message": "Invalid request method"}, status=400)
+    
+    
+
+
+
+
+from django.shortcuts import render, redirect
+from django.core.files.storage import default_storage
+from django.http import JsonResponse
+from .models import Expense
+import uuid
+from decimal import Decimal 
+
+
+def save_expense(request):
+    # Generate a unique expense_id when the page is loaded
+    expense_id = uuid.uuid4()
+    print(f"Generated Expense ID: {expense_id}")
+    employees = Employee.objects.all()  # Fetch all employees
+
+    # Pass the expense_id to the template
+    context = {
+        'expense_id': expense_id,
+        'employees': employees,
+    }
+
+    if request.method == 'POST':
+        try:
+            # Extract form data
+            employee_name = request.POST.get('employee_name')  # Get the selected employee name
+            employee_code = request.POST.get('employee_code')
+            work_location = request.POST.get('work_location')
+            designation = request.POST.get('designation')
+            email = request.POST.get('email')
+            mobile_number = request.POST.get('mobile_number')
+
+            # Fetch the employee ID based on the selected employee name
+            try:
+                employee = Employee.objects.get(name=employee_name)
+                employee_id = employee.employee_id  # Get the employee_id from the Employee model
+            except Employee.DoesNotExist:
+                return JsonResponse({'success': False, 'error': 'Selected employee not found.'})
+
+            # Extract table data
+            sr_nos = request.POST.getlist('sr_no[]')
+            start_dates = request.POST.getlist('start_date[]')
+            end_dates = request.POST.getlist('end_date[]')
+            travel_modes = request.POST.getlist('travel_mode[]')
+            details_list = request.POST.getlist('details[]')
+            total_amounts_inr = request.POST.getlist('total_amount_inr[]')
+            total_amounts_fcy = request.POST.getlist('total_amount_foreign_currency[]')  # Updated to include all rows
+            currency_codes = request.POST.getlist('currency_code[]')  # Get currency codes from hidden input
+            attached_file_yes_nos = request.POST.getlist('attached_file_yes_no[]')
+            attached_files = request.FILES.getlist('attached_file[]')
+
+            # Debug: Print lengths of all lists
+            print(f"Number of rows: {len(sr_nos)}")
+            print(f"Start Dates: {len(start_dates)}")
+            print(f"End Dates: {len(end_dates)}")
+            print(f"Travel Modes: {len(travel_modes)}")
+            print(f"Details: {len(details_list)}")
+            print(f"Total Amounts (INR): {len(total_amounts_inr)}")
+            print(f"Total Amounts (FCY): {len(total_amounts_fcy)}")
+            print(f"Currency Codes: {len(currency_codes)}")
+            print(f"Attached File (Y/N): {len(attached_file_yes_nos)}")
+            print(f"Attached Files: {len(attached_files)}")
+
+            # Calculate the total of total_amount_inr across all rows
+            total_calculation = Decimal(0)  # Initialize total_calculation
+            for amount_inr in total_amounts_inr:
+                total_calculation += Decimal(amount_inr)  # Add each total_amount_inr to the total
+
+            # Save each row to the Expense model
+            for i in range(len(sr_nos)):
+                # Handle empty total_amount_foreign_currency and currency code
+                total_amount_fcy = total_amounts_fcy[i] if i < len(total_amounts_fcy) else None
+                currency_code = currency_codes[i] if i < len(currency_codes) else None
+
+                # Format total_amount_foreign_currency as "amount-(currencycode)" or "(currencycode)"
+                if total_amount_fcy and currency_code:
+                    total_amount_fcy_formatted = f"{total_amount_fcy}-({currency_code})"
+                elif currency_code:
+                    # If currency code is present but amount is empty, include only the currency code
+                    total_amount_fcy_formatted = f"({currency_code})"
+                else:
+                    total_amount_fcy_formatted = None  # Set to None if empty
+
+                # Handle attached file
+                attached_document = attached_file_yes_nos[i] == 'yes' if i < len(attached_file_yes_nos) else False
+                attached_file = attached_files[i] if i < len(attached_files) else None
+
+                # Create Expense object
+                expense = Expense(
+                    expense_id=expense_id,  # Use the same expense_id for all records in this submission
+                    from_date=start_dates[i],
+                    to_date=end_dates[i],
+                    sr_no=sr_nos[i],
+                    details=details_list[i],
+                    travel_modes=travel_modes[i],
+                    total_amount_inr=Decimal(total_amounts_inr[i]),  # Save total_amount_inr
+                    total_amount_foreign_currency=total_amount_fcy_formatted,  # Save formatted total_amount_foreign_currency
+                    total_calculation=total_calculation,  # Save the total of all total_amount_inr
+                    attached_document=attached_document,
+                    employee_id=employee_id,  # Use the fetched employee_id
+                    created_at=timezone.now(),  # Add created_at timestamp
+                )
+
+                # Save the attached file if it exists
+                if attached_file:
+                    file_name = default_storage.save(f'expense_documents/{attached_file.name}', attached_file)
+                    expense.attached_document_file = file_name
+
+                # Save the Expense object to the database
+                expense.save()
+
+            # Return success response
+            return JsonResponse({'success': True, 'expense_id': str(expense_id)})
+
+        except Exception as e:
+            # Return error response
+            return JsonResponse({'success': False, 'error': str(e)})
+
+    # Render the template with the expense_id for GET requests
+    return render(request, 'expense/add_expense.html', context)
+
+
+
+def get_employee_details(request):
+    if request.method == 'GET':
+        employee_name = request.GET.get('name')
+        print(f"Fetching details for employee: {employee_name}")  # Debugging
+        try:
+            employee = Employee.objects.get(name=employee_name)
+            return JsonResponse({
+                'success': True,
+                'employee_code': employee.employee_code,
+                'work_location': employee.work_location.name if employee.work_location else 'N/A',  # Use the correct field name
+                'designation': employee.designation,
+                'email': employee.email,
+                'mobile_number': employee.mobile_number,
+            })
+        except Employee.DoesNotExist:
+            print(f"Employee not found: {employee_name}")  # Debugging
+            return JsonResponse({'success': False, 'error': 'Employee not found.'})
+    return JsonResponse({'success': False, 'error': 'Invalid request method.'})
+
+
+

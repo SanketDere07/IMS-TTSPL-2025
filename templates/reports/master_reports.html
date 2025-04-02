@@ -83,7 +83,7 @@
    </div>
 </div>
 <div class="row">
-   <div class="col-lg-6">
+<div class="col-lg-6">
       <div class="card">
          <div class="card-header d-flex align-items-center">
             <h5 class="card-title mb-0 flex-grow-1">Employee Master</h5>
@@ -202,6 +202,682 @@
          </div>
       </div>
    </div>
+   <div class="col-lg-6">
+    <div class="card">
+       <div class="card-header d-flex align-items-center">
+          <h5 class="card-title mb-0 flex-grow-1">Location Master</h5>
+          <div>
+             <a class="btn btn-primary" href="location_list_page">Location List</a>
+          </div>
+       </div>
+       <div class="card-body">
+          <div class="accordion accordion-primary mb-3" id="filterAccordion">
+             <div class="accordion-item material-shadow">
+                <h2 class="accordion-header" id="flush-headingFilters">
+                   <button class="accordion-button collapsed d-flex align-items-center" type="button" data-bs-toggle="collapse"
+                      data-bs-target="#flush-collapseFilters-location" aria-expanded="false" aria-controls="flush-collapseFilters">
+                   <i class="ri-filter-3-line me-2"></i> Filters
+                   </button>
+                </h2>
+                <div id="flush-collapseFilters-location" class="accordion-collapse collapse" aria-labelledby="flush-headingFilters"
+                   data-bs-parent="#filterAccordion">
+                   <div class="accordion-body">
+                      <div class="row mb-3">
+                         <div class="col-md-6">
+                            <label for="from_date" class="form-label">From Date</label>
+                            <input type="date" class="form-control" id="from_date">
+                         </div>
+                         <div class="col-md-6">
+                            <label for="to_date" class="form-label">To Date</label>
+                            <input type="date" class="form-control" id="to_date">
+                         </div>
+                      </div>
+                      <div class="row mb-3">
+                         <!-- Location Name Filter -->
+                         <div class="col-md-6">
+                            <label class="form-label">Location Name</label>
+                            <select class="form-control select2" id="location-name-filter">
+                               <option value="" disabled selected>Select Location</option>
+                            </select>
+                         </div>
+ 
+                         <!-- Status Filter -->
+                         <div class="col-md-6">
+                            <label class="form-label">Status</label>
+                            <select class="form-control select2" id="status-filter">
+                               <option value="" disabled selected>Select Status</option>
+                               <option value="active">Active</option>
+                               <option value="inactive">Inactive</option>
+                            </select>
+                         </div>
+                      </div>
+                      <div class="container mt-4">
+                         <div class="row mb-3">
+                            <div class="col-md-12">
+                               <label class="form-label fw-bold">Select Columns</label>
+                               <div class="select-all-container">
+                                  <input type="checkbox" id="select-all-location-columns"> 
+                                  <label for="select-all-location-columns" style="margin-top:8px"><strong>Select All</strong></label>
+                               </div>
+                               <div id="location-column-selection" class="checkbox-grid">
+                                  <label class="checkbox-container">
+                                     Location ID <input type="checkbox" class="location-column-checkbox" value="id">
+                                  </label>
+                                  <label class="checkbox-container">
+                                     Name <input type="checkbox" class="location-column-checkbox" value="name">
+                                  </label>
+                                  <label class="checkbox-container">
+                                     Details <input type="checkbox" class="location-column-checkbox" value="details">
+                                  </label>
+                                  <label class="checkbox-container">
+                                     Shortcode <input type="checkbox" class="location-column-checkbox" value="shortcode">
+                                  </label>
+                                  <label class="checkbox-container">
+                                     Status <input type="checkbox" class="location-column-checkbox" value="status">
+                                  </label>
+                                  <label class="checkbox-container">
+                                     Created At <input type="checkbox" class="location-column-checkbox" value="created_at">
+                                  </label>
+                               </div>
+                            </div>
+                         </div>
+                      </div>
+                      <div class="row mb-3">
+                         <!-- Submit, Reset & Generate PDF Buttons -->
+                         <div class="col-md-6 d-flex align-items-end ">
+                            <button class="btn btn-warning me-2 w-50" id="reset-filters-location">Reset</button>
+                            <button class="btn btn-danger w-50 me-2" id="report-generate-location-pdf">
+                            PDF
+                            </button>
+                            <button class="btn btn-secondary w-50 me-2" id="report-generate-location-csv">CSV</button>
+                            <button class="btn btn-success w-50" id="report-generate-location-excel">Excel</button>
+                         </div>
+                      </div>
+                   </div>
+                </div>
+             </div>
+          </div>
+       </div>
+    </div>
+ </div>
+ <div class="col-lg-6">
+    <div class="card">
+        <div class="card-header d-flex align-items-center">
+            <h5 class="card-title mb-0 flex-grow-1">Company Master</h5>
+            <div>
+                <a class="btn btn-primary" href="company_list_page">Company List</a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="accordion accordion-primary mb-3" id="filterAccordion">
+                <div class="accordion-item material-shadow">
+                    <h2 class="accordion-header" id="flush-headingFilters">
+                        <button class="accordion-button collapsed d-flex align-items-center" type="button" data-bs-toggle="collapse"
+                            data-bs-target="#flush-collapseFilters-company" aria-expanded="false" aria-controls="flush-collapseFilters">
+                            <i class="ri-filter-3-line me-2"></i> Filters
+                        </button>
+                    </h2>
+                    <div id="flush-collapseFilters-company" class="accordion-collapse collapse" aria-labelledby="flush-headingFilters"
+                        data-bs-parent="#filterAccordion">
+                        <div class="accordion-body">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="from_date" class="form-label">From Date</label>
+                                    <input type="date" class="form-control" id="from_date">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="to_date" class="form-label">To Date</label>
+                                    <input type="date" class="form-control" id="to_date">
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <!-- Company Name Filter -->
+                                <div class="col-md-6">
+                                    <label class="form-label">Company Name</label>
+                                    <select class="form-control select2" id="company-name-filter">
+                                        <option value="" disabled selected>Select Company</option>
+                                    </select>
+                                </div>
+
+                                <!-- Location Filter -->
+                                <div class="col-md-6">
+                                    <label class="form-label">Location</label>
+                                    <select class="form-control select2" id="location-filter">
+                                        <option value="" disabled selected>Select Location</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="container mt-4">
+                                <div class="row mb-3">
+                                    <div class="col-md-12">
+                                        <label class="form-label fw-bold">Select Columns</label>
+                                        <div class="select-all-container">
+                                            <input type="checkbox" id="select-all-company-columns"> 
+                                            <label for="select-all-company-columns" style="margin-top:8px"><strong>Select All</strong></label>
+                                        </div>
+                                        <div id="company-column-selection" class="checkbox-grid">
+                                            <label class="checkbox-container">
+                                                Company ID <input type="checkbox" class="company-column-checkbox" value="company_id">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                Name <input type="checkbox" class="company-column-checkbox" value="company_name">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                CIN Number <input type="checkbox" class="company-column-checkbox" value="CIN_number">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                GST Number <input type="checkbox" class="company-column-checkbox" value="GST_number">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                Location <input type="checkbox" class="company-column-checkbox" value="location">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                Address <input type="checkbox" class="company-column-checkbox" value="address">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                Email <input type="checkbox" class="company-column-checkbox" value="email">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                Phone Number <input type="checkbox" class="company-column-checkbox" value="phone_number">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                Created On <input type="checkbox" class="company-column-checkbox" value="created_on">
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <!-- Submit, Reset & Generate PDF Buttons -->
+                                <div class="col-md-6 d-flex align-items-end ">
+                                    <button class="btn btn-warning me-2 w-50" id="reset-filters-company">Reset</button>
+                                    <button class="btn btn-danger w-50 me-2" id="report-generate-company-pdf">
+                                        PDF
+                                    </button>
+                                    <button class="btn btn-secondary w-50 me-2" id="report-generate-company-csv">CSV</button>
+                                    <button class="btn btn-success w-50" id="report-generate-company-excel">Excel</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="col-lg-6">
+    <div class="card">
+        <div class="card-header d-flex align-items-center">
+            <h5 class="card-title mb-0 flex-grow-1">Exhibition Master</h5>
+            <div>
+                <a class="btn btn-primary" href="exhibition_list_page">Exhibition List</a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="accordion accordion-primary mb-3" id="filterAccordion">
+                <div class="accordion-item material-shadow">
+                    <h2 class="accordion-header" id="flush-headingFilters">
+                        <button class="accordion-button collapsed d-flex align-items-center" type="button" data-bs-toggle="collapse"
+                            data-bs-target="#flush-collapseFilters-exhibition" aria-expanded="false" aria-controls="flush-collapseFilters">
+                            <i class="ri-filter-3-line me-2"></i> Filters
+                        </button>
+                    </h2>
+                    <div id="flush-collapseFilters-exhibition" class="accordion-collapse collapse" aria-labelledby="flush-headingFilters"
+                        data-bs-parent="#filterAccordion">
+                        <div class="accordion-body">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="from_date" class="form-label">From Date</label>
+                                    <input type="date" class="form-control" id="from_date">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="to_date" class="form-label">To Date</label>
+                                    <input type="date" class="form-control" id="to_date">
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <!-- Exhibition Name Filter -->
+                                <div class="col-md-6">
+                                    <label class="form-label">Exhibition Name</label>
+                                    <select class="form-control select2" id="exhibition-name-filter">
+                                        <option value="" disabled selected>Select Exhibition</option>
+                                    </select>
+                                </div>
+
+                                <!-- Location Filter -->
+                                <div class="col-md-6">
+                                    <label class="form-label">Location</label>
+                                    <select class="form-control select2" id="exhibition-location-filter">
+                                        <option value="" disabled selected>Select Location</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="container mt-4">
+                                <div class="row mb-3">
+                                    <div class="col-md-12">
+                                        <label class="form-label fw-bold">Select Columns</label>
+                                        <div class="select-all-container">
+                                            <input type="checkbox" id="select-all-exhibition-columns"> 
+                                            <label for="select-all-exhibition-columns" style="margin-top:8px"><strong>Select All</strong></label>
+                                        </div>
+                                        <div id="exhibition-column-selection" class="checkbox-grid">
+                                            <label class="checkbox-container">
+                                                Exhibition ID <input type="checkbox" class="exhibition-column-checkbox" value="exhibition_id">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                Name <input type="checkbox" class="exhibition-column-checkbox" value="exhibition_name">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                Location <input type="checkbox" class="exhibition-column-checkbox" value="location">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                Address <input type="checkbox" class="exhibition-column-checkbox" value="address">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                City <input type="checkbox" class="exhibition-column-checkbox" value="city">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                State <input type="checkbox" class="exhibition-column-checkbox" value="state">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                Pincode <input type="checkbox" class="exhibition-column-checkbox" value="pincode">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                Start Date <input type="checkbox" class="exhibition-column-checkbox" value="start_date">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                End Date <input type="checkbox" class="exhibition-column-checkbox" value="end_date">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                Details <input type="checkbox" class="exhibition-column-checkbox" value="details">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                Created On <input type="checkbox" class="exhibition-column-checkbox" value="created_on">
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <!-- Submit, Reset & Generate PDF Buttons -->
+                                <div class="col-md-6 d-flex align-items-end ">
+                                    <button class="btn btn-warning me-2 w-50" id="reset-filters-exhibition">Reset</button>
+                                    <button class="btn btn-danger w-50 me-2" id="report-generate-exhibition-pdf">
+                                        PDF
+                                    </button>
+                                    <button class="btn btn-secondary w-50 me-2" id="report-generate-exhibition-csv">CSV</button>
+                                    <button class="btn btn-success w-50" id="report-generate-exhibition-excel">Excel</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="col-lg-6">
+    <div class="card">
+        <div class="card-header d-flex align-items-center">
+            <h5 class="card-title mb-0 flex-grow-1">Customer Master</h5>
+            <div>
+                <a class="btn btn-primary" href="customer_list_page">Customer List</a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="accordion accordion-primary mb-3" id="filterAccordion">
+                <div class="accordion-item material-shadow">
+                    <h2 class="accordion-header" id="flush-headingFilters">
+                        <button class="accordion-button collapsed d-flex align-items-center" type="button" data-bs-toggle="collapse"
+                            data-bs-target="#flush-collapseFilters-customer" aria-expanded="false" aria-controls="flush-collapseFilters">
+                            <i class="ri-filter-3-line me-2"></i> Filters
+                        </button>
+                    </h2>
+                    <div id="flush-collapseFilters-customer" class="accordion-collapse collapse" aria-labelledby="flush-headingFilters"
+                        data-bs-parent="#filterAccordion">
+                        <div class="accordion-body">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="from_date" class="form-label">From Date</label>
+                                    <input type="date" class="form-control" id="from_date">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="to_date" class="form-label">To Date</label>
+                                    <input type="date" class="form-control" id="to_date">
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <!-- Customer Name Filter -->
+                                <div class="col-md-6">
+                                    <label class="form-label">Customer Name</label>
+                                    <select class="form-control select2" id="customer-name-filter">
+                                        <option value="" disabled selected>Select Customer</option>
+                                    </select>
+                                </div>
+
+                                <!-- Company Name Filter -->
+                                <div class="col-md-6">
+                                    <label class="form-label">Company Name</label>
+                                    <select class="form-control select2" id="customer-company-name-filter">
+                                        <option value="" disabled selected>Select Company</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="container mt-4">
+                                <div class="row mb-3">
+                                    <div class="col-md-12">
+                                        <label class="form-label fw-bold">Select Columns</label>
+                                        <div class="select-all-container">
+                                            <input type="checkbox" id="select-all-customer-columns"> 
+                                            <label for="select-all-customer-columns" style="margin-top:8px"><strong>Select All</strong></label>
+                                        </div>
+                                        <div id="customer-column-selection" class="checkbox-grid">
+                                            <label class="checkbox-container">
+                                                Customer ID <input type="checkbox" class="customer-column-checkbox" value="customer_id">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                Customer Name <input type="checkbox" class="customer-column-checkbox" value="customer_name">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                Email <input type="checkbox" class="customer-column-checkbox" value="email">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                Company <input type="checkbox" class="customer-column-checkbox" value="company">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                Phone Number <input type="checkbox" class="customer-column-checkbox" value="phone_number">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                Address <input type="checkbox" class="customer-column-checkbox" value="address">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                City <input type="checkbox" class="customer-column-checkbox" value="city">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                State <input type="checkbox" class="customer-column-checkbox" value="state">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                Zip Code <input type="checkbox" class="customer-column-checkbox" value="zip_code">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                Country <input type="checkbox" class="customer-column-checkbox" value="country">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                Details <input type="checkbox" class="customer-column-checkbox" value="details">
+                                            </label>
+                                            <!-- Add the "Created On" checkbox -->
+                                            <label class="checkbox-container">
+                                                Created On <input type="checkbox" class="customer-column-checkbox" value="created_on">
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <!-- Submit, Reset & Generate PDF Buttons -->
+                                <div class="col-md-6 d-flex align-items-end ">
+                                    <button class="btn btn-warning me-2 w-50" id="reset-filters-customer">Reset</button>
+                                    <button class="btn btn-danger w-50 me-2" id="report-generate-customer-pdf">
+                                        PDF
+                                    </button>
+                                    <button class="btn btn-secondary w-50 me-2" id="report-generate-customer-csv">CSV</button>
+                                    <button class="btn btn-success w-50" id="report-generate-customer-excel">Excel</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="col-lg-6">
+    <div class="card">
+        <div class="card-header d-flex align-items-center">
+            <h5 class="card-title mb-0 flex-grow-1">Supplier Master</h5>
+            <div>
+                <a class="btn btn-primary" href="supplier_list_page">Supplier List</a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="accordion accordion-primary mb-3" id="filterAccordion">
+                <div class="accordion-item material-shadow">
+                    <h2 class="accordion-header" id="flush-headingFilters">
+                        <button class="accordion-button collapsed d-flex align-items-center" type="button" data-bs-toggle="collapse"
+                            data-bs-target="#flush-collapseFilters-supplier" aria-expanded="false" aria-controls="flush-collapseFilters">
+                            <i class="ri-filter-3-line me-2"></i> Filters
+                        </button>
+                    </h2>
+                    <div id="flush-collapseFilters-supplier" class="accordion-collapse collapse" aria-labelledby="flush-headingFilters"
+                        data-bs-parent="#filterAccordion">
+                        <div class="accordion-body">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="from_date" class="form-label">From Date</label>
+                                    <input type="date" class="form-control" id="from_date">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="to_date" class="form-label">To Date</label>
+                                    <input type="date" class="form-control" id="to_date">
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <!-- Supplier Name Filter -->
+                                <div class="col-md-6">
+                                    <label class="form-label">Supplier Name</label>
+                                    <select class="form-control select2" id="supplier-name-filter">
+                                        <option value="" disabled selected>Select Supplier</option>
+                                    </select>
+                                </div>
+
+                                <!-- Company Name Filter -->
+                                <div class="col-md-6">
+                                    <label class="form-label">Company Name</label>
+                                    <select class="form-control select2" id="supplier-company-name-filter">
+                                        <option value="" disabled selected>Select Company</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="container mt-4">
+                                <div class="row mb-3">
+                                    <div class="col-md-12">
+                                        <label class="form-label fw-bold">Select Columns</label>
+                                        <div class="select-all-container">
+                                            <input type="checkbox" id="select-all-supplier-columns"> 
+                                            <label for="select-all-supplier-columns" style="margin-top:8px"><strong>Select All</strong></label>
+                                        </div>
+                                        <div id="supplier-column-selection" class="checkbox-grid">
+                                            <label class="checkbox-container">
+                                                Supplier ID <input type="checkbox" class="supplier-column-checkbox" value="supplier_id">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                Supplier Name <input type="checkbox" class="supplier-column-checkbox" value="supplier_name">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                Email <input type="checkbox" class="supplier-column-checkbox" value="email">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                Company <input type="checkbox" class="supplier-column-checkbox" value="company">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                Phone Number <input type="checkbox" class="supplier-column-checkbox" value="phone_number">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                Address <input type="checkbox" class="supplier-column-checkbox" value="address">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                City <input type="checkbox" class="supplier-column-checkbox" value="city">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                State <input type="checkbox" class="supplier-column-checkbox" value="state">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                Zip Code <input type="checkbox" class="supplier-column-checkbox" value="zip_code">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                Country <input type="checkbox" class="supplier-column-checkbox" value="country">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                Details <input type="checkbox" class="supplier-column-checkbox" value="details">
+                                            </label>
+                                            <!-- Add the "Created On" checkbox -->
+                                            <label class="checkbox-container">
+                                                Created On <input type="checkbox" class="supplier-column-checkbox" value="created_on">
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <!-- Submit, Reset & Generate PDF Buttons -->
+                                <div class="col-md-6 d-flex align-items-end ">
+                                    <button class="btn btn-warning me-2 w-50" id="reset-filters-supplier">Reset</button>
+                                    <button class="btn btn-danger w-50 me-2" id="report-generate-supplier-pdf">
+                                        PDF
+                                    </button>
+                                    <button class="btn btn-secondary w-50 me-2" id="report-generate-supplier-csv">CSV</button>
+                                    <button class="btn btn-success w-50" id="report-generate-supplier-excel">Excel</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="col-lg-6">
+    <div class="card">
+        <div class="card-header d-flex align-items-center">
+            <h5 class="card-title mb-0 flex-grow-1">Product Master</h5>
+            <div>
+                <a class="btn btn-primary" href="product_list_page">Product List</a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="accordion accordion-primary mb-3" id="filterAccordion">
+                <div class="accordion-item material-shadow">
+                    <h2 class="accordion-header" id="flush-headingFilters">
+                        <button class="accordion-button collapsed d-flex align-items-center" type="button" data-bs-toggle="collapse"
+                            data-bs-target="#flush-collapseFilters-product" aria-expanded="false" aria-controls="flush-collapseFilters">
+                            <i class="ri-filter-3-line me-2"></i> Filters
+                        </button>
+                    </h2>
+                    <div id="flush-collapseFilters-product" class="accordion-collapse collapse" aria-labelledby="flush-headingFilters"
+                        data-bs-parent="#filterAccordion">
+                        <div class="accordion-body">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="from_date" class="form-label">From Date</label>
+                                    <input type="date" class="form-control" id="from_date">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="to_date" class="form-label">To Date</label>
+                                    <input type="date" class="form-control" id="to_date">
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <!-- Product Name Filter -->
+                                <div class="col-md-6">
+                                    <label class="form-label">Product Name</label>
+                                    <select class="form-control select2" id="product-name-filter">
+                                        <option value="" disabled selected>Select Product</option>
+                                    </select>
+                                </div>
+
+                                <!-- Category Filter -->
+                                <div class="col-md-6">
+                                    <label class="form-label">Category</label>
+                                    <select class="form-control select2" id="category-filter">
+                                        <option value="" disabled selected>Select Category</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <!-- Subcategory Filter -->
+                                <div class="col-md-6">
+                                    <label class="form-label">Subcategory</label>
+                                    <select class="form-control select2" id="subcategory-filter">
+                                        <option value="" disabled selected>Select Subcategory</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="container mt-4">
+                                <div class="row mb-3">
+                                    <div class="col-md-12">
+                                        <label class="form-label fw-bold">Select Columns</label>
+                                        <div class="select-all-container">
+                                            <input type="checkbox" id="select-all-product-columns"> 
+                                            <label for="select-all-product-columns" style="margin-top:8px"><strong>Select All</strong></label>
+                                        </div>
+                                        <div id="product-column-selection" class="checkbox-grid">
+                                            <label class="checkbox-container">
+                                                Product ID <input type="checkbox" class="product-column-checkbox" value="product_id">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                Product Code <input type="checkbox" class="product-column-checkbox" value="product_code">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                Product Name <input type="checkbox" class="product-column-checkbox" value="product_name">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                Category <input type="checkbox" class="product-column-checkbox" value="category">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                Subcategory <input type="checkbox" class="product-column-checkbox" value="subcategory">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                Date of Entry <input type="checkbox" class="product-column-checkbox" value="date_of_entry">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                Size (L x B x H) <input type="checkbox" class="product-column-checkbox" value="product_size">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                Weight <input type="checkbox" class="product-column-checkbox" value="product_weight">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                Manufacture Name <input type="checkbox" class="product-column-checkbox" value="manufacture_name">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                Description <input type="checkbox" class="product-column-checkbox" value="description">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                Vendor <input type="checkbox" class="product-column-checkbox" value="vendor">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                Barcode <input type="checkbox" class="product-column-checkbox" value="barcode">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                Purchase Date <input type="checkbox" class="product-column-checkbox" value="purchase_date">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                Purchase Amount <input type="checkbox" class="product-column-checkbox" value="purchase_amount">
+                                            </label>
+                                            <label class="checkbox-container">
+                                                Created On <input type="checkbox" class="product-column-checkbox" value="created_on">
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <!-- Submit, Reset & Generate PDF Buttons -->
+                                <div class="col-md-6 d-flex align-items-end ">
+                                    <button class="btn btn-warning me-2 w-50" id="reset-filters-product">Reset</button>
+                                    <button class="btn btn-danger w-50 me-2" id="report-generate-product-pdf">
+                                        PDF
+                                    </button>
+                                    <button class="btn btn-secondary w-50 me-2" id="report-generate-product-csv">CSV</button>
+                                    <button class="btn btn-success w-50" id="report-generate-product-excel">Excel</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 </div>
 <script>
     $(document).ready(function () {
@@ -375,6 +1051,790 @@
         window.location.href = `/generate-employee-excel/?` + $.param(filters);
     });
    
+</script>
+<script>
+    $(document).ready(function () {
+        // Function to load Location Names
+        function loadLocations() {
+            $.getJSON("{% url 'get_locations_filter' %}", function (data) {
+                $('#location-name-filter').empty()
+                    .append('<option value="" disabled selected>Select Location</option>'); // Keep default option disabled
+        
+                $.each(data.locations, function (index, item) {  
+                    $('#location-name-filter').append(`<option value="${item.id}">${item.name} (${item.shortcode})</option>`);
+                });
+        
+                // Reinitialize Select2 after populating the dropdown
+                $('#location-name-filter').select2();
+            });
+        }
+        
+        // Reset Filters
+        $('#reset-filters-location').click(function () {
+            // Reset dropdowns to default
+            $('#location-name-filter, #status-filter').val(null).trigger('change');
+        
+            // Reset date inputs
+            $('#from_date, #to_date').val('');
+        
+            // Uncheck all checkboxes
+            $('.location-column-checkbox, #select-all-location-columns').prop('checked', false);
+        });
+        
+        // Load Data
+        loadLocations();
+        
+        // Location Master: Select All Checkbox Logic
+        const selectAllLocationCheckbox = document.getElementById("select-all-location-columns");
+        const locationColumnCheckboxes = document.querySelectorAll(".location-column-checkbox");
+        
+        // Function to check/uncheck all location checkboxes
+        selectAllLocationCheckbox.addEventListener("change", function () {
+            locationColumnCheckboxes.forEach(checkbox => {
+                checkbox.checked = selectAllLocationCheckbox.checked;
+            });
+        });
+        
+        // Function to update "Select All" state when any location checkbox is clicked
+        locationColumnCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener("change", function () {
+                const allChecked = [...locationColumnCheckboxes].every(checkbox => checkbox.checked);
+                selectAllLocationCheckbox.checked = allChecked;
+            });
+        });
+        
+        // Generate PDF with selected columns
+        $('#report-generate-location-pdf').click(function () {
+            let filters = {
+                location_name: $('#location-name-filter').val(),
+                status: $('#status-filter').val(),
+                from_date: $('#from_date').val(),  // Get From Date
+                to_date: $('#to_date').val(),      // Get To Date
+                columns: []  // Array to store selected columns
+            };
+        
+            // Get selected columns
+            $('.location-column-checkbox:checked').each(function () {
+                filters.columns.push($(this).val());
+            });
+        
+            // Convert columns array to a comma-separated string
+            filters.columns = filters.columns.join(',');
+        
+            // Redirect to PDF generation URL with filters
+            window.location.href = `/report-generate-location-pdf/?` + $.param(filters);
+        });
+        
+        // Generate CSV with selected columns
+        $('#report-generate-location-csv').click(function () {
+            let filters = {
+                location_name: $('#location-name-filter').val(),
+                status: $('#status-filter').val(),
+                from_date: $('#from_date').val(),
+                to_date: $('#to_date').val(),
+                columns: []  // Array to store selected columns
+            };
+        
+            // Get selected columns
+            $('.location-column-checkbox:checked').each(function () {
+                filters.columns.push($(this).val());
+            });
+        
+            // Redirect to CSV generation URL with filters
+            window.location.href = `/report-generate-location-csv/?` + $.param(filters);
+        });
+        
+        $('#report-generate-location-excel').click(function () {
+            let filters = {
+                location_name: $('#location-name-filter').val(),
+                status: $('#status-filter').val(),
+                from_date: $('#from_date').val(),
+                to_date: $('#to_date').val(),
+                columns: []  // Array to store selected columns
+            };
+        
+            // Get selected columns
+            $('.location-column-checkbox:checked').each(function () {
+                filters.columns.push($(this).val());
+            });
+        
+            // Redirect to Excel generation URL with filters
+            window.location.href = `/report-generate-location-excel/?` + $.param(filters);
+        });
+    });
+</script>
+<script>
+    $(document).ready(function () {
+        // Function to load Company Names
+        function loadCompanies() {
+            $.getJSON("{% url 'get_companies_filter' %}", function (data) {
+                $('#company-name-filter').empty()
+                    .append('<option value="" disabled selected>Select Company</option>'); // Keep default option disabled
+        
+                $.each(data.companies, function (index, item) {  
+                    $('#company-name-filter').append(`<option value="${item.company_id}">${item.company_name}</option>`);
+                });
+        
+                // Reinitialize Select2 after populating the dropdown
+                $('#company-name-filter').select2();
+            });
+        }
+
+        // Function to load Locations
+        function loadLocations() {
+            $.getJSON("{% url 'get_locations_filter' %}", function (data) {
+                $('#location-filter').empty()
+                    .append('<option value="" disabled selected>Select Location</option>'); // Keep default option disabled
+        
+                $.each(data.locations, function (index, item) {  
+                    $('#location-filter').append(`<option value="${item.id}">${item.name} (${item.shortcode})</option>`);
+                });
+        
+                // Reinitialize Select2 after populating the dropdown
+                $('#location-filter').select2();
+            });
+        }
+        
+        // Reset Filters
+        $('#reset-filters-company').click(function () {
+            // Reset dropdowns to default
+            $('#company-name-filter, #location-filter').val(null).trigger('change');
+        
+            // Reset date inputs
+            $('#from_date, #to_date').val('');
+        
+            // Uncheck all checkboxes
+            $('.company-column-checkbox, #select-all-company-columns').prop('checked', false);
+        });
+        
+        // Load Data
+        loadCompanies();
+        loadLocations();
+        
+        // Company Master: Select All Checkbox Logic
+        const selectAllCompanyCheckbox = document.getElementById("select-all-company-columns");
+        const companyColumnCheckboxes = document.querySelectorAll(".company-column-checkbox");
+        
+        // Function to check/uncheck all company checkboxes
+        selectAllCompanyCheckbox.addEventListener("change", function () {
+            companyColumnCheckboxes.forEach(checkbox => {
+                checkbox.checked = selectAllCompanyCheckbox.checked;
+            });
+        });
+        
+        // Function to update "Select All" state when any company checkbox is clicked
+        companyColumnCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener("change", function () {
+                const allChecked = [...companyColumnCheckboxes].every(checkbox => checkbox.checked);
+                selectAllCompanyCheckbox.checked = allChecked;
+            });
+        });
+        
+        // Generate PDF with selected columns
+        $('#report-generate-company-pdf').click(function () {
+            let filters = {
+                company_name: $('#company-name-filter').val(),
+                location: $('#location-filter').val(),
+                from_date: $('#from_date').val(),  // Get From Date
+                to_date: $('#to_date').val(),      // Get To Date
+                columns: []  // Array to store selected columns
+            };
+        
+            // Get selected columns
+            $('.company-column-checkbox:checked').each(function () {
+                filters.columns.push($(this).val());
+            });
+        
+            // Convert columns array to a comma-separated string
+            filters.columns = filters.columns.join(',');
+        
+            // Redirect to PDF generation URL with filters
+            window.location.href = `/report-generate-company-pdf/?` + $.param(filters);
+        });
+        
+        // Generate CSV with selected columns
+        $('#report-generate-company-csv').click(function () {
+            let filters = {
+                company_name: $('#company-name-filter').val(),
+                location: $('#location-filter').val(),
+                from_date: $('#from_date').val(),
+                to_date: $('#to_date').val(),
+                columns: []  // Array to store selected columns
+            };
+        
+            // Get selected columns
+            $('.company-column-checkbox:checked').each(function () {
+                filters.columns.push($(this).val());
+            });
+        
+            // Redirect to CSV generation URL with filters
+            window.location.href = `/report-generate-company-csv/?` + $.param(filters);
+        });
+        
+        // Generate Excel with selected columns
+        $('#report-generate-company-excel').click(function () {
+            let filters = {
+                company_name: $('#company-name-filter').val(),
+                location: $('#location-filter').val(),
+                from_date: $('#from_date').val(),
+                to_date: $('#to_date').val(),
+                columns: []  // Array to store selected columns
+            };
+        
+            // Get selected columns
+            $('.company-column-checkbox:checked').each(function () {
+                filters.columns.push($(this).val());
+            });
+        
+            // Redirect to Excel generation URL with filters
+            window.location.href = `/report-generate-company-excel/?` + $.param(filters);
+        });
+    });
+</script>
+<script>
+    $(document).ready(function () {
+        // Function to load Exhibition Names
+        function loadExhibitions() {
+            $.getJSON("{% url 'get_exhibitions_filter' %}", function (data) {
+                $('#exhibition-name-filter').empty()
+                    .append('<option value="" disabled selected>Select Exhibition</option>'); // Keep default option disabled
+        
+                $.each(data.exhibitions, function (index, item) {  
+                    $('#exhibition-name-filter').append(`<option value="${item.exhibition_id}">${item.exhibition_name}</option>`);
+                });
+        
+                // Reinitialize Select2 after populating the dropdown
+                $('#exhibition-name-filter').select2();
+            });
+        }
+
+        function loadLocations() {
+            $.getJSON("{% url 'get_locations_exhibition_filter' %}", function (data) {
+                console.log("Data received from backend:", data); // Debug: Log the data
+        
+                $('#exhibition-location-filter').empty()
+                    .append('<option value="" disabled selected>Select Location</option>'); // Keep default option disabled
+        
+                // Check if data.locations exists and is an array
+                if (data.locations && Array.isArray(data.locations)) {
+                    $.each(data.locations, function (index, item) {  
+                        console.log("Adding location:", item); // Debug: Log each location
+                        $('#exhibition-location-filter').append(`<option value="${item.id}">${item.name}</option>`);
+                    });
+                } else {
+                    console.error("Invalid data format: locations array not found in response.");
+                }
+        
+                // Reinitialize Select2 after populating the dropdown
+                $('#exhibition-location-filter').select2();
+            }).fail(function (jqXHR, textStatus, errorThrown) {
+                console.error("AJAX request failed:", textStatus, errorThrown); // Debug: Log AJAX errors
+            });
+        }
+        
+        // Reset Filters
+        $('#reset-filters-exhibition').click(function () {
+            // Reset dropdowns to default
+            $('#exhibition-name-filter, #exhibition-location-filter').val(null).trigger('change');
+        
+            // Reset date inputs
+            $('#from_date, #to_date').val('');
+        
+            // Uncheck all checkboxes
+            $('.exhibition-column-checkbox, #select-all-exhibition-columns').prop('checked', false);
+        });
+        
+        // Load Data
+        loadExhibitions();
+        loadLocations();
+        
+        // Exhibition Master: Select All Checkbox Logic
+        const selectAllExhibitionCheckbox = document.getElementById("select-all-exhibition-columns");
+        const exhibitionColumnCheckboxes = document.querySelectorAll(".exhibition-column-checkbox");
+        
+        // Function to check/uncheck all exhibition checkboxes
+        selectAllExhibitionCheckbox.addEventListener("change", function () {
+            exhibitionColumnCheckboxes.forEach(checkbox => {
+                checkbox.checked = selectAllExhibitionCheckbox.checked;
+            });
+        });
+        
+        // Function to update "Select All" state when any exhibition checkbox is clicked
+        exhibitionColumnCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener("change", function () {
+                const allChecked = [...exhibitionColumnCheckboxes].every(checkbox => checkbox.checked);
+                selectAllExhibitionCheckbox.checked = allChecked;
+            });
+        });
+        
+        // Generate PDF with selected columns
+        $('#report-generate-exhibition-pdf').click(function () {
+            let filters = {
+                exhibition_name: $('#exhibition-name-filter').val(),
+                location: $('#exhibition-location-filter').val(),
+                from_date: $('#from_date').val(),  // Get From Date
+                to_date: $('#to_date').val(),      // Get To Date
+                columns: []  // Array to store selected columns
+            };
+        
+            // Get selected columns
+            $('.exhibition-column-checkbox:checked').each(function () {
+                filters.columns.push($(this).val());
+            });
+        
+            // Convert columns array to a comma-separated string
+            filters.columns = filters.columns.join(',');
+        
+            // Redirect to PDF generation URL with filters
+            window.location.href = `/report-generate-exhibition-pdf/?` + $.param(filters);
+        });
+        
+        // Generate CSV with selected columns
+        $('#report-generate-exhibition-csv').click(function () {
+            let filters = {
+                exhibition_name: $('#exhibition-name-filter').val(),
+                location: $('#exhibition-location-filter').val(),
+                from_date: $('#from_date').val(),
+                to_date: $('#to_date').val(),
+                columns: []  // Array to store selected columns
+            };
+        
+            // Get selected columns
+            $('.exhibition-column-checkbox:checked').each(function () {
+                filters.columns.push($(this).val());
+            });
+        
+            // Redirect to CSV generation URL with filters
+            window.location.href = `/report-generate-exhibition-csv/?` + $.param(filters);
+        });
+        
+        $('#report-generate-exhibition-excel').click(function () {
+            let filters = {
+                exhibition_name: $('#exhibition-name-filter').val(),
+                location: $('#exhibition-location-filter').val(),
+                from_date: $('#from_date').val(),
+                to_date: $('#to_date').val(),
+                columns: []  // Array to store selected columns
+            };
+        
+            // Get selected columns
+            $('.exhibition-column-checkbox:checked').each(function () {
+                filters.columns.push($(this).val());
+            });
+        
+            // Redirect to Excel generation URL with filters
+            window.location.href = `/report-generate-exhibition-excel/?` + $.param(filters);
+        });
+    });
+</script>
+<script>
+    $(document).ready(function () {
+        // Function to load Customer Names
+        function loadCustomers() {
+            $.getJSON("{% url 'get_customers_filter' %}", function (data) {
+                $('#customer-name-filter').empty()
+                    .append('<option value="" disabled selected>Select Customer</option>'); // Keep default option disabled
+        
+                $.each(data.customers, function (index, item) {  
+                    $('#customer-name-filter').append(`<option value="${item.customer_id}">${item.customer_name}</option>`);
+                });
+        
+                // Reinitialize Select2 after populating the dropdown
+                $('#customer-name-filter').select2();
+            });
+        }
+
+        // Function to load Company Names
+        function loadCompanies() {
+            $.getJSON("{% url 'get_companies_filter' %}", function (data) {
+                $('#customer-company-name-filter').empty()
+                    .append('<option value="" disabled selected>Select Company</option>'); // Keep default option disabled
+        
+                $.each(data.companies, function (index, item) {  
+                    $('#customer-company-name-filter').append(`<option value="${item.company_id}">${item.company_name}</option>`);
+                });
+        
+                // Reinitialize Select2 after populating the dropdown
+                $('#customer-company-name-filter').select2();
+            });
+        }
+        
+        // Reset Filters
+        $('#reset-filters-customer').click(function () {
+            // Reset dropdowns to default
+            $('#customer-name-filter, #customer-company-name-filter').val(null).trigger('change');
+        
+            // Reset date inputs
+            $('#from_date, #to_date').val('');
+        
+            // Uncheck all checkboxes
+            $('.customer-column-checkbox, #select-all-customer-columns').prop('checked', false);
+        });
+        
+        // Load Data
+        loadCustomers();
+        loadCompanies();
+        
+        // Customer Master: Select All Checkbox Logic
+        const selectAllCustomerCheckbox = document.getElementById("select-all-customer-columns");
+        const customerColumnCheckboxes = document.querySelectorAll(".customer-column-checkbox");
+        
+        // Function to check/uncheck all customer checkboxes
+        selectAllCustomerCheckbox.addEventListener("change", function () {
+            customerColumnCheckboxes.forEach(checkbox => {
+                checkbox.checked = selectAllCustomerCheckbox.checked;
+            });
+        });
+        
+        // Function to update "Select All" state when any customer checkbox is clicked
+        customerColumnCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener("change", function () {
+                const allChecked = [...customerColumnCheckboxes].every(checkbox => checkbox.checked);
+                selectAllCustomerCheckbox.checked = allChecked;
+            });
+        });
+        
+        // Generate PDF with selected columns
+        $('#report-generate-customer-pdf').click(function () {
+            let filters = {
+                customer_name: $('#customer-name-filter').val(),
+                company_name: $('#customer-company-name-filter').val(),
+                from_date: $('#from_date').val(),  // Get From Date
+                to_date: $('#to_date').val(),      // Get To Date
+                columns: []  // Array to store selected columns
+            };
+        
+            // Get selected columns
+            $('.customer-column-checkbox:checked').each(function () {
+                filters.columns.push($(this).val());
+            });
+        
+            // Convert columns array to a comma-separated string
+            filters.columns = filters.columns.join(',');
+        
+            // Redirect to PDF generation URL with filters
+            window.location.href = `/report-generate-customer-pdf/?` + $.param(filters);
+        });
+        
+        // Generate CSV with selected columns
+        $('#report-generate-customer-csv').click(function () {
+            let filters = {
+                customer_name: $('#customer-name-filter').val(),
+                company_name: $('#customer-company-name-filter').val(),
+                from_date: $('#from_date').val(),
+                to_date: $('#to_date').val(),
+                columns: []  // Array to store selected columns
+            };
+        
+            // Get selected columns
+            $('.customer-column-checkbox:checked').each(function () {
+                filters.columns.push($(this).val());
+            });
+        
+            // Redirect to CSV generation URL with filters
+            window.location.href = `/report-generate-customer-csv/?` + $.param(filters);
+        });
+        
+        // Generate Excel with selected columns
+        $('#report-generate-customer-excel').click(function () {
+            let filters = {
+                customer_name: $('#customer-name-filter').val(),
+                company_name: $('#customer-company-name-filter').val(),
+                from_date: $('#from_date').val(),
+                to_date: $('#to_date').val(),
+                columns: []  // Array to store selected columns
+            };
+        
+            // Get selected columns
+            $('.customer-column-checkbox:checked').each(function () {
+                filters.columns.push($(this).val());
+            });
+        
+            // Redirect to Excel generation URL with filters
+            window.location.href = `/report-generate-customer-excel/?` + $.param(filters);
+        });
+    });
+</script>
+<script>
+    $(document).ready(function () {
+        // Function to load Supplier Names
+        function loadSuppliers() {
+            $.getJSON("{% url 'get_suppliers_filter' %}", function (data) {
+                $('#supplier-name-filter').empty()
+                    .append('<option value="" disabled selected>Select Supplier</option>'); // Keep default option disabled
+        
+                $.each(data.suppliers, function (index, item) {  
+                    $('#supplier-name-filter').append(`<option value="${item.supplier_id}">${item.supplier_name}</option>`);
+                });
+        
+                // Reinitialize Select2 after populating the dropdown
+                $('#supplier-name-filter').select2();
+            });
+        }
+
+        // Function to load Company Names
+        function loadCompanies() {
+            $.getJSON("{% url 'get_companies_filter' %}", function (data) {
+                $('#supplier-company-name-filter').empty()
+                    .append('<option value="" disabled selected>Select Company</option>'); // Keep default option disabled
+        
+                $.each(data.companies, function (index, item) {  
+                    $('#supplier-company-name-filter').append(`<option value="${item.company_id}">${item.company_name}</option>`);
+                });
+        
+                // Reinitialize Select2 after populating the dropdown
+                $('#supplier-company-name-filter').select2();
+            });
+        }
+        
+        // Reset Filters
+        $('#reset-filters-supplier').click(function () {
+            // Reset dropdowns to default
+            $('#supplier-name-filter, #supplier-company-name-filter').val(null).trigger('change');
+        
+            // Reset date inputs
+            $('#from_date, #to_date').val('');
+        
+            // Uncheck all checkboxes
+            $('.supplier-column-checkbox, #select-all-supplier-columns').prop('checked', false);
+        });
+        
+        // Load Data
+        loadSuppliers();
+        loadCompanies();
+        
+        // Supplier Master: Select All Checkbox Logic
+        const selectAllSupplierCheckbox = document.getElementById("select-all-supplier-columns");
+        const supplierColumnCheckboxes = document.querySelectorAll(".supplier-column-checkbox");
+        
+        // Function to check/uncheck all supplier checkboxes
+        selectAllSupplierCheckbox.addEventListener("change", function () {
+            supplierColumnCheckboxes.forEach(checkbox => {
+                checkbox.checked = selectAllSupplierCheckbox.checked;
+            });
+        });
+        
+        // Function to update "Select All" state when any supplier checkbox is clicked
+        supplierColumnCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener("change", function () {
+                const allChecked = [...supplierColumnCheckboxes].every(checkbox => checkbox.checked);
+                selectAllSupplierCheckbox.checked = allChecked;
+            });
+        });
+        
+        // Generate PDF with selected columns
+        $('#report-generate-supplier-pdf').click(function () {
+            let filters = {
+                supplier_name: $('#supplier-name-filter').val(),
+                company_name: $('#supplier-company-name-filter').val(),
+                from_date: $('#from_date').val(),  // Get From Date
+                to_date: $('#to_date').val(),      // Get To Date
+                columns: []  // Array to store selected columns
+            };
+        
+            // Get selected columns
+            $('.supplier-column-checkbox:checked').each(function () {
+                filters.columns.push($(this).val());
+            });
+        
+            // Convert columns array to a comma-separated string
+            filters.columns = filters.columns.join(',');
+        
+            // Redirect to PDF generation URL with filters
+            window.location.href = `/report-generate-supplier-pdf/?` + $.param(filters);
+        });
+        
+        // Generate CSV with selected columns
+        $('#report-generate-supplier-csv').click(function () {
+            let filters = {
+                supplier_name: $('#supplier-name-filter').val(),
+                company_name: $('#supplier-company-name-filter').val(),
+                from_date: $('#from_date').val(),
+                to_date: $('#to_date').val(),
+                columns: []  // Array to store selected columns
+            };
+        
+            // Get selected columns
+            $('.supplier-column-checkbox:checked').each(function () {
+                filters.columns.push($(this).val());
+            });
+        
+            // Redirect to CSV generation URL with filters
+            window.location.href = `/report-generate-supplier-csv/?` + $.param(filters);
+        });
+        
+        // Generate Excel with selected columns
+        $('#report-generate-supplier-excel').click(function () {
+            let filters = {
+                supplier_name: $('#supplier-name-filter').val(),
+                company_name: $('#supplier-company-name-filter').val(),
+                from_date: $('#from_date').val(),
+                to_date: $('#to_date').val(),
+                columns: []  // Array to store selected columns
+            };
+        
+            // Get selected columns
+            $('.supplier-column-checkbox:checked').each(function () {
+                filters.columns.push($(this).val());
+            });
+        
+            // Redirect to Excel generation URL with filters
+            window.location.href = `/report-generate-supplier-excel/?` + $.param(filters);
+        });
+    });
+</script>
+<script>
+    $(document).ready(function () {
+        // Function to load Product Names
+        function loadProducts() {
+            $.getJSON("{% url 'get_products_filter' %}", function (data) {
+                $('#product-name-filter').empty()
+                    .append('<option value="" disabled selected>Select Product</option>'); // Keep default option disabled
+        
+                $.each(data.products, function (index, item) {  
+                    $('#product-name-filter').append(`<option value="${item.product_id}">${item.product_name}</option>`);
+                });
+        
+                // Reinitialize Select2 after populating the dropdown
+                $('#product-name-filter').select2();
+            });
+        }
+
+        // Function to load Categories
+        function loadCategories() {
+            $.getJSON("{% url 'get_categories_filter' %}", function (data) {
+                $('#category-filter').empty()
+                    .append('<option value="" disabled selected>Select Category</option>'); // Keep default option disabled
+        
+                $.each(data.categories, function (index, item) {  
+                    $('#category-filter').append(`<option value="${item.category_id}">${item.category_name}</option>`);
+                });
+        
+                // Reinitialize Select2 after populating the dropdown
+                $('#category-filter').select2();
+            });
+        }
+
+        // Function to load Subcategories based on selected Category
+        $('#category-filter').on('change', function () {
+            const categoryId = $(this).val();
+            if (categoryId) {
+                $.getJSON("{% url 'get_subcategories_filter' %}?category_id=" + categoryId, function (data) {
+                    $('#subcategory-filter').empty()
+                        .append('<option value="" disabled selected>Select Subcategory</option>'); // Keep default option disabled
+            
+                    $.each(data.subcategories, function (index, item) {  
+                        $('#subcategory-filter').append(`<option value="${item.subcategory_id}">${item.subcategory_name}</option>`);
+                    });
+            
+                    // Reinitialize Select2 after populating the dropdown
+                    $('#subcategory-filter').select2();
+                });
+            } else {
+                $('#subcategory-filter').empty()
+                    .append('<option value="" disabled selected>Select Subcategory</option>');
+                $('#subcategory-filter').select2();
+            }
+        });
+        
+        // Reset Filters
+        $('#reset-filters-product').click(function () {
+            // Reset dropdowns to default
+            $('#product-name-filter, #category-filter, #subcategory-filter').val(null).trigger('change');
+        
+            // Reset date inputs
+            $('#from_date, #to_date').val('');
+        
+            // Uncheck all checkboxes
+            $('.product-column-checkbox, #select-all-product-columns').prop('checked', false);
+        });
+        
+        // Load Data
+        loadProducts();
+        loadCategories();
+        
+        // Product Master: Select All Checkbox Logic
+        const selectAllProductCheckbox = document.getElementById("select-all-product-columns");
+        const productColumnCheckboxes = document.querySelectorAll(".product-column-checkbox");
+        
+        // Function to check/uncheck all product checkboxes
+        selectAllProductCheckbox.addEventListener("change", function () {
+            productColumnCheckboxes.forEach(checkbox => {
+                checkbox.checked = selectAllProductCheckbox.checked;
+            });
+        });
+        
+        // Function to update "Select All" state when any product checkbox is clicked
+        productColumnCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener("change", function () {
+                const allChecked = [...productColumnCheckboxes].every(checkbox => checkbox.checked);
+                selectAllProductCheckbox.checked = allChecked;
+            });
+        });
+        
+        // Generate PDF with selected columns
+        $('#report-generate-product-pdf').click(function () {
+            let filters = {
+                product_name: $('#product-name-filter').val(),
+                category: $('#category-filter').val(),
+                subcategory: $('#subcategory-filter').val(),
+                from_date: $('#from_date').val(),  // Get From Date
+                to_date: $('#to_date').val(),      // Get To Date
+                columns: []  // Array to store selected columns
+            };
+        
+            // Get selected columns
+            $('.product-column-checkbox:checked').each(function () {
+                filters.columns.push($(this).val());
+            });
+        
+            // Convert columns array to a comma-separated string
+            filters.columns = filters.columns.join(',');
+        
+            // Redirect to PDF generation URL with filters
+            window.location.href = `/report-generate-product-pdf/?` + $.param(filters);
+        });
+        
+        // Generate CSV with selected columns
+        $('#report-generate-product-csv').click(function () {
+            let filters = {
+                product_name: $('#product-name-filter').val(),
+                category: $('#category-filter').val(),
+                subcategory: $('#subcategory-filter').val(),
+                from_date: $('#from_date').val(),
+                to_date: $('#to_date').val(),
+                columns: []  // Array to store selected columns
+            };
+        
+            // Get selected columns
+            $('.product-column-checkbox:checked').each(function () {
+                filters.columns.push($(this).val());
+            });
+        
+            // Redirect to CSV generation URL with filters
+            window.location.href = `/report-generate-product-csv/?` + $.param(filters);
+        });
+        
+        // Generate Excel with selected columns
+        $('#report-generate-product-excel').click(function () {
+            let filters = {
+                product_name: $('#product-name-filter').val(),
+                category: $('#category-filter').val(),
+                subcategory: $('#subcategory-filter').val(),
+                from_date: $('#from_date').val(),
+                to_date: $('#to_date').val(),
+                columns: []  // Array to store selected columns
+            };
+        
+            // Get selected columns
+            $('.product-column-checkbox:checked').each(function () {
+                filters.columns.push($(this).val());
+            });
+        
+            // Redirect to Excel generation URL with filters
+            window.location.href = `/report-generate-product-excel/?` + $.param(filters);
+        });
+    });
 </script>
 <!-- end page title -->
 {% endblock %}

@@ -1,0 +1,1299 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %} Create Expense | TTSPL IMS - Trisnota Technical Services Pvt. Ltd.{% endblock %}
+{% block content %}
+<style>
+   /* Ensure select2 elements have uniform height */
+   .select2-container--default .select2-selection--single .select2-selection__rendered {
+   color: #444;
+   line-height: 34px;
+   }
+   .select2-container--default .select2-selection--single {
+   background-color: #fff;
+   border: 1px solid #aaa;
+   border-radius: 4px;
+   height: 36px; /* Match input height */
+   }
+   /* Style for quantity input and buttons */
+   .input-group .btn {
+   height: 33px !important; /* Ensure buttons match select2 height */
+   line-height: auto;
+   }
+   .input-group input[type="number"] {
+    height: 34px !important;
+    width: 120px;
+   }
+   .select2-container--default .select2-selection--single .select2-selection__arrow {
+   height: 30px !important;
+   position: absolute;
+   top: 1px;
+   right: 1px;
+   width: 20px;
+   }
+   .error-text {
+   font-size: 12px; /* Slightly smaller font */
+   color: #dc3545; /* Bootstrap danger color */
+   display: block;
+   margin-top: 5px;
+   font-weight: 200;
+   text-shadow:none;
+   }
+   /* Highlight the input field when there's an error */
+   input.is-invalid, select.is-invalid, textarea.is-invalid {
+   border-color: #dc3545 !important;
+   background-color: #f8d7da !important;
+   }
+ 
+ /* Table container */
+.table-container {
+    margin-top: 20px;
+    overflow-x: auto; /* Enable horizontal scrolling */
+    width: 100%; /* Ensure the container takes full width */
+}
+
+/* Table styling */
+.table-container table {
+    width: auto; /* Allow table to expand based on content */
+    border-collapse: collapse;
+    min-width: 100%; /* Ensure table takes at least the full width of the container */
+}
+
+/* Table header and cell styling */
+.table-container th,
+.table-container td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    white-space: nowrap; /* Prevent text wrapping */
+}
+
+/* Table header background */
+.table-container th {
+    background-color: #f2f2f2;
+}
+
+/* Input fields default size */
+.table-container input,
+.table-container select,
+.table-container textarea {
+    width: auto; /* Allow inputs to take their default size */
+    min-width: 100px; /* Set a minimum width for inputs */
+}
+
+/* Reduce width of input fields in the first column */
+.table-container td:first-child input,
+.table-container td:first-child select,
+.table-container td:first-child textarea {
+    width: 15px; /* Set a fixed width for inputs in the first column */
+    min-width: 15px; /* Ensure the inputs do not shrink further */
+    max-width: 15px; /* Ensure the inputs do not expand */
+    box-sizing: border-box; /* Include padding and border in the width */
+}
+
+/* Ensure the checkbox fits within the column */
+.table-container td:first-child input[type="checkbox"] {
+    margin: 0; /* Remove default margin */
+    width: 16px; /* Set a fixed width for the checkbox */
+    height: 16px; /* Set a fixed height for the checkbox */
+}
+
+/* Reduce width of input fields in the second column */
+.table-container td:nth-child(2) input,
+.table-container td:nth-child(2) select,
+.table-container td:nth-child(2) textarea {
+    width: 115px; /* Set a fixed width for inputs in the second column */
+    min-width: 115px; /* Ensure the inputs do not shrink further */
+    max-width: 115px; /* Ensure the inputs do not expand */
+    box-sizing: border-box; /* Include padding and border in the width */
+}
+
+/* Reduce width of input fields in the 6 column */
+.table-container td:nth-child(6) input,
+.table-container td:nth-child(6) select,
+.table-container td:nth-child(6) textarea {
+    width: 250px; /* Set a fixed width for inputs in the second column */
+    min-width: 250px; /* Ensure the inputs do not shrink further */
+    max-width: 250px; /* Ensure the inputs do not expand */
+    box-sizing: border-box; /* Include padding and border in the width */
+}
+
+/* Reduce width of input fields in the 7th column */
+/* Remove fixed widths for inputs, selects, and textareas in the 8th column */
+.table-container td:nth-child(8) input,
+.table-container td:nth-child(8) select,
+.table-container td:nth-child(8) textarea {
+    box-sizing: border-box; /* Include padding and border in the width */
+}
+
+/* Flexbox layout for the input group */
+.input-group {
+    display: flex;
+    align-items: center;
+    gap: 10px; /* Space between elements */
+    flex-wrap: nowrap; /* Prevent wrapping to the next line */
+}
+
+/* Default style for currency code */
+.input-group-text {
+    flex: 0 0 auto; /* Do not grow or shrink */
+    padding: 6px 12px; /* Add padding for better appearance */
+    background-color: #e9ecef; /* Light gray background */
+    border: 1px solid #ced4da; /* Border to match input fields */
+    border-radius: 4px; /* Rounded corners */
+}
+
+/* Style for currency code when editable */
+.input-group-text[contenteditable="true"] {
+    background-color: white; /* White background when editable */
+    border-color: #ced4da; /* Keep the border color consistent */
+}
+
+/* Amount input styling */
+.amount-input {
+    flex: 1; /* Grow to fill available space */
+    min-width: 80px; /* Minimum width */
+}
+
+/* Currency dropdown styling */
+.currency-select {
+    flex: 1; /* Grow to fill available space */
+    min-width: 100px; /* Minimum width */
+}
+
+.table-container input,
+.table-container select,
+.table-container textarea {
+    width: auto; /* Allow elements to grow as needed */
+    min-width: 20px; /* Ensure a minimum width */
+}
+
+/* Specific styles for the fcy-toggle checkbox */
+.fcy-toggle {
+    max-width: 20px; /* Set a maximum width for the checkbox */
+    min-width: 20px; /* Ensure the checkbox does not shrink below 20px */
+    flex: 0 0 20px; /* Prevent the checkbox from growing or shrinking */
+}
+
+
+/* Date input container styling */
+.date-input-container {
+    flex: 1; /* Grow to fill available space */
+    min-width: 150px; /* Minimum width */
+    display: none; /* Hidden by default */
+}
+
+/* Date input label styling */
+.date-input-container label {
+    margin-right: 5px; /* Space between label and input */
+}
+
+/* Date input field styling */
+.date-input-container input {
+    flex: 1; /* Grow to fill available space */
+}
+
+
+/* Reduce width of input fields in the 10 column */
+.table-container td:nth-child(10) input,
+.table-container td:nth-child(10) select,
+.table-container td:nth-child(10) textarea {
+    width: 220px; /* Set a fixed width for inputs in the second column */
+    min-width: 220px; /* Ensure the inputs do not shrink further */
+    max-width: 220px; /* Ensure the inputs do not expand */
+    box-sizing: border-box; /* Include padding and border in the width */
+}
+
+/* Circular buttons */
+.btn-circle {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+}
+
+/* Declaration section */
+.declaration {
+    margin-top: 20px;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+}
+
+/* Scrollable table wrapper */
+.scrollable-table {
+    max-height: 600px; /* Adjust the height as needed */
+    overflow-y: auto;
+    overflow-x: auto; /* Enable horizontal scrolling */
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}
+
+.scrollable-table table {
+    margin-bottom: 0; /* Remove extra margin */
+}
+   .is-invalid {
+    border-color: #dc3545 !important;
+}
+
+.is-invalid + .error-text {
+    display: block;
+    color: #dc3545;
+    font-size: 0.875em;
+}
+select[name="attached_file_yes_no[]"] {
+    min-width: 100px !important;
+    width: auto;
+    max-width: 80%;
+}
+
+</style>
+<!-- start page title -->
+<div class="row">
+   <div class="col-12">
+      <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
+         <h4 class="mb-sm-0">Expense Reimbursement</h4>
+         <div class="page-title-right">
+            <ol class="breadcrumb m-0">
+               <li class="breadcrumb-item"><a href="#">Dashboards</a></li>
+               <li class="breadcrumb-item active">Expense Reimbursement</li>
+            </ol>
+         </div>
+      </div>
+   </div>
+</div>
+<div class="row">
+   <div class="col-lg-12">
+      <div class="card">
+         <div class="card-header align-items-center d-flex">
+            <h4 class="card-title mb-0 flex-grow-1">Create Expense Reimbursement</h4>
+            <div class="flex-shrink-0">
+               <a class="btn btn-secondary" href="employee_list_page">< Back</a>
+            </div>
+         </div>
+         <div class="card-body">
+             <!-- Toast container (make sure this is somewhere in your HTML body) -->
+             <div id="toast-container" class="position-fixed bottom-0 end-0 p-3" style="z-index: 9999;"></div>
+             
+             <form id="employeeForm" method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="row gy-3">
+                    <div id="alertContainer" class="mt-3"></div>
+
+                       <!-- Expense ID -->
+                <div class="col-md-4">
+                    <label class="form-label">Expense ID</label>
+                    <input type="text" class="form-control" id="expense_id" name="expense_id" value="{{ expense_id }}" placeholder="Expense ID" required disabled>
+                    <small class="text-danger error-text"></small>
+                </div>
+
+                <!-- Employee Code -->
+                <div class="col-md-3">
+                    <label class="form-label">Employee Code</label>
+                    <input type="text" class="form-control" id="employee_code" name="employee_code" placeholder="Enter Employee Code" required readonly>
+                    <small class="text-danger error-text"></small>
+                </div>
+               <!-- Employee Name -->
+                <div class="col-md-5">
+                    <label class="form-label">Employee Name</label>
+                    <select class="form-control select2" id="employee_name" name="employee_name" required>
+                        <option value="" disabled selected>Select Employee</option>
+                        {% for employee in employees %}
+                            <option value="{{ employee.name }}">{{ employee.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <small class="text-danger error-text"></small>
+                </div>
+                <!-- Office Location -->
+                <div class="col-md-3">
+                    <label class="form-label">Location</label>
+                    <input type="text" class="form-control" id="work_location" name="work_location" placeholder="Enter Office Location" required readonly>
+                    <small class="text-danger error-text"></small>
+                </div>
+                <!-- Designation -->
+                <div class="col-md-5">
+                    <label class="form-label">Designation</label>
+                    <input type="text" class="form-control" id="designation" name="designation" placeholder="Enter Designation" required readonly>
+                    <small class="text-danger error-text"></small>
+                </div>
+                <!-- Email -->
+                <div class="col-md-4">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-control" id="email" name="email" placeholder="Enter Email" required readonly>
+                    <small class="text-danger error-text"></small>
+                </div>
+                <!-- Mobile Number -->
+                <div class="col-md-4">
+                    <label class="form-label">Mobile Number</label>
+                    <input type="text" class="form-control" id="mobile_number" name="mobile_number" placeholder="Enter Mobile Number" required readonly>
+                    <small class="text-danger error-text"></small>
+                </div>
+                </div>
+    
+                <!-- Expense Table -->
+                <div class="table-container mt-4">
+                    <!-- Circular Buttons -->
+                    <button type="button" class="btn btn-primary btn-circle my-3" onclick="addRow()">
+                        <i class="bx bx-plus"></i> <!-- Plus icon -->
+                    </button>
+                    <button type="button" class="btn btn-danger btn-circle my-3" onclick="deleteSelectedRows()">
+                        <i class="bx bx-minus"></i> <!-- Minus icon -->
+                    </button>
+                    <!-- Scrollable Table Wrapper -->
+                    <div class="scrollable-table">
+                        <table id="expenseTable" class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th></th>
+                                    <th>Sr. No.</th>
+                                    <th>Start Date</th>
+                                    <th>End Date</th>
+                                    <th>Travel Mode</th>
+                                    <th style="width: 200px;">Details</th>
+                                    <th>Total Amt (INR)</th>
+                                    <th>Total Amt (FCY)</th>
+                                    <th>File Attached (Y/N)</th>
+                                    <th>Attachment</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Default Row (No Checkbox) -->
+                                <tr>
+                                    <td></td> <!-- No checkbox for default row -->
+                                    <td><input type="number" class="form-control" name="sr_no[]" placeholder="Sr. No." required></td>
+                                    <td><input type="date" class="form-control" name="start_date[]" required></td>
+                                    <td><input type="date" class="form-control" name="end_date[]" required></td>
+                                    <td>
+                                        <select class="form-control" name="travel_mode[]" required>
+                                            <option value="" disabled selected>Select</option>
+                                            <option value="Train">Train</option>
+                                            <option value="Bus">Bus</option>
+                                            <option value="Flight">Flight</option>
+                                            <option value="Taxi/Cab">Taxi/Cab</option>
+                                            <option value="Others">Others</option>
+                                        </select>
+                                    </td>
+                                    <td><textarea class="form-control" name="details[]" placeholder="Enter Details" rows="1" required></textarea></td>
+                                    <td>
+                                            <div class="input-group">
+                                                <span class="input-group-text" id="inputGroup-sizing-default">₹</span>
+                                                <input type="number" step="0.01" class="form-control" aria-label="Sizing example input" aria-describedby="inputGroup-sizing-default" name="total_amount_inr[]" placeholder="Total Amt (INR)" required>
+                                            </div>
+                                    </td>
+                                    <td>
+                                        <div class="input-group" style="display: flex; align-items: center; gap: 10px;">
+                                            <!-- Checkbox for enabling/disabling FCY input -->
+                                            <input type="checkbox" class="fcy-toggle" style="flex: 0 0 20px;">
+                                            <!-- Currency code (editable when checkbox is checked) -->
+                                            <span class="input-group-text currency-code" contenteditable="false">INR</span>
+                                            <!-- Hidden input for currency code -->
+                                            <input type="hidden" name="currency_code[]" class="hidden-currency-code" value="INR">
+                                            <!-- Amount input -->
+                                            <input type="number" step="0.01" class="form-control amount-input" name="total_amount_foreign_currency[]" placeholder="Amount" disabled style="flex: 1; min-width: 70px; height:36px;">
+                                            <!-- Hidden input for disabled amount -->
+                                            <input type="hidden" name="total_amount_foreign_currency[]" class="hidden-amount-input">
+                                            <!-- Currency select dropdown (hidden when checkbox is checked) -->
+                                            <select class="form-control currency-select" name="currency[]" required style="flex: 1; min-width: 150px; height:36px;">
+                                                <option value="INR" selected>Indian Rupee (INR)</option>
+                                                <!-- Other currencies will be populated dynamically -->
+                                            </select>
+                                            <!-- Date input (hidden by default) -->
+                                            <div class="date-input-container" style="display: none; flex: 1; min-width: 150px;">
+                                                <input type="date" class="form-control date-input" max="{{ current_date }}">
+                                            </div>
+                                        </div>
+                                    </td>            
+                                    <td>
+                                        <select class="form-control" name="attached_file_yes_no[]" required>
+                                            <option value="yes">Yes</option>
+                                            <option value="no">No</option>
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <input type="file" class="form-control" name="attached_file[]" ></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+    
+                <!-- Total Paid Fair -->
+                <div class="row gy-3 mt-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Total Paid Fair</label>
+                        <input type="text" class="form-control" id="total_calculation" name="total_calculation" placeholder="Total Fair" disabled>
+                        <small class="text-danger error-text"></small>
+                    </div>
+                </div>
+    
+                <!-- Declaration Section -->
+                <div class="declaration mt-4">
+                    <h5>Declaration</h5>
+                    <p>
+                        I hereby declare that the above-mentioned details are true and correct to the best of my knowledge. 
+                        I understand that any false information provided may lead to the rejection of my expense reimbursement claim. 
+                        I have attached all necessary supporting documents for verification.
+                    </p>
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="declarationCheck" required>
+                        <label class="form-check-label" for="declarationCheck">
+                            I agree to the above declaration.
+                        </label>
+                    </div>
+                </div>
+    
+                <!-- Buttons -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <button type="button" class="btn btn-secondary" onclick="calculateTotal()">Check</button>
+                        <button type="button" class="btn btn-primary" id="saveButton" onclick="saveData()" disabled>Save</button>
+                        <button type="submit" class="btn btn-success" id="submitButton" onclick="submitData(event)" disabled>Submit</button>
+                    </div>
+                </div>
+            </form>
+         </div>
+      </div>
+   </div>
+</div>
+</div>
+</div>
+</div>
+<!-- Custom Script -->
+<script>
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add event listeners for all FCY toggle checkboxes
+        document.querySelectorAll('.fcy-toggle').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const row = this.closest('tr');
+                const currencyCode = row.querySelector('.currency-code');
+                const hiddenCurrencyCode = row.querySelector('.hidden-currency-code');
+                const amountInput = row.querySelector('.amount-input');
+                const hiddenAmountInput = row.querySelector('.hidden-amount-input');
+                const currencySelect = row.querySelector('.currency-select');
+                const dateInputContainer = row.querySelector('.date-input-container');
+                const dateInput = row.querySelector('.date-input');
+                const inrInput = row.querySelector('input[name="total_amount_inr[]"]');
+    
+                const isChecked = this.checked;
+    
+                // Enable/disable editing of currency code
+                currencyCode.contentEditable = isChecked;
+    
+                // Enable/disable amount input
+                amountInput.disabled = !isChecked;
+    
+                // Clear fields when checkbox is checked
+                if (isChecked) {
+                    currencyCode.textContent = ''; // Clear the currency code
+                    hiddenCurrencyCode.value = ''; // Clear the hidden currency code
+                    amountInput.value = ''; // Clear the amount field
+                    hiddenAmountInput.value = ''; // Clear the hidden input field
+                    inrInput.value = ''; // Clear the Total Amount (INR) field
+                } else {
+                    // Reset fields when checkbox is unchecked
+                    currencyCode.textContent = 'INR'; // Reset currency code to "INR"
+                    hiddenCurrencyCode.value = 'INR'; // Reset hidden currency code to "INR"
+                    amountInput.value = ''; // Clear the amount field
+                    hiddenAmountInput.value = ''; // Clear the hidden input field
+                    inrInput.value = ''; // Clear the Total Amount (INR) field
+                    currencySelect.value = 'INR'; // Reset currency select to "INR"
+                    dateInput.value = ''; // Clear the date input
+                }
+    
+                // Show/hide currency select
+                if (isChecked) {
+                    currencySelect.style.display = 'none';
+                } else {
+                    currencySelect.style.display = 'block';
+                }
+                currencySelect.disabled = isChecked;
+    
+                // Hide date input when checkbox is checked
+                if (isChecked) {
+                    dateInputContainer.style.display = 'none';
+                } else {
+                    // Show/hide date input based on currency select value
+                    if (currencySelect.value !== 'INR') {
+                        dateInputContainer.style.display = 'flex';
+                    } else {
+                        dateInputContainer.style.display = 'none';
+                    }
+                }
+            });
+        });
+    
+        // Add event listeners for currency select dropdowns
+        document.querySelectorAll('.currency-select').forEach(select => {
+            select.addEventListener('change', function() {
+                const row = this.closest('tr');
+                const currencyCode = row.querySelector('.currency-code');
+                const hiddenCurrencyCode = row.querySelector('.hidden-currency-code');
+                const fcyToggle = row.querySelector('.fcy-toggle');
+                const dateInputContainer = row.querySelector('.date-input-container');
+    
+                // Update the currency code displayed and the hidden input
+                currencyCode.textContent = this.value;
+                hiddenCurrencyCode.value = this.value;
+    
+                // Hide date input if checkbox is checked
+                if (fcyToggle.checked) {
+                    dateInputContainer.style.display = 'none';
+                } else {
+                    // Show/hide date input based on currency select value
+                    if (this.value !== 'INR') {
+                        dateInputContainer.style.display = 'flex';
+                    } else {
+                        dateInputContainer.style.display = 'none';
+                    }
+                }
+            });
+        });
+    
+        // Add event listeners for amount inputs
+        document.querySelectorAll('.amount-input').forEach(amountInput => {
+            amountInput.addEventListener('input', function() {
+                const row = this.closest('tr');
+                const hiddenAmountInput = row.querySelector('.hidden-amount-input');
+                hiddenAmountInput.value = this.value; // Sync the value with the hidden input
+            });
+        });
+    
+        // Add event listeners for currency code editing
+        document.querySelectorAll('.currency-code').forEach(currencyCode => {
+            currencyCode.addEventListener('input', function() {
+                const row = this.closest('tr');
+                const hiddenCurrencyCode = row.querySelector('.hidden-currency-code');
+                hiddenCurrencyCode.value = this.textContent.trim(); // Sync the value with the hidden input
+            });
+        });
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Load available currencies
+        loadCurrencies();
+    
+        // Add event listeners for currency conversion
+        document.querySelectorAll('.amount-input').forEach(input => {
+            input.addEventListener('input', function() {
+                convertCurrency(this);
+    
+                // Clear the Total Amount (INR) field if the Amount field is cleared
+                const row = this.closest('tr');
+                const inrInput = row.querySelector('input[name="total_amount_inr[]"]');
+                if (this.value === '') {
+                    inrInput.value = '';
+                }
+            });
+        });
+    
+        document.querySelectorAll('.currency-select').forEach(select => {
+            select.addEventListener('change', function() {
+                toggleFCYInput(this); // Enable/disable the FCY input
+                toggleDateInput(this); // Show/hide the date input
+                updateCurrencyCode(this); // Update the currency code
+                convertCurrency(this);    // Convert the amount
+    
+                // Clear the Total Amount (INR) field if the Amount field is cleared
+                const row = this.closest('tr');
+                const amountInput = row.querySelector('.amount-input');
+                const inrInput = row.querySelector('input[name="total_amount_inr[]"]');
+                if (amountInput.value === '') {
+                    inrInput.value = '';
+                }
+            });
+        });
+    
+        document.querySelectorAll('.date-input').forEach(input => {
+            input.addEventListener('change', function() {
+                convertCurrency(this); // Convert the amount when the date changes
+    
+                // Clear the Total Amount (INR) field if the Amount field is cleared
+                const row = this.closest('tr');
+                const amountInput = row.querySelector('.amount-input');
+                const inrInput = row.querySelector('input[name="total_amount_inr[]"]');
+                if (amountInput.value === '') {
+                    inrInput.value = '';
+                }
+            });
+        });
+    });
+    
+    async function loadCurrencies() {
+        try {
+            let response = await fetch("https://api.frankfurter.app/currencies");
+            let currencies = await response.json();
+            
+            document.querySelectorAll('.currency-select').forEach(select => {
+                for (let code in currencies) {
+                    if (code !== "INR") { // Skip INR since it's already added as default
+                        let option = document.createElement("option");
+                        option.value = code;
+                        option.textContent = `${currencies[code]} (${code})`;
+                        select.appendChild(option);
+                    }
+                }
+            });
+        } catch (error) {
+            console.error("Error loading currencies:", error);
+            alert("Failed to load currencies. Please refresh the page.");
+        }
+    }
+    
+    function toggleFCYInput(selectElement) {
+        let row = selectElement.closest('tr');
+        let amountInput = row.querySelector('.amount-input');
+    
+        // Enable the FCY input if the selected currency is not INR
+        if (selectElement.value !== "INR") {
+            amountInput.disabled = false;
+        } else {
+            amountInput.disabled = true;
+            amountInput.value = ""; // Clear the input if INR is selected
+        }
+    }
+    
+    function toggleDateInput(selectElement) {
+        let row = selectElement.closest('tr');
+        let dateInputContainer = row.querySelector('.date-input-container');
+    
+        // Show the date input if the selected currency is not INR
+        if (selectElement.value !== "INR") {
+            dateInputContainer.style.display = "block";
+        } else {
+            dateInputContainer.style.display = "none";
+        }
+    }
+    
+    function updateCurrencyCode(selectElement) {
+        let row = selectElement.closest('tr');
+        let currencyCodeSpan = row.querySelector('.currency-code');
+        let selectedCurrency = selectElement.value;
+    
+        // Update the currency code display
+        currencyCodeSpan.textContent = selectedCurrency;
+    }
+    
+    async function convertCurrency(element) {
+        let row = element.closest('tr');
+        let currencySelect = row.querySelector('.currency-select');
+        let amountInput = row.querySelector('.amount-input');
+        let dateInput = row.querySelector('.date-input');
+        let inrInput = row.querySelector('input[name="total_amount_inr[]"]');
+    
+        let amount = amountInput.value;
+        let currency = currencySelect.value;
+    
+        if (!amount || isNaN(amount) || !currency || currency === "INR") {
+            inrInput.value = amount || ""; // If INR is selected, copy the amount directly
+            return;
+        }
+    
+        let date = dateInput ? dateInput.value : null;
+    
+        if (!date) {
+            alert("Please select a date for historical exchange rates.");
+            return;
+        }
+    
+        let url = `https://api.frankfurter.app/${date}?from=${currency}&to=INR`;
+    
+        try {
+            let response = await fetch(url);
+            let data = await response.json();
+    
+            if (!data.rates || !data.rates.INR) {
+                throw new Error("Exchange rate not available for the selected date and currency.");
+            }
+    
+            let rate = data.rates.INR;
+            let convertedAmount = amount * rate;
+    
+            inrInput.value = convertedAmount.toFixed(2);
+        } catch (error) {
+            console.error("Error fetching exchange rates:", error);
+            alert("Error fetching exchange rates: " + error.message);
+        }
+    }
+    
+    async function loadCurrencies() {
+        try {
+            let response = await fetch("https://api.frankfurter.app/currencies");
+            let currencies = await response.json();
+            
+            document.querySelectorAll('.currency-select').forEach(select => {
+                for (let code in currencies) {
+                    if (code !== "INR") { // Skip INR since it's already added as default
+                        let option = document.createElement("option");
+                        option.value = code;
+                        option.textContent = `${currencies[code]} (${code})`;
+                        select.appendChild(option);
+                    }
+                }
+            });
+        } catch (error) {
+            console.error("Error loading currencies:", error);
+            alert("Failed to load currencies. Please refresh the page.");
+        }
+    }
+    
+    function toggleFCYInput(selectElement) {
+        let row = selectElement.closest('tr');
+        let amountInput = row.querySelector('.amount-input');
+    
+        // Enable the FCY input if the selected currency is not INR
+        if (selectElement.value !== "INR") {
+            amountInput.disabled = false;
+        } else {
+            amountInput.disabled = true;
+            amountInput.value = ""; // Clear the input if INR is selected
+        }
+    }
+    
+    function updateCurrencyCode(selectElement) {
+        let row = selectElement.closest('tr');
+        let currencyCodeSpan = row.querySelector('.currency-code');
+        let selectedCurrency = selectElement.value;
+    
+        // Update the currency code display
+        currencyCodeSpan.textContent = selectedCurrency;
+    }
+    
+ 
+
+    
+    function updateCurrencyCode(selectElement) {
+        let row = selectElement.closest('tr');
+        let currencyCodeSpan = row.querySelector('.currency-code');
+        let selectedCurrency = selectElement.value;
+    
+        // Update the currency code display
+        currencyCodeSpan.textContent = selectedCurrency;
+    }
+    
+    
+    
+    async function loadCurrencies() {
+        try {
+            let response = await fetch("https://api.frankfurter.app/currencies");
+            let currencies = await response.json();
+            
+            document.querySelectorAll('.currency-select').forEach(select => {
+                for (let code in currencies) {
+                    let option = document.createElement("option");
+                    option.value = code;
+                    option.textContent = `${currencies[code]} (${code})`;
+                    select.appendChild(option);
+                }
+            });
+        } catch (error) {
+            console.error("Error loading currencies:", error);
+            alert("Failed to load currencies. Please refresh the page.");
+        }
+    }
+    
+  
+
+    // Function to fetch employee details
+    function fetchEmployeeDetails(employeeName) {
+        fetch(`/get_employee_details/?name=${encodeURIComponent(employeeName)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Populate the fields with the fetched data
+                    document.getElementById('employee_code').value = data.employee_code;
+                    document.getElementById('work_location').value = data.work_location;
+                    document.getElementById('designation').value = data.designation;
+                    document.getElementById('email').value = data.email;
+                    document.getElementById('mobile_number').value = data.mobile_number;
+                } else {
+                    alert('Employee details not found.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while fetching employee details.');
+            });
+    }
+
+    // Event listener for the Employee Name dropdown
+    document.getElementById('employee_name').addEventListener('change', function() {
+        const selectedEmployeeName = this.value;
+        if (selectedEmployeeName) {
+            fetchEmployeeDetails(selectedEmployeeName);
+        }
+    });
+
+    function validateForm() {
+        const requiredFields = document.querySelectorAll('#employeeForm [required]');
+        let isValid = true;
+    
+        // Validate required fields
+        requiredFields.forEach(field => {
+            if (!field.value.trim()) {
+                isValid = false;
+                field.classList.add('is-invalid');
+            } else {
+                field.classList.remove('is-invalid');
+            }
+        });
+    
+        // Validate File Attached (Y/N) and Attachment fields
+        const fileAttachedSelects = document.querySelectorAll('select[name="attached_file_yes_no[]"]');
+        const fileInputs = document.querySelectorAll('input[name="attached_file[]"]');
+    
+        fileAttachedSelects.forEach((select, index) => {
+            const fileInput = fileInputs[index];
+    
+            if (select.value === 'yes' && !fileInput.files.length) {
+                isValid = false;
+                fileInput.classList.add('is-invalid');
+                showToast('Please upload an attachment for the selected row.', 'error');
+            } else {
+                fileInput.classList.remove('is-invalid');
+            }
+        });
+    
+        // Check if the declaration checkbox is checked
+        const declarationCheck = document.getElementById('declarationCheck');
+        if (!declarationCheck.checked) {
+            isValid = false;
+            declarationCheck.classList.add('is-invalid');
+        } else {
+            declarationCheck.classList.remove('is-invalid');
+        }
+    
+        // Enable or disable the Save button based on validation
+        document.getElementById('saveButton').disabled = !isValid;
+    
+        return isValid;
+    }
+
+
+    // Function to calculate the total amount
+    function calculateTotal() {
+        const isValid = validateForm();
+
+        if (!isValid) {
+            showToast('Please fill all required fields.', 'error');
+            return;
+        }
+
+        const totalAmountInputs = document.querySelectorAll('input[name="total_amount_inr[]"]');
+        let total = 0;
+        totalAmountInputs.forEach(input => {
+            total += parseFloat(input.value) || 0;
+        });
+        document.getElementById('total_calculation').value = total.toFixed(2);
+
+        // Enable the Save button after calculation
+        document.getElementById('saveButton').disabled = false;
+        showToast('Total calculated successfully!', 'success');
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const formFields = document.querySelectorAll('#employeeForm input, #employeeForm select, #employeeForm textarea');
+        formFields.forEach(field => {
+            field.addEventListener('input', validateForm);
+        });
+
+        const declarationCheck = document.getElementById('declarationCheck');
+        declarationCheck.addEventListener('change', validateForm);
+    });
+
+
+    function saveData() {
+        if (!validateForm()) {
+            showToast('Please fill all required fields.', 'error');
+            return;
+        }
+    
+        const form = document.getElementById('employeeForm');
+        const formData = new FormData(form);
+    
+        // Convert FormData to JSON
+        const data = {};
+        formData.forEach((value, key) => {
+            // Handle array fields (e.g., total_amount_foreign_currency[])
+            if (key.endsWith('[]')) {
+                if (!data[key]) {
+                    data[key] = [];
+                }
+                data[key].push(value);
+            } else {
+                data[key] = value;
+            }
+        });
+    
+        // Format total_amount_foreign_currency as "amount-(currencycode)" or "(currencycode)"
+        const amountInputs = document.querySelectorAll('.amount-input');
+        const currencyCodes = document.querySelectorAll('.currency-code');
+        const totalAmountFCY = [];
+    
+        amountInputs.forEach((amountInput, index) => {
+            const amount = amountInput.value;
+            const currencyCode = currencyCodes[index].textContent.trim();
+            const fcyToggle = amountInput.closest('tr').querySelector('.fcy-toggle');
+    
+            // Include the amount and currency code in the payload, regardless of the checkbox state
+            if (amount && currencyCode) {
+                totalAmountFCY.push(`${amount}-(${currencyCode})`);
+            } else if (!fcyToggle.checked && currencyCode) {
+                // If the checkbox is unchecked and currency code is present, include only the currency code
+                totalAmountFCY.push(`(${currencyCode})`);
+            }
+        });
+    
+        // Add formatted total_amount_foreign_currency to the data
+        if (totalAmountFCY.length > 0) {
+            data['total_amount_foreign_currency'] = totalAmountFCY.join(', ');
+        } else {
+            data['total_amount_foreign_currency'] = ''; // Ensure the field is present even if empty
+        }
+    
+        // Debugging: Print the payload to the console
+        console.log('Payload:', data);
+    
+        // Save to localStorage
+        localStorage.setItem('expenseData', JSON.stringify(data));
+        showToast('Data saved locally!', 'success');
+    
+        // Enable the Submit button after saving
+        document.getElementById('submitButton').disabled = false;
+    }
+    
+// Function to submit data to the server
+function submitData(event) {
+    event.preventDefault(); // Prevent form submission
+
+    if (!validateForm()) {
+        showToast('Please fill all required fields.', 'error');
+        return;
+    }
+
+    const form = document.getElementById('employeeForm');
+    const formData = new FormData(form);
+
+    // Send data via AJAX
+    fetch('/save_expense/', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value, // Include CSRF token
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const expenseId = document.getElementById('expense_id').value; // Get the expense ID
+
+            // Show toast message
+            showToast('Data submitted successfully!', 'success');
+
+            // Show alert message in the alertContainer
+            const alertContainer = document.getElementById('alertContainer');
+            alertContainer.innerHTML = ''; // Clear previous alerts
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-success'; // Success alert
+            alertDiv.innerHTML = `Expense created successfully! Reference ID: ${expenseId}`;
+            alertContainer.appendChild(alertDiv);
+
+            // Disable form fields and buttons after successful submission
+            disableForm();
+        } else {
+            // Show error toast message
+            showToast('Error submitting data: ' + data.error, 'error');
+
+            // Show error alert message in the alertContainer
+            const alertContainer = document.getElementById('alertContainer');
+            alertContainer.innerHTML = ''; // Clear previous alerts
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-danger'; // Error alert
+            alertDiv.innerHTML = `<strong>Error:</strong> ${data.error}`;
+            alertContainer.appendChild(alertDiv);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+
+        // Show error toast message
+        showToast('An error occurred while submitting data.', 'error');
+
+        // Show error alert message in the alertContainer
+        const alertContainer = document.getElementById('alertContainer');
+        alertContainer.innerHTML = ''; // Clear previous alerts
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-danger'; // Error alert
+        alertDiv.innerHTML = `<strong>Error:</strong> An error occurred while submitting data.`;
+        alertContainer.appendChild(alertDiv);
+    });
+}
+
+// Function to disable form fields and buttons
+function disableForm() {
+    // Disable all input fields
+    const inputFields = document.querySelectorAll('#employeeForm input, #employeeForm select, #employeeForm textarea');
+    inputFields.forEach(field => {
+        field.disabled = true;
+    });
+
+    // Disable the Check button
+    const checkButton = document.querySelector('button[onclick="calculateTotal()"]');
+    if (checkButton) {
+        checkButton.disabled = true;
+    }
+
+    // Disable the Save button
+    const saveButton = document.getElementById('saveButton');
+    if (saveButton) {
+        saveButton.disabled = true;
+    }
+
+    // Disable the Submit button
+    const submitButton = document.getElementById('submitButton');
+    if (submitButton) {
+        submitButton.disabled = true;
+    }
+
+    // Disable the Add Row and Delete Row buttons
+    const addRowButton = document.querySelector('button[onclick="addRow()"]');
+    const deleteRowButton = document.querySelector('button[onclick="deleteSelectedRows()"]');
+    if (addRowButton) {
+        addRowButton.disabled = true;
+    }
+    if (deleteRowButton) {
+        deleteRowButton.disabled = true;
+    }
+}
+
+// Toast Notification Function
+function showToast(message, type) {
+    let toastClass = type === "success" ? "bg-success" : "bg-danger";
+
+    // Remove existing toasts before showing a new one
+    $("#toast-container").empty();
+
+    let toastHTML = `
+        <div class="toast align-items-center text-white ${toastClass} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">${message}</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    `;
+
+    $("#toast-container").append(toastHTML);
+    $(".toast").toast({ delay: 3000 }).toast("show");
+
+    // Remove toast from DOM after fade-out
+    $(".toast").on("hidden.bs.toast", function () {
+        $(this).remove();
+    });
+}
+
+
+function addRow() {
+    const table = document.getElementById("expenseTable").getElementsByTagName('tbody')[0];
+    const newRow = table.insertRow(table.rows.length);
+    const cells = [
+        newRow.insertCell(0),
+        newRow.insertCell(1),
+        newRow.insertCell(2),
+        newRow.insertCell(3),
+        newRow.insertCell(4),
+        newRow.insertCell(5),
+        newRow.insertCell(6),
+        newRow.insertCell(7),
+        newRow.insertCell(8),
+        newRow.insertCell(9)
+    ];
+
+    // Add checkbox for new rows only
+    cells[0].innerHTML = '<input type="checkbox" class="form-check-input">';
+    cells[1].innerHTML = '<input type="number" class="form-control" name="sr_no[]" placeholder="Sr. No." required>';
+    cells[2].innerHTML = '<input type="date" class="form-control" name="start_date[]" required>';
+    cells[3].innerHTML = '<input type="date" class="form-control" name="end_date[]" required>';
+    cells[4].innerHTML = `
+        <select class="form-control" name="travel_mode[]" required>
+            <option value="" disabled selected>Select</option>
+            <option value="Train">Train</option>
+            <option value="Bus">Bus</option>
+            <option value="Flight">Flight</option>
+            <option value="Taxi/Cab">Taxi/Cab</option>
+            <option value="Others">Others</option>
+        </select>
+    `;
+    cells[5].innerHTML = '<textarea class="form-control" name="details[]" placeholder="Enter Details" rows="1" required></textarea>';
+    cells[6].innerHTML = `
+        <div class="input-group">
+            <span class="input-group-text">₹</span>
+            <input type="number" step="0.01" class="form-control" name="total_amount_inr[]" placeholder="Total Amt (INR)" required>
+        </div>
+    `;
+    cells[7].innerHTML = `
+        <div class="input-group" style="display: flex; align-items: center; gap: 10px;">
+            <!-- Checkbox for enabling/disabling FCY input -->
+            <input type="checkbox" class="fcy-toggle" style="flex: 0 0 20px;">
+            <!-- Currency code (editable when checkbox is checked) -->
+            <span class="input-group-text currency-code" contenteditable="false" style="flex: 0 0 50px;">INR</span>
+            <!-- Amount input (enabled when checkbox is checked) -->
+            <input type="number" step="0.01" class="form-control amount-input" name="total_amount_foreign_currency[]" placeholder="Amount" disabled style="flex: 1; min-width: 70px; height: 36px;">
+            <!-- Hidden input for disabled amount -->
+            <input type="hidden" name="total_amount_foreign_currency[]" class="hidden-amount-input">
+            <!-- Currency select dropdown (hidden when checkbox is checked) -->
+            <select class="form-control currency-select" name="currency[]" required style="flex: 1; min-width: 150px; height: 36px;">
+                <option value="INR" selected>Indian Rupee (INR)</option>
+                <!-- Other currencies will be populated dynamically -->
+            </select>
+            <!-- Date input (hidden by default) -->
+            <div class="date-input-container" style="display: none; flex: 1; min-width: 150px;">
+                <input type="date" class="form-control date-input" max="{{ current_date }}">
+            </div>
+        </div>
+    `;
+    cells[8].innerHTML = `
+        <select class="form-control" name="attached_file_yes_no[]" required>
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+        </select>
+    `;
+    cells[9].innerHTML = '<input type="file" class="form-control" name="attached_file[]">';
+
+    // Add event listeners for the new row
+    const fcyToggle = cells[7].querySelector('.fcy-toggle');
+    const currencyCode = cells[7].querySelector('.currency-code');
+    const amountInput = cells[7].querySelector('.amount-input');
+    const hiddenAmountInput = cells[7].querySelector('.hidden-amount-input');
+    const currencySelect = cells[7].querySelector('.currency-select');
+    const dateInput = cells[7].querySelector('.date-input');
+    const dateInputContainer = cells[7].querySelector('.date-input-container');
+    const inrInput = cells[6].querySelector('input[name="total_amount_inr[]"]');
+
+    // Add event listener for the checkbox
+    fcyToggle.addEventListener('change', function() {
+        const isChecked = this.checked;
+
+        // Enable/disable editing of currency code
+        currencyCode.contentEditable = isChecked;
+
+        // Enable/disable amount input
+        amountInput.disabled = !isChecked;
+
+        // Clear fields when checkbox is checked
+        if (isChecked) {
+            currencyCode.textContent = ''; // Clear the currency code
+            amountInput.value = ''; // Clear the amount field
+            hiddenAmountInput.value = ''; // Clear the hidden input field
+            inrInput.value = ''; // Clear the Total Amount (INR) field
+        } else {
+            // Reset fields when checkbox is unchecked
+            currencyCode.textContent = 'INR'; // Reset currency code to "INR"
+            amountInput.value = ''; // Clear the amount field
+            hiddenAmountInput.value = ''; // Clear the hidden input field
+            inrInput.value = ''; // Clear the Total Amount (INR) field
+            currencySelect.value = 'INR'; // Reset currency select to "INR"
+            dateInput.value = ''; // Clear the date input
+        }
+
+        // Show/hide currency select
+        if (isChecked) {
+            currencySelect.style.display = 'none';
+        } else {
+            currencySelect.style.display = 'block';
+        }
+        currencySelect.disabled = isChecked;
+
+        // Hide date input when checkbox is checked
+        if (isChecked) {
+            dateInputContainer.style.display = 'none';
+        } else {
+            // Show/hide date input based on currency select value
+            if (currencySelect.value !== 'INR') {
+                dateInputContainer.style.display = 'flex';
+            } else {
+                dateInputContainer.style.display = 'none';
+            }
+        }
+    });
+
+    // Add event listener for amount input
+    amountInput.addEventListener('input', function() {
+        // Sync the value of the amount input with the hidden input
+        hiddenAmountInput.value = this.value;
+
+        // Convert the amount to INR when the amount is entered
+        if (!fcyToggle.checked) {
+            convertCurrency(this);
+        }
+
+        // Clear the Total Amount (INR) field if the Amount field is cleared
+        if (this.value === '') {
+            inrInput.value = '';
+        }
+    });
+
+    // Add event listener for currency select dropdown
+    currencySelect.addEventListener('change', function() {
+        const fcyToggle = this.closest('.input-group').querySelector('.fcy-toggle');
+
+        // Enable amount input if currency is not INR
+        if (this.value !== 'INR') {
+            amountInput.disabled = false; // Enable amount input
+        } else {
+            amountInput.disabled = true; // Disable amount input if INR is selected
+        }
+
+        // Hide date input if checkbox is checked
+        if (fcyToggle.checked) {
+            dateInputContainer.style.display = 'none';
+        } else {
+            // Show/hide date input based on currency select value
+            if (this.value !== 'INR') {
+                dateInputContainer.style.display = 'flex';
+            } else {
+                dateInputContainer.style.display = 'none';
+            }
+        }
+
+        // Update the currency code displayed
+        currencyCode.textContent = this.value;
+
+        // Convert the amount to INR when the currency is changed
+        if (!fcyToggle.checked) {
+            convertCurrency(this);
+        }
+    });
+
+    // Add event listener for date input
+    dateInput.addEventListener('change', function() {
+        // Convert the amount to INR when the date is changed
+        if (!fcyToggle.checked) {
+            convertCurrency(this);
+        }
+    });
+
+    // Load currencies for the new row
+    loadCurrencies();
+}
+
+// Function to delete selected rows
+function deleteSelectedRows() {
+    const table = document.getElementById("expenseTable").getElementsByTagName('tbody')[0];
+    const rows = table.getElementsByTagName('tr');
+    for (let i = rows.length - 1; i >= 0; i--) {
+        const checkbox = rows[i].querySelector('input[type="checkbox"]');
+        if (checkbox && checkbox.checked) {
+            table.deleteRow(i);
+        }
+    }
+}
+ </script>
+
+
+<!-- end page title -->
+{% endblock %}
+{% block custom_script %}
+{% endblock %}

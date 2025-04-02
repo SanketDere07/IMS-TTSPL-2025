@@ -4,6 +4,7 @@ from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 from django.contrib.auth.signals import user_logged_in, user_logged_out
 from django.dispatch import receiver
 from django.utils import timezone
+import uuid
 
 # Create your models here.
 
@@ -494,3 +495,27 @@ class ScheduledBackupDetails(models.Model):
     
     def __str__(self):
         return f"Backup: {self.backup_name} - {self.scheduled_operation}"
+    
+class Expense(models.Model):
+    expense_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    from_date = models.DateField()
+    to_date = models.DateField()
+    sr_no = models.IntegerField(unique=True)
+    details = models.TextField()
+    total_amount_inr = models.DecimalField(max_digits=10, decimal_places=2)
+    total_amount_foreign_currency = models.DecimalField(max_digits=10, decimal_places=2)
+    attached_document = models.BooleanField(default=False)
+    attached_document_file = models.FileField(upload_to='expense_documents/', null=True, blank=True)
+    
+    # Reference to the Employee model
+    employee = models.ForeignKey(
+        'Employee', 
+        on_delete=models.CASCADE, 
+        related_name='expenses'
+    )
+
+    def __str__(self):
+        return f"Expense {self.expense_id} - {self.details}"
+
+    class Meta:
+        ordering = ['from_date']

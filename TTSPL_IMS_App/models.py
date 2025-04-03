@@ -450,6 +450,16 @@ class Supplier(models.Model):
         return f"{self.supplier_name} ({self.supplier_id})"
     
     
+PRODUCT_STATUS_CHOICES = (
+        ('ASSIGN', 'assign'),
+        ('FIXED_ASSET','fixed_asset'),
+        ('RETURN', 'return'),
+        ('SELL','sell'),
+        ('DEMO', 'demo'),
+        ('INSPECTION', 'inspection'),
+        ('INSTOCK','instock'),
+    )
+    
 class StockEntry(models.Model):
     stock_id = models.AutoField(primary_key=True)
     category = models.ForeignKey('Category', on_delete=models.CASCADE)
@@ -459,6 +469,7 @@ class StockEntry(models.Model):
     rack = models.ForeignKey('Rank', on_delete=models.CASCADE)  
     box = models.ForeignKey('Box', on_delete=models.CASCADE)  
     quantity = models.PositiveIntegerField(default=1)
+    product_status = models.CharField(max_length=30, choices=PRODUCT_STATUS_CHOICES, default='INSTOCK')
     serial_number = models.CharField(max_length=255, blank=True, null=True)  
     created_on = models.DateTimeField(auto_now_add=True)
 
@@ -486,6 +497,37 @@ class TempStockBarcode(models.Model):
 
     def __str__(self):
         return f"Temp Barcode: {self.barcode_text}"
+
+class AssignProduct(models.Model):
+    stock_id = models.ForeignKey('StockEntry', on_delete=models.CASCADE, null=True, blank=True)
+    assign_id = models.CharField(max_length=100, unique=True)
+    assign_product = models.ForeignKey('Product', on_delete=models.CASCADE, null=True, blank=True)
+    assign_employee = models.ForeignKey('Employee', on_delete=models.CASCADE, null=True, blank=True)
+    assign_company = models.ForeignKey('Company', on_delete=models.CASCADE, null=True, blank=True)
+    assign_exhibition = models.ForeignKey('Exhibition', on_delete=models.CASCADE, null=True, blank=True)
+    assign_customer = models.ForeignKey('Customer', on_delete=models.CASCADE, null=True, blank=True)
+    assign_mode = models.CharField(max_length=30)
+    assign_quantity = models.IntegerField(default=0)
+    assign_customer_details = models.CharField(max_length=200)
+    assign_at = models.DateTimeField(auto_now_add=True)
+
+class ReturnProductHistory(models.Model):
+    return_stock_id = models.ForeignKey('StockEntry', on_delete=models.CASCADE, null=True, blank=True)
+    return_id = models.CharField(max_length=100,null=True)
+    assign_return_id = models.CharField(max_length=100)
+    return_product = models.ForeignKey('Product', on_delete=models.CASCADE, null=True, blank=True)
+    return_employee = models.ForeignKey('Employee', on_delete=models.CASCADE, null=True, blank=True)
+    return_company = models.ForeignKey('Company', on_delete=models.CASCADE, null=True, blank=True)
+    return_exhibition = models.ForeignKey('Exhibition', on_delete=models.CASCADE, null=True, blank=True)
+    return_customer = models.ForeignKey('Customer', on_delete=models.CASCADE, null=True, blank=True)
+    return_mode = models.CharField(max_length=30)
+    return_quantity = models.IntegerField(default=0)
+    return_customer_details = models.CharField(max_length=200)
+    return_product_status = models.CharField(max_length=255, blank=True, null=True)
+    reuturn_assign_at = models.CharField(max_length=255, blank=True, null=True)
+    return_at = models.DateTimeField(auto_now_add=True, blank=True, null=True)
+    reuturn_status = models.CharField(max_length=255, blank=True, null=True)
+
     
 
 class ScheduledBackup(models.Model):

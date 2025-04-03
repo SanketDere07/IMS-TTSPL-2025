@@ -1,0 +1,179 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %} Assign Stock | TTSPL IMS - Trisnota Technical Services Pvt. Ltd.{% endblock %}
+{% block content %}
+<!-- start page title -->
+<style>
+    /* Ensure select2 elements have uniform height */
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        color: #444;
+        line-height: 34px;
+    }
+
+    .select2-container--default .select2-selection--single {
+        background-color: #fff;
+        border: 1px solid #aaa;
+        border-radius: 4px;
+        height: 38px; /* Match input height */
+    }
+
+    /* Style for quantity input and buttons */
+    .input-group .btn {
+        height: 38px !important; /* Ensure buttons match select2 height */
+        line-height: auto;
+    }
+
+    .input-group input[type="number"] {
+        height: 38px !important; /* Match select2 height */
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 34px !important;
+        position: absolute;
+        top: 1px;
+        right: 1px;
+        width: 20px;
+    }
+
+    .select2-container {
+        margin-bottom: 10px !important;
+    }
+
+    /* Add margin-bottom to input fields */
+    .company-details, .customer-details {
+        margin-bottom: 10px !important;
+    }
+
+    /* Table styling */
+    #return_list_all {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    #return_list_all th, #return_list_all td {
+        padding: 12px;
+        text-align: left;
+        border: 1px solid #ddd;
+    }
+
+    #return_list_all th {
+        background-color: #f8f9fa;
+        font-weight: bold;
+    }
+
+    #return_list_all tr:hover {
+        background-color: #f1f1f1;
+    }
+</style>
+
+<div class="row">
+    <div class="col-12">
+        <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
+            <h4 class="mb-sm-0">Return Stock</h4>
+            <div class="page-title-right">
+                <ol class="breadcrumb m-0">
+                    <li class="breadcrumb-item"><a href="#">Dashboard</a></li>
+                    <li class="breadcrumb-item active">Return Stock</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-12 pt-4">
+        <div class="card">
+            <div class="card-header d-flex align-items-center">
+                <h5 class="card-title mb-0 flex-grow-1">Return Stock Entry</h5>
+            </div>
+            <div class="card-body">
+                <table id="return_list_all" class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th> SN No</th>
+                            <th>Return ID</th>
+                            <th>Assign ID</th>
+                            <th>Employee Name</th>
+                            <th>Barcode</th>
+                            <th>Product Name</th>
+                            <th>Return Mode</th>
+                            <th>Prev Product Status</th>
+                            <th>Assign At</th>
+                            <th>Return At</th>
+                            <th>Return Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="return_list_all_body">
+                        <!-- Rows will be inserted here by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast container -->
+<div id="toast-container" class="position-fixed bottom-0 end-0 p-3" style="z-index: 9999;"></div>
+
+<script>
+    function get_return_history() {
+        fetch("{% url 'get_return_history' %}")  // Fetch all return history data
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                const tableBody = document.getElementById('return_list_all_body');
+                tableBody.innerHTML = ''; // Clear existing rows
+
+                // Populate the table with the fetched data
+                data.forEach((item,index) => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${index + 1}</td>
+                        <td>${item.return_id}</td>
+                        <td>${item.assign_return_id}</td>
+                        <td>${item.employee_name}</td>
+                        <td>${item.barcode}</td>
+                        <td>${item.product_name}</td>
+                        <td>${item.return_mode}</td>
+                        <td>${item.return_assign_status}</td>
+                        <td>${item.reuturn_assign_at}</td>
+                        <td>${item.return_at}</td>
+                        <td>
+                            ${item.reuturn_status === 'Success' ? 
+                                '<span class="badge bg-success">Success</span>' : 
+                                '<span class="badge bg-danger">Unsuccessful</span>'
+                            }
+                        </td>
+                        
+                    `;
+                    tableBody.appendChild(row);
+                });
+            })
+            .catch(error => {
+                console.error("Error fetching return history data:", error);
+                // Display an error message to the user
+                const toastContainer = document.getElementById('toast-container');
+                toastContainer.innerHTML = `
+                    <div class="toast bg-danger text-white" role="alert" aria-live="assertive" aria-atomic="true">
+                        <div class="toast-body">
+                            Failed to load return history data. Please try again later.
+                        </div>
+                    </div>
+                `;
+                // Show the toast
+                $('.toast').toast('show');
+            });
+    }
+
+    // Call the function to load data when the page loads
+    document.addEventListener('DOMContentLoaded', get_return_history);
+</script>
+
+<!-- end page title -->
+{% endblock %}
+{% block custom_script %}
+{% endblock %}

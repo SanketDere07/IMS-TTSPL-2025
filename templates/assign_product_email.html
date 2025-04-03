@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Assigned Products</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .email-container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        h2 {
+            color: #333333;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        p {
+            color: #555555;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            background-color: #f9f9f9;
+            border: 1px solid #dddddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        strong {
+            color: #333333;
+            font-weight: bold;
+        }
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+            color: #777777;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <h2>Hello, {{ user.name }} !</h2>
+        <p>You have been assigned the following products:</p>
+        <p><strong>Assignment ID:</strong> {{ assign_id }}</p>
+        <ul>
+            {% for prod in products %}
+            <li>
+                <strong>Product Name:</strong> {{ prod.product.product_name }}<br>
+                <strong>Category:</strong> {{ prod.product.category.category_name }}<br>
+                <strong>Subcategory:</strong> {{ prod.product.subcategory.subcategory_name }}<br>
+                <strong>Stock ID:</strong> {{ prod.stock_id }}<br>
+                <strong>Barcode Text:</strong> {{ prod.barcode_text }}<br>
+                <strong>Assign Mode:</strong> {{ prod.assign_product_mode }}<br>
+            </li>
+            {% endfor %}
+        </ul>
+        <div class="footer">
+            <p>Thank you!</p>
+            <p>If you have any questions, please contact To Saloni.</p>
+        </div>
+    </div>
+</body>
+</html>

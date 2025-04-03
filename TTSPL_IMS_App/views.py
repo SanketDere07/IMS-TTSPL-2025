@@ -81,12 +81,17 @@ from decimal import Decimal
 from django.core.mail import EmailMultiAlternatives
 from django.shortcuts import render, redirect
 from django.contrib import messages
-from .models import Expense, NewExpenseGenerated,VerifyProcessExpense, ExpenseFinanceProcess
+from .models import Expense, NewExpenseGenerated,VerifyProcessExpense, ExpenseFinanceProcess, AssignProduct, ReturnProductHistory
 from django.db.models import Q
 from django.core.mail import EmailMessage
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from django.core.files.base import ContentFile
+import traceback 
+
+import time
+import random
+import uuid
 
 import json
 
@@ -184,58 +189,33 @@ def send_reset_otp(request):
             user.refresh_from_db()
 
             # Email sending logic (same as before)
+            # Prepare email context
+            context = {
+                'username': user.username,
+                'otp': otp,
+                'company_name': 'Trisnota Technical Services Pvt. Ltd.',
+                'company_phone': '+91 22 4605 5448',
+                'company_website': 'https://ttspl.co.in'
+            }
+
+            # Render email template
+            html_message = render_to_string('auth/email_send_otp_format.html', context)
+            
+            # Send email
             connection = CustomEmailBackend(use_secondary=False)
             connection.open()
-
-           # Create the HTML message
-            subject = 'Password Reset OTP'
-            html_message = f"""
-            <!DOCTYPE html>
-            <html>
-            <head></head>
-            <body style="font-family: Arial, sans-serif; line-height: 1.6;">
-                <p>
-                    Dear {user.username},  <!-- Optional: Add user's first name -->
-                </p>
-
-                <p>
-                    We have received a request to reset your password. Please use the One-Time Password (OTP) provided below to complete the process:
-                </p>
-
-                <p style="text-align: center; font-size: 1.5em; font-weight: bold;">
-                    {otp}
-                </p>
-
-                <p>
-                    <strong>Note:</strong> This OTP is valid for 3 minutes.
-                </p>
-
-                <p>
-                    If you did not request a password reset, please ignore this email or contact our support team for assistance.
-                </p>
-
-                <p>
-                    Best Regards,<br>
-                    Trisnota Technical Services Pvt. Ltd.<br>
-                    Website: <a href="https://ttspl.co.in">ttspl.co.in</a><br>
-                    Contact: +91&nbsp;22&nbsp;4605&nbsp;5448
-                </p>
-            </body>
-            </html>
-            """
-
-            from_email = 'noreply@example.com'
-            recipient_list = [email]
-
+            
             send_mail(
-                subject,
-                '',
-                from_email,
-                recipient_list,
+                subject='Password Reset OTP',
+                message='',  # Text version can be empty since we're using html_message
+                from_email='noreply@ttspl.co.in',
+                recipient_list=[email],
                 connection=connection,
                 html_message=html_message
             )
+            
             connection.close()
+
 
             if is_resend:
                 remaining_attempts = max(0, 4 - user.otp_resend_attempts)
@@ -319,52 +299,32 @@ def reset_password(request):
                 user.set_password(password)
                 user.save()
 
-                # Send confirmation email after password reset
+               # Prepare email context
+                context = {
+                    'username': user.username,
+                    'company_name': 'Trisnota Technical Services Pvt. Ltd.',
+                    'company_phone': '+91 22 4605 5448',
+                    'company_website': 'https://ttspl.co.in',
+                    'support_email': 'support@ttspl.co.in',
+                    'system_name': 'TTSPL IMS'
+                }
+
+                # Render email template
+                html_message = render_to_string('auth/email_password_reset_confirmation.html', context)
+                
+                # Send email
                 connection = CustomEmailBackend(use_secondary=False)
                 connection.open()
-
-                # Create a better-formatted confirmation message
-                subject = 'Password Reset Confirmation'
-                html_message = f"""
-                <!DOCTYPE html>
-                <html>
-                <head></head>
-                <body style="font-family: Arial, sans-serif; line-height: 1.6;">
-                    <p>Dear {user.username},</p>
-
-                    <p>
-                        We wanted to inform you that your password has been successfully reset.
-                        If you did not request this change or if you suspect unauthorized access to your account,
-                        please contact us immediately.
-                    </p>
-
-                    <p>
-                        <strong>Note:</strong> If you have any concerns, feel free to reach out to our support team at
-                        <a href="mailto:support@ttspl.co.in">support@ttspl.co.in</a> or call us at +91&nbsp;22&nbsp;4605&nbsp;5448.
-                    </p>
-
-                    <p>
-                        Thank you for using TTSPL IMS.<br>
-                        Best Regards,<br>
-                        Trisnota Technical Services Pvt. Ltd.<br>
-                        Website: <a href="https://ttspl.co.in">ttspl.co.in</a>
-                    </p>
-                </body>
-                </html>
-                """
-
-                from_email = 'noreply@example.com'  # Change to your "from" email address
-                recipient_list = [email]
-
+                
                 send_mail(
-                    subject,
-                    '',  # Leave the plain text version empty
-                    from_email,
-                    recipient_list,
+                    subject='Password Reset Confirmation',
+                    message='Your password has been successfully reset.',  # Plain text fallback
+                    from_email='noreply@ttspl.co.in',
+                    recipient_list=[email],
                     connection=connection,
-                    fail_silently=False,
-                    html_message=html_message  # Use the HTML content for the email
+                    html_message=html_message
                 )
+                
                 connection.close()
                 messages.success(
                     request, "Password has been reset successfully!")
@@ -1736,39 +1696,20 @@ def generate_product_code():
     return f"PROD-{new_id:06d}"  # Formats as PROD-000001, PROD-000002, etc.
 
 
+def generate_barcode_image(barcode_text, product_id, category_shortcode):
+    """ Generate and save a barcode image """
+    barcode_class = barcode.get_barcode_class('code128')
+    barcode_instance = barcode_class(barcode_text, writer=ImageWriter())
 
-def generate_barcode_image(qr_text, product_id, category_shortcode):
-    """ Generate and save a QR code image """
+    # Create file path using product_id and category_shortcode
+    file_path = os.path.join(settings.MEDIA_ROOT, 'barcodes', f'barcode_{product_id}_{category_shortcode}')
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+    
+    # Save the barcode without the .png extension
+    barcode_instance.save(file_path)
 
-    # QR data to encode
-    qr_data = qr_text  # Encoding qr_text inside the QR
-
-    # Generate the QR code
-    qr = qrcode.QRCode(
-        version=1,
-        error_correction=qrcode.constants.ERROR_CORRECT_L,
-        box_size=10,
-        border=4,
-    )
-    qr.add_data(qr_data)
-    qr.make(fit=True)
-
-    # Create the image
-    img = qr.make_image(fill='black', back_color='white')
-
-    # Define the folder and file path (Same logic as barcode)
-    folder_path = os.path.join(settings.MEDIA_ROOT, 'barcodes')
-    os.makedirs(folder_path, exist_ok=True)
-
-    # File name format
-    file_name = f'qr_{product_id}_{category_shortcode}.png'
-    file_path = os.path.join(folder_path, file_name)
-
-    # Save the QR code image
-    img.save(file_path)
-
-    # Return the relative path for use in templates
-    return f'barcodes/{file_name}'
+    # Return relative path with .png extension
+    return f'barcodes/barcode_{product_id}_{category_shortcode}.png'
 
 
 def generate_barcode(product_code, product_name, category_shortcode):
@@ -1839,6 +1780,11 @@ def add_product(request):
 
     categories = Category.objects.all()
     return render(request, 'add_product.html', {'categories': categories})
+
+
+def get_subcategories(request, category_id):
+    subcategories = list(SubCategory.objects.filter(category_id=category_id).values('subcategory_id', 'subcategory_name','shortcode'))
+    return JsonResponse({'subcategories': subcategories})
 
 
 
@@ -2207,13 +2153,17 @@ def get_locations_entry(request):
     return JsonResponse({'locations': locations})
 
 
+from PIL import Image, ImageDraw, ImageFont
+import qrcode
+import os
+from django.conf import settings
 
 def generate_barcode_stock_image(product_code, product_name, product_size_length, product_size_breadth, 
-                                 product_size_height, product_weight, manufacture_name, category_shortcode, 
-                                 location_shortcode, quantity_number):
+                               product_size_height, product_weight, manufacture_name, category_shortcode, 
+                               location_shortcode, quantity_number):
     """ Generate and save a QR code with barcode text displayed below. """
 
-    # ✅ Encode full details inside the QR code (but not as visible text)
+    # Encode full details inside the QR code
     qr_data = (
         f"Barcode Text: {product_code}\n"
         f"Name: {product_name}\n"
@@ -2225,7 +2175,7 @@ def generate_barcode_stock_image(product_code, product_name, product_size_length
         f"Quantity: {quantity_number}"
     )
 
-    # ✅ Generate QR Code
+    # Generate QR Code
     qr = qrcode.QRCode(
         version=1,
         error_correction=qrcode.constants.ERROR_CORRECT_L,
@@ -2236,40 +2186,40 @@ def generate_barcode_stock_image(product_code, product_name, product_size_length
     qr.make(fit=True)
     qr_img = qr.make_image(fill='black', back_color='white')
 
-    # ✅ Load font
+    # Load font
     font_path = os.path.join(settings.BASE_DIR, 'static', 'assets', 'fonts', 'Arial.ttf')
     try:
-        font = ImageFont.truetype(font_path, 22)  # Slightly larger font for better readability
+        font = ImageFont.truetype(font_path, 22)
     except IOError:
         font = ImageFont.load_default()
 
-    # ✅ Get QR code size
+    # Get QR code size
     qr_width, qr_height = qr_img.size
 
-    # ✅ Get text size (only barcode_text, not full details)
+    # Get text size
     barcode_text = f"{product_code}-{category_shortcode}-{location_shortcode}-{str(quantity_number).zfill(2)}"
-    temp_img = Image.new("RGB", (1000, 1000))
+    temp_img = Image.new("RGB", (1000, 1000), "white")
     draw = ImageDraw.Draw(temp_img)
     bbox = draw.textbbox((0, 0), barcode_text, font=font)
     text_width, text_height = bbox[2] - bbox[0], bbox[3] - bbox[1]
 
-    # ✅ Create final image canvas (QR + text)
-    img_width = max(qr_width + 40, text_width + 40)  # Ensure space for text
-    img_height = qr_height + text_height + 50  # Extra space for text
+    # Create final image canvas
+    img_width = max(qr_width + 40, text_width + 40)
+    img_height = qr_height + text_height + 50
     final_img = Image.new("RGB", (img_width, img_height), "white")
 
-    # ✅ Center QR code
+    # Center QR code
     qr_x = (img_width - qr_width) // 2
-    qr_y = 10  # Padding from top
+    qr_y = 10
     final_img.paste(qr_img, (qr_x, qr_y))
 
-    # ✅ Draw barcode text centered below QR code
+    # Draw barcode text
     draw = ImageDraw.Draw(final_img)
     text_x = (img_width - text_width) // 2
-    text_y = qr_y + qr_height + 10  # Space between QR and text
+    text_y = qr_y + qr_height + 10
     draw.text((text_x, text_y), barcode_text, font=font, fill="black")
 
-    # ✅ Save barcode image
+    # Save barcode image
     temp_folder = os.path.join(settings.MEDIA_ROOT, 'temp_barcodes')
     os.makedirs(temp_folder, exist_ok=True)
 
@@ -2437,8 +2387,6 @@ def add_stock(request):
     return JsonResponse({"status": "error", "message": "Invalid request"}, status=400)
 
 
-
-
 def get_existing_barcodes(request):
     product_id = request.GET.get('product_id')
     location_id = request.GET.get('location_id')
@@ -2486,7 +2434,7 @@ def submit_stock(request):
             category_id = request.POST.get('category_id')
             subcategory_id = request.POST.get('subcategory_id')
             quantity = int(request.POST.get('quantity', 1))
-
+            product_status_list = request.POST.getlist('product_status[]')  # Extract as list
             import ast
             barcodes_json = request.POST.get('barcodes', '[]')
             barcode_list = ast.literal_eval(barcodes_json) if isinstance(barcodes_json, str) else []
@@ -2497,21 +2445,20 @@ def submit_stock(request):
             # Debugging: Print extracted values
             print(f"Product ID: {product_id}, Location ID: {location_id}, Quantity: {quantity}, Barcodes: {barcode_list}")
 
-            
             product = Product.objects.get(product_id=product_id)
             location = Location.objects.get(id=location_id)
             category = Category.objects.get(category_id=category_id)
-            subcategory = SubCategory.objects.get(subcategory_id=subcategory_id)  # FIXED
+            subcategory = SubCategory.objects.get(subcategory_id=subcategory_id)
 
             # Process each barcode
-            for barcode in barcode_list:
+            for index, barcode in enumerate(barcode_list):
                 rank_id = barcode.get("rank_id")
                 box_id = barcode.get("box_id")
                 serial_number = barcode.get("serial_number", "")
+                product_status = product_status_list[index]  # Get product_status for this barcode
 
-                rack = Rank.objects.get(rank_id=rank_id)  # FIXED
-                box = Box.objects.get(box_id=box_id)  # FIXED
-               
+                rack = Rank.objects.get(rank_id=rank_id)
+                box = Box.objects.get(box_id=box_id)
 
                 stock_entry = StockEntry.objects.create(
                     product=product,
@@ -2521,7 +2468,8 @@ def submit_stock(request):
                     rack=rack,
                     box=box,
                     quantity=1,  # Each barcode corresponds to 1 quantity
-                    serial_number=serial_number
+                    serial_number=serial_number,
+                    product_status=product_status  # Pass product_status here
                 )
 
                 # Fetch the temp barcode object
@@ -2545,7 +2493,6 @@ def submit_stock(request):
             return JsonResponse({"status": "error", "message": str(e)}, status=400)
 
     return JsonResponse({"status": "error", "message": "Invalid request"}, status=400)
-
 
 
 def delete_temp_barcode(request):
@@ -2584,7 +2531,6 @@ def delete_temp_barcode(request):
     return JsonResponse({"status": "error", "message": "Invalid request"}, status=400)
 
 
-
 def remove_barcode(request):
     """ Remove barcode entry from database """
     if request.method == 'POST':
@@ -2600,7 +2546,6 @@ def remove_barcode(request):
 
     return JsonResponse({"status": "error", "message": "Invalid request"}, status=400)
 
-
 def get_boxes(request):
     boxes = list(Box.objects.values('box_id', 'box_name'))
     return JsonResponse({'boxes': boxes})
@@ -2609,67 +2554,19 @@ def get_ranks(request):
     ranks = list(Rank.objects.values('rank_id', 'rank_name'))
     return JsonResponse({'ranks': ranks})
 
-
-# def fetch_barcode(request):
-#     category_id = request.GET.get("category")
-#     subcategory_id = request.GET.get("subcategory")
-#     product_id = request.GET.get("product")
-#     location_id = request.GET.get("location")
-
-#     print(f"Received Parameters - Category: {category_id}, SubCategory: {subcategory_id}, Product: {product_id}, Location: {location_id}")
-
-#     # Fetch matching stock entries
-#     stock_entries = StockEntry.objects.filter(
-#         category_id=category_id,
-#         subcategory_id=subcategory_id,
-#         product_id=product_id,
-#         location_id=location_id
-#     ).select_related("product", "location", "rack", "box")
-
-#     if stock_entries.exists():
-#         print(f"Stock Entries Found: {stock_entries.count()}")
-
-#         barcode_list = []
-
-#         for stock_entry in stock_entries:
-#             # Fetch all barcodes associated with each stock entry
-#             barcodes = stock_entry.barcodes.all()  # Uses related_name="barcodes" in StockBarcode model
-#             barcode_data = [
-#                 {
-#                     "barcode_text": barcode.barcode_text,
-#                     "barcode_image": barcode.barcode_image.url,
-#                     "stock_id": stock_entry.stock_id,
-#                     "serial_number": stock_entry.serial_number,
-#                     "product_name": stock_entry.product.product_name,
-#                     "location": stock_entry.location.name,
-#                     "rank": stock_entry.rack.rank_name,  
-#                     "box": stock_entry.box.box_name
-#                 }
-#                 for barcode in barcodes
-#             ]
-#             barcode_list.extend(barcode_data)
-
-#         print(f"Barcodes Found: {barcode_list}")  
-#         return JsonResponse({"barcodes": barcode_list})
-
-#     else:
-#         print("No Stock Entries Found!")
-#         return JsonResponse({"barcodes": []})
     
-def fetch_barcode(request):
+def stock_entry_fetch_barcode(request):
     category_id = request.GET.get("category")
     subcategory_id = request.GET.get("subcategory")
     product_id = request.GET.get("product")
     location_id = request.GET.get("location")
 
-    print(f"Received Parameters - Category: {category_id}, SubCategory: {subcategory_id}, Product: {product_id}, Location: {location_id}")
-
-    # Fetch matching stock entries
+    print(f"Stock Entry Received Parameters - Category: {category_id}, SubCategory: {subcategory_id}, Product: {product_id}, Location: {location_id}")
     stock_entries = StockEntry.objects.filter(
         category_id=category_id,
         subcategory_id=subcategory_id,
         product_id=product_id,
-        location_id=location_id
+        location_id=location_id,
     ).select_related("product", "location", "rack", "box")
 
     total_quantity = stock_entries.aggregate(total_quantity=Sum('quantity'))['total_quantity'] or 0
@@ -2691,7 +2588,8 @@ def fetch_barcode(request):
                     "product_name": stock_entry.product.product_name,
                     "location": stock_entry.location.name,
                     "rank": stock_entry.rack.rank_name,  
-                    "box": stock_entry.box.box_name
+                    "box": stock_entry.box.box_name,
+                    "product_status": stock_entry.product_status,
                 }
                 for barcode in barcodes
             ]
@@ -2704,7 +2602,55 @@ def fetch_barcode(request):
         print("No Stock Entries Found!")
         return JsonResponse({"barcodes": [], "available_quantity": 0})
 
+def fetch_barcode(request):
+    category_id = request.GET.get("category")
+    subcategory_id = request.GET.get("subcategory")
+    product_id = request.GET.get("product")
+    location_id = request.GET.get("location")
 
+    print(f"Received Parameters - Category: {category_id}, SubCategory: {subcategory_id}, Product: {product_id}, Location: {location_id}")
+
+    # Fetch matching stock entries
+    stock_entries = StockEntry.objects.filter(
+        category_id=category_id,
+        subcategory_id=subcategory_id,
+        product_id=product_id,
+        location_id=location_id,
+        product_status ="INSTOCK"
+    ).select_related("product", "location", "rack", "box")
+
+    total_quantity = stock_entries.aggregate(total_quantity=Sum('quantity'))['total_quantity'] or 0
+
+    if stock_entries.exists():
+        print(f"Stock Entries Found: {stock_entries.count()} | Total Quantity: {total_quantity}")
+
+        barcode_list = []
+
+        for stock_entry in stock_entries:
+            # Fetch all barcodes associated with each stock entry
+            barcodes = stock_entry.barcodes.all()  
+            barcode_data = [
+                {
+                    "barcode_text": barcode.barcode_text,
+                    "barcode_image": barcode.barcode_image.url,
+                    "stock_id": stock_entry.stock_id,
+                    "serial_number": stock_entry.serial_number,
+                    "product_name": stock_entry.product.product_name,
+                    "location": stock_entry.location.name,
+                    "rank": stock_entry.rack.rank_name,  
+                    "box": stock_entry.box.box_name,
+                    "product_status": stock_entry.product_status,
+                }
+                for barcode in barcodes
+            ]
+            barcode_list.extend(barcode_data)
+
+        print(f"Barcodes Found: {barcode_list}")  
+        return JsonResponse({"barcodes": barcode_list, "available_quantity": total_quantity})
+
+    else:
+        print("No Stock Entries Found!")
+        return JsonResponse({"barcodes": [], "available_quantity": 0})
 
 @csrf_exempt
 def delete_stock(request, stock_id):
@@ -2735,7 +2681,6 @@ def delete_stock(request, stock_id):
             return JsonResponse({"status": "error", "message": str(e)}, status=500)
 
     return JsonResponse({"status": "error", "message": "Invalid request method"}, status=400)
-
 
 
 @csrf_exempt
@@ -2784,11 +2729,9 @@ def fetch_stock_list(request):
         subcategory_id = request.GET.get("subcategory", None)
         product_id = request.GET.get("product", None)
         location_id = request.GET.get("location", None)
-        from_date = request.GET.get("from_date", None)
-        to_date = request.GET.get("to_date", None)
 
         stock_entries = StockEntry.objects.select_related(
-            "product", "category", "subcategory", "location", "rack", "box"
+            "product","category", "subcategory", "location", "rack", "box"
         ).all()
 
         # Apply filters only if values exist
@@ -2800,12 +2743,6 @@ def fetch_stock_list(request):
             stock_entries = stock_entries.filter(product_id=product_id)
         if location_id:
             stock_entries = stock_entries.filter(location_id=location_id)
-        if from_date:
-            from_date = parse_date(from_date)
-            stock_entries = stock_entries.filter(created_on__gte=from_date)
-        if to_date:
-            to_date = parse_date(to_date)
-            stock_entries = stock_entries.filter(created_on__lte=to_date)
 
         stock_list = [
             {
@@ -2818,19 +2755,15 @@ def fetch_stock_list(request):
                 "location": stock.location.name,
                 "rack": stock.rack.rank_name if stock.rack else "N/A",
                 "box": stock.box.box_name if stock.box else "N/A",
-                "created_on": stock.created_on.strftime("%Y-%m-%d"),
-
+                "product_status" : stock.product_status
             }
             for stock in stock_entries
-            for barcode in stock.barcodes.all()
+            for barcode in stock.barcodes.all()  # Assuming a ForeignKey or related_name="barcodes"
         ]
 
         return JsonResponse({"stocks": stock_list}, status=200)
 
     return JsonResponse({"error": "Invalid request method."}, status=405)
-
-
-
 
 def stock_view_page(request, stock_id): 
     # Fetch the specific stock entry by ID
@@ -2949,6 +2882,528 @@ def get_customers(request):
     
     return JsonResponse({"customers": list(customers)})
 
+
+from django.template.loader import render_to_string
+from django.utils.html import strip_tags
+from django.conf import settings  # Import settings
+
+def save_assigned_stock(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            assign_id = uuid.uuid4()
+            print("The product Assign Code Is : ", data)
+
+            # Dictionary to group products by user
+            user_products = {}
+
+            for item in data:
+                print("The item is:", item)
+                stock_product = StockEntry.objects.select_related(
+                    'product',  # Fetch related product
+                    'product__category',  # Fetch related category of the product
+                    'product__subcategory'  # Fetch related subcategory of the product
+                ).get(stock_id=item['stockId'])
+
+                product = stock_product.product
+                assign_product_mode = item['assign_product_mode']
+
+                assign_employee = None
+                assign_company = None
+                assign_exhibition = None
+                assign_customer = None
+
+                assign_stock_id = stock_product
+                if item['mode'] == "Users":
+                    assign_employee = Employee.objects.get(employee_id=item['relatedFields']['employee'])
+                    user_key = f"employee_{assign_employee.employee_id}"
+                elif item['mode'] == "Company":
+                    assign_company = Company.objects.get(company_id=item['relatedFields']['company'])
+                    user_key = f"company_{assign_company.company_id}"
+                elif item['mode'] == "Exhibition":
+                    assign_exhibition = Exhibition.objects.get(exhibition_id=item['relatedFields']['exhibition'])
+                    assign_employee = Employee.objects.get(employee_id=item['relatedFields']['employee'])
+                    user_key = f"exhibition_{assign_exhibition.exhibition_id}"
+                elif item['mode'] == "Customers":
+                    assign_customer = Customer.objects.get(customer_id=item['relatedFields']['customer'])
+                    user_key = f"customer_{assign_customer.customer_id}"
+                else:
+                    raise ValueError("Invalid mode provided")
+
+                # Create and save the AssignProduct instance
+                assign_product = AssignProduct(
+                    assign_id=assign_id,
+                    stock_id=assign_stock_id,
+                    assign_mode=item['mode'],
+                    assign_product=product,
+                    assign_employee=assign_employee,
+                    assign_company=assign_company,
+                    assign_exhibition=assign_exhibition,
+                    assign_customer=assign_customer,
+                    assign_quantity=1,  # Assuming 1 quantity per item
+                    assign_customer_details=item['relatedFields'].get('customerDetails', ''),  # Optional field
+                    assign_at=timezone.now()
+                )
+                assign_product.save()
+
+                return_assign_product = ReturnProductHistory(
+                    assign_return_id=assign_id,
+                    return_id="",
+                    return_stock_id=assign_stock_id,
+                    return_mode=item['mode'],
+                    return_product=product,
+                    return_employee=assign_employee,
+                    return_company=assign_company,
+                    return_exhibition=assign_exhibition,
+                    return_customer=assign_customer,
+                    return_quantity=0,  # Assuming 1 quantity per item
+                    return_customer_details=item['relatedFields'].get('customerDetails', ''),  # Optional field
+                    return_product_status=assign_product_mode,
+                    reuturn_assign_at=timezone.now(),
+                    return_at="-",
+                )
+                return_assign_product.save()
+
+                stock_product.product_status = assign_product_mode
+                stock_product.save()
+
+                # Group products by user
+                if user_key not in user_products:
+                    user_products[user_key] = {
+                        'user': assign_employee or assign_company or assign_exhibition or assign_customer,
+                        'products': []
+                    }
+                user_products[user_key]['products'].append({
+                    'product': product,
+                    'stock_id': item['stockId'],
+                    'barcode_text': item['barcodeText'],
+                    'assign_product_mode': item['assign_product_mode']
+                })
+
+            # Send email to each user with their assigned products
+            for user_key, user_data in user_products.items():
+                user = user_data['user']
+                products = user_data['products']
+
+                # Prepare email content
+                subject = "Your Assigned Products"
+                html_message = render_to_string('assign_product_email.html', {
+                    'user': user,
+                    'products': products,  # Pass grouped products with item details
+                    'assign_id': assign_id,
+                })
+                plain_message = strip_tags(html_message)
+                from_email = settings.EMAIL_HOST_USER
+                to_email = user.email  # Ensure the user model has an email field
+
+                # Send email
+                send_mail(subject, plain_message, from_email, [to_email], html_message=html_message)
+
+            return JsonResponse({"success": True})
+        except Exception as e:
+            traceback_str = traceback.format_exc()
+            print("Traceback:", traceback_str)
+            return JsonResponse({"success": False, "error": str(e)})
+    return JsonResponse({"success": False, "error": "Invalid request method"})
+
+@csrf_exempt
+def get_all_assigned_data(request):
+    category_id = request.GET.get("category")
+    subcategory_id = request.GET.get("subcategory")
+    product_id = request.GET.get("product")
+    location_id = request.GET.get("location")
+    mode = request.GET.get("mode")
+    assigned_product_count = AssignProduct.objects.filter(assign_mode=mode).count()
+    print("assigned_product_count",assigned_product_count)
+    stock = AssignProduct.objects.filter(
+        assign_product__category__category_id=category_id,
+        assign_product__subcategory__subcategory_id=subcategory_id, 
+        assign_product__product_id=product_id,
+        stock_id__location = location_id,
+        assign_mode = mode,
+    )
+    stock_data = []
+    for entry in stock:
+            entry_dict = {
+                "assign_id": entry.assign_id,
+                "product_name": entry.assign_product.product_name,
+                "category_name": entry.assign_product.category.category_name,
+                "subcategory_name": entry.assign_product.subcategory.subcategory_name,
+                "assign_mode": entry.assign_mode,
+                "product_status": entry.stock_id.product_status,
+            }
+            stock_data.append(entry_dict)
+    return JsonResponse(stock_data, safe=False)
+
+def return_stock(request):
+    return render(request, "stock/stock_return.html")
+
+@csrf_exempt
+def get_assign_data_all(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            type = data.get("type")
+            value = data.get("value")
+            print("The Type Is:", type, "The Value Is:", value)
+            assigned_products = []
+            if type == "User":
+                assign_type ="Users"
+                assign_employee = AssignProduct.objects.filter(assign_employee__employee_id=value,assign_mode = assign_type)
+                for i in assign_employee:
+                    barcode_text = i.stock_id.barcodes.first().barcode_text if i.stock_id.barcodes.exists() else " - "
+                    assigned_products.append({
+                        "assign_id": i.assign_id,
+                        "stock_id": i.stock_id.stock_id,
+                        "barcode_text": barcode_text,
+                        "product_name": i.assign_product.product_name,
+                        "product_category": i.assign_product.category.category_name,
+                        "product_subcategory": i.assign_product.subcategory.subcategory_name,
+                        "employee_name": i.assign_employee.name,
+                        "mode": assign_type,
+                        "product_status": i.stock_id.product_status,
+                        
+                    })
+            elif type == "Company":
+                assign_company = AssignProduct.objects.filter(assign_company__company_id=value,assign_mode = type)
+                for i in assign_company:
+                    barcode_text = i.stock_id.barcodes.first().barcode_text if i.stock_id.barcodes.exists() else " - "
+                    assigned_products.append({
+                        "assign_id": i.assign_id,
+                        "stock_id": i.stock_id.stock_id,
+                        "barcode_text": barcode_text,
+                        "product_name": i.assign_product.product_name,
+                        "product_category": i.assign_product.category.category_name,
+                        "product_subcategory": i.assign_product.subcategory.subcategory_name,
+                        "company_name": i.assign_company.company_name,
+                        "mode": type,
+                        "product_status": i.stock_id.product_status,
+                    })
+            elif type == "Exhibition":
+                try:
+                    assign_exhibition = AssignProduct.objects.filter(assign_exhibition__exhibition_id=value,assign_mode = type)
+                except:
+                    assign_exhibition = AssignProduct.objects.filter(assign_mode = type)
+                for i in assign_exhibition:
+                    barcode_text = i.stock_id.barcodes.first().barcode_text if i.stock_id.barcodes.exists() else " - "
+                    assigned_products.append({
+                        "assign_id": i.assign_id,
+                        "stock_id": i.stock_id.stock_id,
+                        "barcode_text": barcode_text,
+                        "product_name": i.assign_product.product_name,
+                        "product_category": i.assign_product.category.category_name,
+                        "product_subcategory": i.assign_product.subcategory.subcategory_name,
+                        "exhibition_name": i.assign_exhibition.exhibition_name,
+                        "mode": type,
+                        "product_status": i.stock_id.product_status,
+                        "employee_name": i.assign_employee.name,
+                    })
+            elif type == "Customer":
+                assign_mode = "Customers"
+                assign_customer = AssignProduct.objects.filter(assign_customer__customer_id=value,assign_mode = assign_mode)
+                for i in assign_customer:
+                    barcode_text = i.stock_id.barcodes.first().barcode_text if i.stock_id.barcodes.exists() else " - "
+                    assigned_products.append({
+                        "assign_id": i.assign_id,
+                        "stock_id": i.stock_id.stock_id,
+                        "barcode_text": barcode_text,
+                        "product_name": i.assign_product.product_name,
+                        "product_category": i.assign_product.category.category_name,
+                        "product_subcategory": i.assign_product.subcategory.subcategory_name,
+                        "customer_name": i.assign_customer.customer_name,
+                        "mode": type,
+                        "product_status": i.stock_id.product_status,
+                    })
+            elif type == "ALL":
+                assign_employee = AssignProduct.objects.filter(assign_employee__employee_id=value)
+                for i in assign_employee:
+                    barcode_text = i.stock_id.barcodes.first().barcode_text if i.stock_id.barcodes.exists() else " - "
+                    assigned_products.append({
+                        "assign_id": i.assign_id,
+                        "stock_id": i.stock_id.stock_id,
+                        "barcode_text": barcode_text,
+                        "product_name": i.assign_product.product_name,
+                        "product_category": i.assign_product.category.category_name,
+                        "product_subcategory": i.assign_product.subcategory.subcategory_name,
+                        "employee_name": i.assign_employee.name,
+                        "mode": i.assign_mode,
+                        "product_status": i.stock_id.product_status,
+                        "exhibition_name": i.assign_exhibition.exhibition_name if i.assign_exhibition else " - ",
+                    })
+            else:
+                raise ValueError("Invalid type provided")
+            # Return the assigned products in the response
+            return JsonResponse({
+                "status": "success",
+                "type": type,
+                "value": value,
+                "assigned_products": assigned_products,  # Include assigned products data
+            })
+        except json.JSONDecodeError:
+            return JsonResponse({"status": "error", "message": "Invalid JSON data"}, status=400)
+        except ValueError as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+    else:
+        return JsonResponse({"status": "error", "message": "Invalid request method"}, status=400)
+    
+
+@csrf_exempt
+def update_product_status(request):
+    if request.method != "POST":
+        return JsonResponse({"status": "error", "message": "Invalid request method"}, status=400)
+
+    try:
+        data = json.loads(request.body)
+        stock_id = data.get("stock_id")
+        product_status = data.get("product_status")
+        assign_id = data.get("assign_id")
+        if not stock_id or not product_status:
+            return JsonResponse({"status": "error", "message": "Missing stock_id or product_status"}, status=400)
+
+        print("--------------", stock_id, product_status,assign_id)
+
+        if product_status == "RETURN":
+            try:
+                assign_product = AssignProduct.objects.get(stock_id=stock_id)
+                return_stock_data, created = ReturnProductHistory.objects.get_or_create(return_stock_id=stock_id,assign_return_id=assign_id)
+                return_stock_data.return_id = uuid.uuid4()
+                return_stock_data.return_quantity = assign_product.assign_quantity
+                return_stock_data.return_at = timezone.now()
+                return_stock_data.reuturn_status = "Success"
+                return_stock_data.save()
+
+                product = StockEntry.objects.get(stock_id=stock_id)
+                product.product_status = "INSTOCK"
+                product.save()
+
+                assign_product.delete()
+
+                return JsonResponse({"status": "success", "message": "Product status updated and moved to return history successfully!"})
+            except AssignProduct.DoesNotExist:
+                print(traceback.format_exc())
+                return JsonResponse({"status": "error", "message": "Product not found in AssignProduct"}, status=404)
+            except StockEntry.DoesNotExist:
+                print(traceback.format_exc())
+                return JsonResponse({"status": "error", "message": "StockEntry not found"}, status=404)
+        print(traceback.format_exc())
+        return JsonResponse({"status": "success", "message": "Product status updated successfully!"})
+
+    except json.JSONDecodeError:
+        return JsonResponse({"status": "error", "message": "Invalid JSON data"}, status=400)
+    except Exception as e:
+        print(traceback.format_exc())
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
+def return_stock_history(request):
+    return render(request, "stock/stock_return_history.html")
+from django.db.models import Q
+
+
+def get_return_history(request):
+    # data = ReturnProductHistory.objects.filter(return_id__isnull=False)
+    data = ReturnProductHistory.objects.filter(~Q(return_id__isnull=True) & ~Q(return_id=""))
+    return_data = []
+    for product in data:
+        employee_name = product.return_employee.name if product.return_employee else ""
+        if product.return_mode == "Exhibition":
+            employee_name = (
+                (product.return_employee.name if product.return_employee else "") +
+                " - " +
+                (product.return_exhibition.exhibition_name if product.return_exhibition else "")
+            )
+        elif product.return_mode == "Customers":
+            employee_name = product.return_customer.customer_name if product.return_customer else None,
+        elif product.return_mode == "Company":
+            employee_name= product.return_company.company_name if product.return_company else None
+        print("==========",employee_name)
+        return_data.append({
+            'return_id': product.return_id,
+            'assign_return_id': product.assign_return_id,
+            "barcode": product.return_stock_id.barcodes.first().barcode_text if product.return_stock_id.barcodes.exists() else " - ",
+            'product_name': product.return_product.product_name,
+            'employee_name': employee_name,
+            'return_mode': product.return_mode,
+            'reuturn_status': product.reuturn_status,
+            'return_assign_status': product.return_product_status,
+            'assign_return_id': product.assign_return_id,
+            'return_product_status': product.return_product_status,
+            'reuturn_assign_at': product.reuturn_assign_at if product.reuturn_assign_at else "",
+            'return_at': product.return_at.strftime('%Y-%m-%d %H:%M:%S') if product.return_at else None,
+        })
+    
+    return JsonResponse(return_data, safe=False)
+import subprocess
+
+
+@csrf_exempt
+def receive_barcode(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            barcode = data.get('barcode')
+            print(f"Received barcode: {barcode}")
+            return JsonResponse({'status': 'success', 'barcode': barcode})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'}, status=405)
+
+
+
+
+
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+import cv2
+import os
+from django.core.files.storage import default_storage
+
+@csrf_exempt
+def scan_qr_image(request):
+    if request.method == 'POST' and request.FILES.get('image'):
+        # Save the uploaded file temporarily
+        file = request.FILES['image']
+        file_name = default_storage.save(file.name, file)
+        file_path = default_storage.path(file_name)
+
+        # Read the image using OpenCV
+        img = cv2.imread(file_path)
+
+        if img is not None:
+            detector = cv2.QRCodeDetector()
+            data, bbox, _ = detector.detectAndDecode(img)
+
+            # Clean up the uploaded file
+            default_storage.delete(file_name)
+
+            if data:
+                return JsonResponse({"qr_data": data})
+            else:
+                return JsonResponse({"error": "No QR code detected in the image!"}, status=400)
+        else:
+            return JsonResponse({"error": "Error reading the image!"}, status=400)
+    else:
+        return JsonResponse({"error": "No image provided!"}, status=400)
+
+def scan_via_mobile(request):
+    return render(request, "scanstock/scan_via_mobile.html")
+
+
+latest_scanned_data = None
+
+@csrf_exempt
+def get_backend_data_scanned_data(request):
+    global latest_scanned_data
+    if request.method == 'POST':
+        try:
+            if request.content_type == 'application/json':
+                data = json.loads(request.body)
+            else:
+                data = request.POST
+            qr_data = data.get('qr_data')
+            system_ip_data = data.get('system_ip')
+            get_temporary_ipv6 = data.get('get_temporary_ipv6')
+            print("QR DATA : ",qr_data,"SYSTEM IP : ",system_ip_data,"get_temporary_ipv6",get_temporary_ipv6)
+            if not qr_data:
+                return JsonResponse({"status": "error", "message": "Missing 'qr_data' in request."}, status=400)
+            if isinstance(qr_data, str):
+                barcode_text = qr_data.split(":")[1].strip().split("\n")[0]  # Extract "PROD-000001-ELEC-BO-01"
+            elif isinstance(qr_data, dict) and 'Barcode' in qr_data:
+                barcode_text = qr_data['Barcode']
+            else:
+                return JsonResponse({"status": "error", "message": "Invalid 'qr_data' format."}, status=400)
+            try:
+                assign_product = AssignProduct.objects.get(stock_id__barcodes__barcode_text=barcode_text)
+                if assign_product.assign_mode == "Users":
+                    emp_name = assign_product.assign_employee.name
+                elif assign_product.assign_mode == "Customer":
+                    emp_name = assign_product.assign_customer.customer_name
+                elif assign_product.assign_mode == "Exhibition":
+                    emp_name = f"{assign_product.assign_employee.name} - {assign_product.assign_exhibition.exhibition_name}"
+                elif assign_product.assign_mode == "Company":
+                    emp_name = assign_product.assign_company.company_name
+                else:
+                    emp_name = None
+                response_data = {
+                    "barcode": barcode_text,
+                    "stock_id": assign_product.stock_id.stock_id,
+                    "product_name": assign_product.assign_product.product_name,
+                    "product_category": assign_product.assign_product.category.category_name,
+                    "product_subcategory": assign_product.assign_product.subcategory.subcategory_name,
+                    "assign_mode": assign_product.assign_mode,
+                    "assign_at": assign_product.assign_at,
+                    "emp_name": emp_name,
+                    "box": assign_product.stock_id.box.box_name,
+                    "rack": assign_product.stock_id.rack.rank_name,
+                    "product_status": assign_product.stock_id.product_status,
+                    "location": assign_product.stock_id.location.name,
+                    "from": "assign_product",
+                    "system_ip": system_ip_data,
+                }
+            except AssignProduct.DoesNotExist:
+                stock_entry = StockEntry.objects.get(barcodes__barcode_text=barcode_text)
+                response_data = {
+                    "barcode": barcode_text,
+                    "stock_id": stock_entry.stock_id,
+                    "product_name": stock_entry.product.product_name,
+                    "product_category": stock_entry.product.category.category_name,
+                    "product_subcategory": stock_entry.product.subcategory.subcategory_name,
+                    "box": stock_entry.box.box_name,
+                    "rack": stock_entry.rack.rank_name,
+                    "product_status": stock_entry.product_status,
+                    "location": stock_entry.location.name,
+                    "from": "stock_entry",
+                    "system_ip": system_ip_data,
+                }
+            html = render_to_string('scanstock/scan_barcode_data_table.html', {"data": response_data})
+            latest_scanned_data = html  
+            return JsonResponse({
+                "status": "success",
+                "message": "Data retrieved successfully",
+                "data": response_data,
+                "html": html 
+            })
+        except Exception as e:
+            print("Error:", traceback.format_exc())
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+    return JsonResponse({"status": "error", "message": "Invalid request method. Only POST is allowed."}, status=405)
+
+@csrf_exempt
+def get_latest_scanned_data(request):
+    global latest_scanned_data
+    if latest_scanned_data:
+        return JsonResponse({
+            "status": "success",
+            "html": latest_scanned_data,
+        })
+    else:
+        return JsonResponse({
+            "status": "error",
+            "message": "No data available.",
+        })
+
+def assign_exhibition(request):
+    return render(request, "exhibition_operation/assign_exhibition.html")
+
+def return_exhibition(request):
+    return render(request, "exhibition_operation/return_exhibition.html")
+
+def assign_operation_exhibition_list(request):
+    return render(request, "exhibition_operation/assign_operation_exhibition_list.html")
+
+def fetch_exhibition_list(request):
+    exb_list = Exhibition.objects.all().values(
+        'exhibition_id',
+        'exhibition_name',
+        'location',
+        'city',
+        'state',
+        'start_date',
+        'end_date'
+    )
+    return JsonResponse({
+        "status": "success",
+        "data": list(exb_list),
+    })
 
 
 def generate_employee_pdf(request):   

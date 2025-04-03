@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scanned Data</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <h2>Scanned Data</h2>
+    <table id="scannedDataTable">
+        <thead>
+            <tr>
+                <th>Attribute</th>
+                <th>Value</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td><b>Barcode</b></td><td>{{ data.barcode }}</td></tr>
+            <tr><td><b>Stock ID</b></td><td>{{ data.stock_id }}</td></tr>
+            <tr><td><b>Product Name</b></td><td>{{ data.product_name }}</td></tr>
+            <tr><td><b>Category</b></td><td>{{ data.product_category }}</td></tr>
+            <tr><td><b>Subcategory</b></td><td>{{ data.product_subcategory }}</td></tr>
+            <tr><td><b>Box</b></td><td>{{ data.box }}</td></tr>
+            <tr><td><b>Rack</b></td><td>{{ data.rack }}</td></tr>
+            <tr><td><b>Product Status</b></td><td>{{ data.product_status }}</td></tr>
+            <tr><td><b>Location</b></td><td>{{ data.location }}</td></tr>
+            {% if data.from == "assign_product" %}
+                <tr><td><b>Assigned To</b></td><td>{{ data.emp_name }}</td></tr>
+                <tr><td><b>Assign Mode</b></td><td>{{ data.assign_mode }}</td></tr>
+                <tr><td><b>Assigned At</b></td><td>{{ data.assign_at }}</td></tr>
+            {% endif %}
+        </tbody>
+    </table>
+</body>
+</html>

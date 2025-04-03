@@ -200,6 +200,7 @@ urlpatterns = [
     path('get-boxes/', views.get_boxes, name='get_boxes'),
     path('get-ranks/', views.get_ranks, name='get_ranks'),
     path('fetch-barcode/', views.fetch_barcode, name='fetch_barcode'),
+    path('stock_entry_fetch_barcode/', views.stock_entry_fetch_barcode, name='stock_entry_fetch_barcode'),
     path("delete-stock/<int:stock_id>/", views.delete_stock, name="delete_stock"),
     path('update-stock/', views.update_stock, name='update_stock'),
     path('get-existing-barcodes/', views.get_existing_barcodes, name='get_existing_barcodes'), 
@@ -215,6 +216,26 @@ urlpatterns = [
     path('get-exhibitions/', views.get_exhibitions, name='get_exhibitions'),
     path("get_companies/", views.get_companies, name="get_companies"),
     path('get-customers/', views.get_customers, name='get_customers'),
+
+
+    path("save_assigned_stock/", views.save_assigned_stock, name="save_assigned_stock"),
+    path('return_stock/', views.return_stock, name='return_stock'),
+    path("get_all_assigned_data/", views.get_all_assigned_data, name="get_all_assigned_data"),
+    path("get_assign_data_all/", views.get_assign_data_all, name="get_assign_data_all"),
+    path('update_product_status/', views.update_product_status, name='update_product_status'),
+    path('return_stock_history/', views.return_stock_history, name='return_stock_history'),
+    path('get_return_history/', views.get_return_history, name='get_return_history'),
+
+    path('api/receive_barcode/', views.receive_barcode, name='receive_barcode'),
+    path('scan_qr_image/', views.scan_qr_image, name='scan_qr_image'),
+    path('scan_via_mobile/', views.scan_via_mobile, name='scan_via_mobile'),
+    path('get_backend_data_scanned_data/', views.get_backend_data_scanned_data, name='get_backend_data_scanned_data'),
+    path('get_latest_scanned_data/', views.get_latest_scanned_data, name='get_latest_scanned_data'),
+    path('assign_exhibition/', views.assign_exhibition, name='assign_exhibition'),
+    path('return_exhibition/', views.return_exhibition, name='return_exhibition'),
+    path('assign_operation_exhibition_list/', views.assign_operation_exhibition_list, name='assign_operation_exhibition_list'),
+    path('fetch_exhibition_list/', views.fetch_exhibition_list, name='fetch_exhibition_list'),
+
 
     path('print_barcode_page', views.print_barcode_page, name='print-barcode-page'),
     path('generate-barcode-pdf/', views.generate_barcode_pdf, name='generate_barcode_pdf'),

@@ -42,6 +42,29 @@
 
     <!-- DataTable Buttons CSS -->
     <link rel="stylesheet" href="{% static 'assets/cdn.datatables.net/buttons/2.2.2/css/buttons.dataTables.min.css' %}" />
+    <style>
+          .logo-text {
+            font-family: 'Poppins', sans-serif;
+            color: white;
+            display: flex;
+            align-items: center; /* Vertically centers text */
+            gap: 10px; /* Space between TTSPL and IMS */
+        }
+        .logo-name {
+            font-weight: 700; /* Bold for TTSPL */
+            font-size: 28px;
+            text-transform: uppercase;
+            margin: 0;
+            color: white;
+        }
+        .logo-subtext {
+            font-weight: 400; /* Normal for IMS */
+            font-size: 28px; /* Same size as TTSPL */
+            opacity: 0.9; /* Slightly lighter */
+            margin: 0;
+        }
+    </style>
+
 
 	 <!-- JAVASCRIPT -->
 	<!-- JAVASCRIPT -->
@@ -782,10 +805,16 @@
                 <!-- Light Logo-->
                 <a href="index-2.html" class="logo logo-light">
                     <span class="logo-sm">
-                        <img src="{% static 'assets/images/logo-sm.png' %}" alt="" height="22">
+                        <div class="logo-text">
+                            <h1 class="logo-name">TTSPL</h1>
+                            <p class="logo-subtext">IMS</p>
+                        </div>
                     </span>
                     <span class="logo-lg">
-                        <img src="{% static 'assets/images/logo-light.png' %}" alt="" height="17">
+                        <div class="logo-text">
+                            <h1 class="logo-name">TTSPL</h1>
+                            <p class="logo-subtext">IMS</p>
+                        </div>
                     </span>
                 </a>
                 <button type="button" class="btn btn-sm p-0 fs-20 header-item float-end btn-vertical-sm-hover" id="vertical-hover">

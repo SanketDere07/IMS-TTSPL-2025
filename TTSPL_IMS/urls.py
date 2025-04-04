@@ -376,6 +376,17 @@ urlpatterns = [
     path('generate_expensefinanceprocess_excel/', views.generate_expensefinanceprocess_excel, name='generate_expensefinanceprocess_excel'),
     path('generate_expensefinanceprocess_pdf/', views.generate_expensefinanceprocess_pdf, name='generate_expensefinanceprocess_pdf'),
 
+    path('get-user-statistics/', views.get_user_statistics, name='get_user_statistics'),
+    path('get-stock-statistics/', views.get_stock_statistics, name='get_stock_statistics'),
+    path('get-system-counts/', views.get_system_counts, name='get_system_counts'),
+    path('get-stock-by-location/', views.get_stock_by_location, name='get_stock_by_location'),
+    path('stock-dashboard-data/', views.stock_dashboard_data, name='stock_dashboard_data'),
+
+
+
+
+
+
 
 
 

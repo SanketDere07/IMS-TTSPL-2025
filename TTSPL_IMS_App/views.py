@@ -6,8 +6,10 @@ import json
 from django.shortcuts import render, redirect
 import random
 import string
+from django.db.models import Count,Sum
 from django.core.exceptions import ValidationError
 from django.conf import settings
+from django.db.models import Count, Sum, Case, When, IntegerField
 from datetime import datetime
 import barcode
 from barcode.writer import ImageWriter
@@ -12763,6 +12765,173 @@ def generate_verifyprocess_pdf(request):
 
 
 
+def get_user_statistics(request):
+    total_users = User.objects.count()
+    active_users = User.objects.filter(is_active=True).count()
+    inactive_users = total_users - active_users
+
+    data = {
+        'total_users': total_users,
+        'active_users': active_users,
+        'inactive_users': inactive_users
+    }
+    return JsonResponse(data)
+
+
+def get_stock_statistics(request):
+    # Get total count of all stock entries
+    total_stock = StockEntry.objects.count()
+    
+    # Get count of items grouped by product_status
+    status_counts = StockEntry.objects.values('product_status')\
+                                   .annotate(count=Count('product_status'))\
+                                   .order_by('product_status')
+    
+    # Convert to a dictionary for easier access
+    status_dict = {item['product_status']: item['count'] for item in status_counts}
+    
+    data = {
+        'total_stock': total_stock,
+        'status_counts': status_dict,
+        'instock_count': status_dict.get('INSTOCK', 0),
+        'assign_count': status_dict.get('ASSIGN', 0),
+        'fixed_asset_count': status_dict.get('FIXED_ASSET', 0),
+        'return_count': status_dict.get('RETURN', 0),
+        'sell_count': status_dict.get('SELL', 0),  # Make sure this matches your model's choice value exactly
+        'demo_count': status_dict.get('DEMO', 0),
+        'inspection_count': status_dict.get('INSPECTION', 0),
+    }
+    print(data)  # Add this to debug what's being returned
+    return JsonResponse(data)
 
 
 
+def get_system_counts(request):
+    # Get counts for all major models
+    data = {
+        # Location counts
+        'total_locations': Location.objects.count(),
+        'active_locations': Location.objects.filter(status='active').count(),
+        'inactive_locations': Location.objects.filter(status='inactive').count(),
+        
+        # Employee counts
+        'total_employees': Employee.objects.count(),
+        
+        # Company counts
+        'total_companies': Company.objects.count(),
+        
+        # Category counts
+        'total_categories': Category.objects.count(),
+        
+        # SubCategory counts
+        'total_subcategories': SubCategory.objects.count(),
+        'subcategories_by_category': list(
+            Category.objects.annotate(subcategory_count=Count('subcategories'))
+                          .values('category_name', 'subcategory_count')
+        ),
+        
+        # Product counts
+        'total_products': Product.objects.count(),
+        'products_by_category': list(
+            Category.objects.annotate(product_count=Count('product'))
+                          .values('category_name', 'product_count')
+        ),
+        
+        # Exhibition counts
+        'total_exhibitions': Exhibition.objects.count(),
+        'active_exhibitions': Exhibition.objects.filter(
+            end_date__gte=timezone.now()
+        ).count(),
+        
+        # Customer counts
+        'total_customers': Customer.objects.count(),
+        'customers_by_company': list(
+            Company.objects.annotate(customer_count=Count('customers'))
+                          .values('company_name', 'customer_count')
+        ),
+        
+        # Supplier counts
+        'total_suppliers': Supplier.objects.count(),
+        'suppliers_by_company': list(
+            Company.objects.annotate(supplier_count=Count('suppliers'))
+                          .values('company_name', 'supplier_count')
+        ),
+        
+        # Stock counts (from your existing implementation)
+        'total_stock': StockEntry.objects.count(),
+        'stock_by_status': dict(
+            StockEntry.objects.values('product_status')
+                            .annotate(count=Count('product_status'))
+                            .values_list('product_status', 'count')
+        )
+    }
+    
+    return JsonResponse(data)
+
+def get_stock_by_location(request):
+    # Get total stock count for percentage calculations
+    total_stock = StockEntry.objects.aggregate(total=Sum('quantity'))['total'] or 1
+    
+    # Get stock quantities grouped by location
+    locations = Location.objects.annotate(
+        stock_count=Sum('stockentry__quantity')
+    ).values('name', 'shortcode', 'stock_count').order_by('-stock_count')
+    
+    # Calculate percentages
+    location_data = []
+    for loc in locations:
+        percentage = round((loc['stock_count'] or 0) / total_stock * 100)
+        location_data.append({
+            'name': loc['name'],
+            'shortcode': loc['shortcode'],
+            'count': loc['stock_count'] or 0,
+            'percentage': percentage
+        })
+    
+    return JsonResponse({
+        'locations': location_data,
+        'total_stock': total_stock
+    })
+
+
+
+def stock_dashboard_data(request):
+    # Stock Operations Data
+    total_stock = StockEntry.objects.count()
+    assign_stock = StockEntry.objects.filter(product_status='ASSIGN').count()
+    instock = StockEntry.objects.filter(product_status='INSTOCK').count()
+    fixed_asset_percentage = round((StockEntry.objects.filter(product_status='FIXED_ASSET').count() / total_stock * 100) if total_stock else 0, 2)
+    
+    # Stock by Locations Data
+    locations = Location.objects.annotate(
+        count=Count('stockentry'),
+        assign=Sum(Case(When(stockentry__product_status='ASSIGN', then=1), output_field=IntegerField())),
+        instock=Sum(Case(When(stockentry__product_status='INSTOCK', then=1), output_field=IntegerField())),
+        fixed_asset=Sum(Case(When(stockentry__product_status='FIXED_ASSET', then=1), output_field=IntegerField())
+    )).order_by('-count')
+    
+    # Prepare data for charts
+    stock_operations_data = {
+        'total_stock': total_stock,
+        'assign_stock': assign_stock,
+        'instock': instock,
+        'fixed_asset_percentage': fixed_asset_percentage,
+    }
+    
+    locations_data = [
+        {
+            'id': loc.id,
+            'name': loc.name,
+            'shortcode': loc.shortcode,
+            'count': loc.count,
+            'assign': loc.assign or 0,
+            'instock': loc.instock or 0,
+            'fixed_asset': loc.fixed_asset or 0,
+        }
+        for loc in locations
+    ]
+    
+    return JsonResponse({
+        'stock_operations': stock_operations_data,
+        'locations': locations_data,
+    })

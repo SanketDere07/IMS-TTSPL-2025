@@ -1507,28 +1507,41 @@
 
 <script>
     // Async function to fetch and update user statistics dynamically
-async function updateUserStatistics() {
-    try {
-        const response = await fetch("/get-user-statistics/");
-        if (!response.ok) throw new Error('Network response was not ok');
-        
-        const data = await response.json();
-        
-        // Animate the counter for total users
-        animateCounter('totalUsers', data.total_users);
-        
-        // Update active and inactive users
-        document.getElementById("activeUsers").textContent = data.active_users;
-        document.getElementById("inactiveUsers").textContent = data.inactive_users;
-        
-    } catch (error) {
-        console.error("Error fetching user statistics:", error);
-        // Optionally show error to user
-        document.getElementById("totalUsers").textContent = "Error";
-        document.getElementById("activeUsers").textContent = "-";
-        document.getElementById("inactiveUsers").textContent = "-";
+    async function updateUserStatistics() {
+        // Helper function to safely update element content
+        function safeSetText(elementId, value) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.textContent = value;
+            } else {
+                console.warn(`Element with ID ${elementId} not found`);
+            }
+        }
+    
+        try {
+            const response = await fetch("/get-user-statistics/");
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            
+            const data = await response.json();
+            
+            // Safely update all values with fallbacks
+            if (typeof data.total_users !== 'undefined') {
+                animateCounter('totalUsers', data.total_users);
+            } else {
+                safeSetText('totalUsers', '-');
+            }
+            
+            safeSetText("activeUsers", data.active_users ?? '-');
+            safeSetText("inactiveUsers", data.inactive_users ?? '-');
+            
+        } catch (error) {
+            console.error("Error fetching user statistics:", error);
+            // Gracefully handle errors
+            safeSetText("totalUsers", "-");
+            safeSetText("activeUsers", "-");
+            safeSetText("inactiveUsers", "-");
+        }
     }
-}
 
 // Counter animation function
 function animateCounter(elementId, targetValue, duration = 1000) {
@@ -1555,33 +1568,56 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 <script>
-async function updateStockStatistics() {
-    try {
-        const response = await fetch("/get-stock-statistics/");
-        if (!response.ok) throw new Error('Network response was not ok');
-        
-        const data = await response.json();
-        
-        animateCounter('totalStock', data.total_stock);
-        
-        // Update all status counts
-        document.getElementById("instockCount").textContent = data.instock_count;
-        document.getElementById("assignCount").textContent = data.assign_count;
-        document.getElementById("fixedAssetCount").textContent = data.fixed_asset_count;
-        document.getElementById("returnCount").textContent = data.return_count;
-        document.getElementById("sellCount").textContent = data.sell_count;
-        document.getElementById("demoCount").textContent = data.demo_count;
-        document.getElementById("inspectionCount").textContent = data.inspection_count;
-        
-    } catch (error) {
-        console.error("Error fetching stock statistics:", error);
-        document.getElementById("totalStock").textContent = "Error";
-        // Set all counts to '-' on error
-        document.querySelectorAll('[id$="Count"]').forEach(el => {
-            el.textContent = "-";
-        });
+    async function updateStockStatistics() {
+        // Helper function to safely update element content
+        function safeSetText(elementId, value) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.textContent = value ?? '-';  // Fallback to '-' if value is null/undefined
+            } else {
+                console.warn(`Element with ID ${elementId} not found`);
+            }
+        }
+    
+        try {
+            const response = await fetch("/get-stock-statistics/");
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            // Update total stock with animation if value exists
+            if (typeof data.total_stock !== 'undefined') {
+                animateCounter('totalStock', data.total_stock);
+            } else {
+                safeSetText('totalStock', '-');
+            }
+            
+            // Update all status counts with fallbacks
+            safeSetText("instockCount", data.instock_count);
+            safeSetText("assignCount", data.assign_count);
+            safeSetText("fixedAssetCount", data.fixed_asset_count);
+            safeSetText("returnCount", data.return_count);
+            safeSetText("sellCount", data.sell_count);
+            safeSetText("demoCount", data.demo_count);
+            safeSetText("inspectionCount", data.inspection_count);
+            
+        } catch (error) {
+            console.error("Error fetching stock statistics:", error);
+            
+            // Gracefully handle errors
+            safeSetText("totalStock", "-");
+            
+            // Get all count elements more reliably
+            const countElements = [
+                "instockCount", "assignCount", "fixedAssetCount", 
+                "returnCount", "sellCount", "demoCount", "inspectionCount"
+            ];
+            
+            countElements.forEach(id => safeSetText(id, "-"));
+        }
     }
-}
 
 // Counter animation function
 function animateCounter(elementId, targetValue, duration = 1000) {
@@ -1609,21 +1645,53 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 async function updateSellStockStatistics() {
+    // First ensure the target element exists
+    const sellCountElement = document.getElementById('sellCount');
+    if (!sellCountElement) {
+        console.error('sellCount element not found in DOM');
+        return;
+    }
+
     try {
+        // Add loading state
+        sellCountElement.textContent = '...';
+        
         const response = await fetch("/get-stock-statistics/");
-        if (!response.ok) throw new Error('Network response was not ok');
+        
+        // More detailed response error handling
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errorText || 'No error details'}`);
+        }
         
         const data = await response.json();
-        console.log("Sell count data:", data);  // Debug output
+        console.debug("API Response:", data);  // More detailed debug output
         
-        // Update sell count with animation
+        // Validate the data structure
+        if (typeof data.sell_count === 'undefined') {
+            throw new Error('sell_count missing from response');
+        }
+        
+        // Update the counter
         animateCounter('sellCount', data.sell_count);
         
     } catch (error) {
         console.error("Error fetching stock statistics:", error);
-        document.getElementById("sellCount").textContent = "Error";
+        
+        // More user-friendly error handling
+        try {
+            animateCounter('sellCount', 0);  // Fallback to 0
+            sellCountElement.title = `Error: ${error.message}`;  // Show error on hover
+        } catch (animationError) {
+            console.error('Failed to animate counter:', animationError);
+            sellCountElement.textContent = 'Error';
+        }
+        
+        // Optional: Retry after delay
+        setTimeout(updateSellStockStatistics, 5000);
     }
 }
+
 
 // Counter animation function
 function animateCounter(elementId, targetValue, duration = 1000) {

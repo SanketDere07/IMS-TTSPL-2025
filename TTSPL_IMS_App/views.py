@@ -1698,20 +1698,31 @@ def generate_product_code():
     return f"PROD-{new_id:06d}"  # Formats as PROD-000001, PROD-000002, etc.
 
 
+
+
 def generate_barcode_image(barcode_text, product_id, category_shortcode):
-    """ Generate and save a barcode image """
-    barcode_class = barcode.get_barcode_class('code128')
-    barcode_instance = barcode_class(barcode_text, writer=ImageWriter())
+    """ Generate and save a QR code image """
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(barcode_text)
+    qr.make(fit=True)
+    
+    img = qr.make_image(fill_color="black", back_color="white")
 
     # Create file path using product_id and category_shortcode
-    file_path = os.path.join(settings.MEDIA_ROOT, 'barcodes', f'barcode_{product_id}_{category_shortcode}')
+    file_path = os.path.join(settings.MEDIA_ROOT, 'barcodes', f'barcode_{product_id}_{category_shortcode}.png')
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
     
-    # Save the barcode without the .png extension
-    barcode_instance.save(file_path)
+    # Save the QR code image
+    img.save(file_path)
 
-    # Return relative path with .png extension
+    # Return relative path
     return f'barcodes/barcode_{product_id}_{category_shortcode}.png'
+
 
 
 def generate_barcode(product_code, product_name, category_shortcode):
@@ -12779,32 +12790,32 @@ def get_user_statistics(request):
 
 
 def get_stock_statistics(request):
-    # Get total count of all stock entries
-    total_stock = StockEntry.objects.count()
+    try:
+        # Get total count of all stock entries
+        total_stock = StockEntry.objects.count()
+        
+        # Get count of items grouped by product_status
+        status_counts = StockEntry.objects.values('product_status')\
+                                       .annotate(count=Count('product_status'))\
+                                       .order_by('product_status')
+        
+        # Convert to a dictionary for easier access
+        status_dict = {item['product_status']: item['count'] for item in status_counts}
+        
+        data = {
+            'total_stock': total_stock,
+            'instock_count': status_dict.get('INSTOCK', 0),
+            'assign_count': status_dict.get('ASSIGN', 0),
+            'fixed_asset_count': status_dict.get('FIXED_ASSET', 0),  # Make sure this matches your choice value
+            'return_count': status_dict.get('RETURN', 0),
+            'sell_count': status_dict.get('SELL', 0),
+            'demo_count': status_dict.get('DEMO', 0),
+            'inspection_count': status_dict.get('INSPECTION', 0),
+        }
+        return JsonResponse(data)
     
-    # Get count of items grouped by product_status
-    status_counts = StockEntry.objects.values('product_status')\
-                                   .annotate(count=Count('product_status'))\
-                                   .order_by('product_status')
-    
-    # Convert to a dictionary for easier access
-    status_dict = {item['product_status']: item['count'] for item in status_counts}
-    
-    data = {
-        'total_stock': total_stock,
-        'status_counts': status_dict,
-        'instock_count': status_dict.get('INSTOCK', 0),
-        'assign_count': status_dict.get('ASSIGN', 0),
-        'fixed_asset_count': status_dict.get('FIXED_ASSET', 0),
-        'return_count': status_dict.get('RETURN', 0),
-        'sell_count': status_dict.get('SELL', 0),  # Make sure this matches your model's choice value exactly
-        'demo_count': status_dict.get('DEMO', 0),
-        'inspection_count': status_dict.get('INSPECTION', 0),
-    }
-    print(data)  # Add this to debug what's being returned
-    return JsonResponse(data)
-
-
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500) 
 
 def get_system_counts(request):
     # Get counts for all major models

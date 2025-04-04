@@ -1,0 +1,410 @@
+{% extends 'base.html' %}
+{% block title %} Finance Process | TTSPL IMS - Trisnota Technical Services Pvt. Ltd.{% endblock %}
+{% block content %}
+<style>
+    /* Ensure select2 elements have uniform height */
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    color: #444;
+    line-height: 34px;
+}
+
+.select2-container--default .select2-selection--single {
+    background-color: #fff;
+    border: 1px solid #aaa;
+    border-radius: 4px;
+    height: 38px; /* Match input height */
+}
+
+/* Style for quantity input and buttons */
+.input-group .btn {
+    height: 38px !important; /* Ensure buttons match select2 height */
+    line-height: auto;
+}
+
+.input-group input[type="number"] {
+    height: 38px !important; /* Match select2 height */
+}
+
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 34px !important;
+    position: absolute;
+    top: 1px;
+    right: 1px;
+    width: 20px;
+}
+</style>
+
+<div class="row">
+   <div class="col-12">
+      <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
+         <h4 class="mb-sm-0">Finance Process</h4>
+         <div class="page-title-right">
+            <ol class="breadcrumb m-0">
+               <li class="breadcrumb-item"><a href="#">Dashboards</a></li>
+               <li class="breadcrumb-item active">Finance Process</li>
+            </ol>
+         </div>
+      </div>
+   </div>
+</div>
+<div class="row">
+   <div class="col-lg-12">
+      <div class="card">
+         <div class="card-header d-flex align-items-center">
+            <h5 class="card-title mb-0 flex-grow-1">Finance Allocation Process</h5>
+            <div>
+               <a class="btn btn-primary" href="/finance_process_list_page">Finance Process</a>
+            </div>
+         </div>
+         <div class="card-body">
+            <div id="toast-container" class="position-fixed bottom-0 end-0 p-3" style="z-index: 9999;"></div>
+
+            <form id="financeProcessForm" method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                
+                <!-- Existing Expense Fields (readonly) -->
+                <div class="row gy-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Expense ID</label>
+                        <input type="text" class="form-control" value="{{ expense.expense_id }}" readonly>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <label class="form-label">Employee Code</label>
+                        <input type="text" class="form-control" value="{{ expense.employee.employee_code }}" readonly>
+                    </div>
+                    
+                    <div class="col-md-5">
+                        <label class="form-label">Employee Name</label>
+                        <input type="text" class="form-control" value="{{ expense.employee.name }}" readonly>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <label class="form-label">Total Claimed Amount</label>
+                        <div class="input-group">
+                            <span class="input-group-text">₹</span>
+                            <input type="text" class="form-control" value="{{ expense.total_calculation }}" readonly>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <label class="form-label">Total Approved Amount</label>
+                        <div class="input-group">
+                            <span class="input-group-text">₹</span>
+                            <input type="text" class="form-control" value="{{ expense.total_approved_amount }}" readonly>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <label class="form-label">Current Status</label>
+                        <input type="text" class="form-control" value="{{ expense.get_status_display }}" readonly>
+                    </div>
+                </div>
+                
+                <!-- New Payment Processing Fields -->
+                <div class="row gy-3 mt-4">
+                    <h5>Payment Processing Details</h5>
+                    
+                    <div class="col-md-4">
+                        <label class="form-label">Payment Mode</label>
+                        <select class="form-select" name="payment_mode" id="payment_mode">
+                            <option value="">Select Payment Mode</option>
+                            {% for value, label in payment_modes %}
+                                <option value="{{ value }}" {% if finance_process.payment_mode == value %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <div class="invalid-feedback" id="payment_mode_error"></div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <label class="form-label">Payment Date*</label>
+                        <input type="date" class="form-control" name="payment_date" 
+                               value="{% if finance_process.payment_date %}{{ finance_process.payment_date|date:'Y-m-d' }}{% endif %}" required>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <label class="form-label">Payment Proof</label>
+                        <input type="file" class="form-control" name="payment_file" id="payment_file" accept=".pdf,.jpg,.jpeg,.png">
+                        {% if finance_process.payment_file %}
+                            <small class="text-muted">Current file: <a href="{{ finance_process.payment_file.url }}" target="_blank">View</a></small>
+                        {% endif %}
+                        <div class="invalid-feedback" id="payment_file_error"></div>
+                        <small class="text-muted">Allowed formats: PDF, JPG, JPEG, PNG (max 5MB)</small>
+                    </div>
+                    
+                    <div class="col-md-12">
+                        <label class="form-label">Finance Comments</label>
+                        <textarea class="form-control" name="finance_comment" rows="3">{% if finance_process.finance_comment %}{{ finance_process.finance_comment }}{% endif %}</textarea>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="payment_email_sent" id="paymentEmailCheckbox" 
+                                   {% if finance_process.payment_email_sent %}checked{% endif %}>
+                            <label class="form-check-label" for="paymentEmailCheckbox">
+                                Send Payment Confirmation Email
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-primary">Save Payment Details</button>
+                        <a href="/finance_process_list_page" class="btn btn-secondary">Back</a>
+                    </div>
+                </div>
+            </form>
+           
+         </div>
+      </div>
+   </div>
+</div>
+ 
+<script>
+    // Toast Notification Function
+    function showToast(message, type) {
+        let toastClass = type === "success" ? "bg-success" : "bg-danger";
+        $("#toast-container").empty();
+        
+        let toastHTML = `
+            <div class="toast align-items-center text-white ${toastClass} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="d-flex">
+                    <div class="toast-body">${message}</div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        `;
+    
+        $("#toast-container").append(toastHTML);
+        $(".toast").toast({ delay: 3000 }).toast("show");
+    
+        $(".toast").on("hidden.bs.toast", function () {
+            $(this).remove();
+        });
+    }
+    
+    // Compress image function
+    async function compressImage(file, quality = 0.7, maxWidth = 2000, maxHeight = 2000) {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.src = event.target.result;
+                
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    
+                    // Calculate new dimensions maintaining aspect ratio
+                    let width = img.width;
+                    let height = img.height;
+                    
+                    if (width > maxWidth || height > maxHeight) {
+                        const ratio = Math.min(maxWidth/width, maxHeight/height);
+                        width = width * ratio;
+                        height = height * ratio;
+                    }
+                    
+                    canvas.width = width;
+                    canvas.height = height;
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    canvas.toBlob((blob) => {
+                        resolve(new File([blob], file.name, {
+                            type: 'image/jpeg',
+                            lastModified: Date.now()
+                        }));
+                    }, 'image/jpeg', quality);
+                };
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+    
+    // File validation and compression function
+    async function validateAndProcessFile(file) {
+        const validTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+        const maxSize = 5 * 1024 * 1024; // 5MB
+        const compressThreshold = 10 * 1024 * 1024; // 10MB
+        
+        // Check file type
+        if (!validTypes.includes(file.type)) {
+            return { 
+                valid: false, 
+                message: 'Invalid file type. Only PDF, JPG, JPEG, and PNG files are allowed',
+                file: null
+            };
+        }
+        
+        // Check absolute max size
+        if (file.size > compressThreshold) {
+            return { 
+                valid: false, 
+                message: 'File size must be under 10MB',
+                file: null
+            };
+        }
+        
+        // If under 5MB, accept as-is
+        if (file.size <= maxSize) {
+            return { 
+                valid: true, 
+                message: 'File accepted',
+                file: file
+            };
+        }
+        
+        // For images between 5MB-10MB, attempt compression
+        if (file.type.includes('image')) {
+            try {
+                showToast('Compressing image to reduce file size...', 'info');
+                const compressedFile = await compressImage(file);
+                
+                if (compressedFile.size <= maxSize) {
+                    return { 
+                        valid: true, 
+                        message: 'Image compressed successfully',
+                        file: compressedFile
+                    };
+                } else {
+                    return { 
+                        valid: false, 
+                        message: 'Could not reduce image below 5MB. Please try with a smaller image.',
+                        file: null
+                    };
+                }
+            } catch (error) {
+                return { 
+                    valid: false, 
+                    message: 'Error compressing image. Please try another file.',
+                    file: null
+                };
+            }
+        }
+        
+        // For PDFs between 5MB-10MB (can't compress in browser)
+        return { 
+            valid: false, 
+            message: 'PDF files must be under 5MB. Please reduce the file size.',
+            file: null
+        };
+    }
+    
+    // File input change handler
+    async function fileChangeHandler() {
+        if (this.files.length > 0) {
+            const file = this.files[0];
+            const result = await validateAndProcessFile(file);
+            
+            if (!result.valid) {
+                $(this).addClass('is-invalid');
+                $('#payment_file_error').text(result.message);
+                showToast(result.message, 'error');
+                this.value = ''; // Clear the invalid file
+            } else {
+                $(this).removeClass('is-invalid');
+                $('#payment_file_error').text('');
+                
+                // If file was compressed, update the file input
+                if (result.file && result.file !== file) {
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(result.file);
+                    this.files = dataTransfer.files;
+                    showToast(result.message, 'success');
+                } else {
+                    showToast('File accepted', 'success');
+                }
+            }
+        }
+    }
+    
+    // Form submission handler
+    $('#financeProcessForm').on('submit', async function(e) {
+        e.preventDefault();
+        let isValid = true;
+        let processedFile = null;
+        
+        // Reset validation states
+        $('.is-invalid').removeClass('is-invalid');
+        $('.invalid-feedback').text('');
+        
+        // Payment Mode validation (required)
+        const paymentMode = $('#payment_mode').val();
+        if (!paymentMode) {
+            $('#payment_mode').addClass('is-invalid');
+            $('#payment_mode_error').text('Payment mode is required');
+            showToast('Please select a payment mode', 'error');
+            isValid = false;
+        }
+        
+        // File validation and processing
+        const fileInput = document.getElementById('payment_file');
+        if (fileInput.files.length > 0) {
+            const file = fileInput.files[0];
+            const result = await validateAndProcessFile(file);
+            
+            if (!result.valid) {
+                $('#payment_file').addClass('is-invalid');
+                $('#payment_file_error').text(result.message);
+                showToast(result.message, 'error');
+                isValid = false;
+                fileInput.value = ''; // Clear invalid file
+            } else {
+                processedFile = result.file;
+            }
+        }
+        
+        if (isValid) {
+            // Create FormData object
+            const formData = new FormData(this);
+            
+            // Replace with processed file if available
+            if (processedFile) {
+                formData.set('payment_file', processedFile);
+            }
+            
+            // Show loading state
+            $('#submitBtn').prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...');
+            
+            // AJAX submission
+            $.ajax({
+                url: $(this).attr('action'),
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(response) {
+                    if (response.email_sent) {
+                        showToast('Payment details saved and confirmation email sent successfully!', 'success');
+                    } else {
+                        showToast('Payment details saved successfully!', 'success');
+                    }
+                    setTimeout(() => {
+                        window.location.href = "/finance_process_list_page";
+                    }, 1500);
+                },
+                error: function(xhr) {
+                    let errorMessage = 'An error occurred while saving payment details';
+                    if (xhr.responseJSON && xhr.responseJSON.error) {
+                        errorMessage = xhr.responseJSON.error;
+                    }
+                    showToast(errorMessage, 'error');
+                },
+                complete: function() {
+                    $('#submitBtn').prop('disabled', false).html('Save Payment Details');
+                }
+            });
+        }
+    });
+    
+    // Initialize file input change handler
+    $('#payment_file').on('change', fileChangeHandler);
+</script>
+ 
+<!-- end page title -->
+{% endblock %}
+{% block custom_script %}
+{% endblock %}

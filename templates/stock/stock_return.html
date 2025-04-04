@@ -1,0 +1,404 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %} Return Stock | TTSPL IMS - Trisnota Technical Services Pvt. Ltd.{% endblock %}
+{% block content %}
+<!-- start page title -->
+<style>
+    /* Ensure select2 elements have uniform height */
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        color: #444;
+        line-height: 34px;
+    }
+
+    .select2-container--default .select2-selection--single {
+        background-color: #fff;
+        border: 1px solid #aaa;
+        border-radius: 4px;
+        height: 38px; /* Match input height */
+    }
+
+    /* Style for quantity input and buttons */
+    .input-group .btn {
+        height: 38px !important; /* Ensure buttons match select2 height */
+        line-height: auto;
+    }
+
+    .input-group input[type="number"] {
+        height: 38px !important; /* Match select2 height */
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 34px !important;
+        position: absolute;
+        top: 1px;
+        right: 1px;
+        width: 20px;
+    }
+
+    .select2-container {
+        margin-bottom: 10px !important;
+    }
+
+    /* Add margin-bottom to input fields */
+    .company-details, .customer-details {
+        margin-bottom: 10px !important;
+    }
+</style>
+
+<div class="row">
+    <div class="col-12">
+        <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
+            <h4 class="mb-sm-0">Process Stock</h4>
+            <div class="page-title-right">
+                <ol class="breadcrumb m-0">
+                    <li class="breadcrumb-item"><a href="#">Dashboard</a></li>
+                    <li class="breadcrumb-item active">Return Stock</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header align-items-center d-flex">
+                <h4 class="card-title mb-0 flex-grow-1">Process Stock</h4>
+                <div class="flex-shrink-0">
+                    <a class="btn btn-secondary" href="return_list_page">< Back</a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="alertContainer"></div>
+                <form id="returnForm" method="post">
+                    {% csrf_token %}
+                    <div class="row gy-3">
+                        <!-- Mode Selection -->
+                        <div class="col-md-3">
+                            <label class="form-label">Mode</label>
+                            <select id="mode" class="form-control" style="height: 38px">
+                                <option value="" disabled selected>Select Mode</option>
+                                <option value="Users">Users</option>
+                                <option value="Exhibition">Exhibition</option>
+                                <option value="Company">Company</option>
+                                <option value="Customers">Customers</option>
+                            </select>
+                        </div>
+                    
+                        <!-- User Selection (Hidden by default) -->
+                        <div class="col-md-3" id="userSelection" style="display: none;">
+                            <label class="form-label">Select Employee</label>
+                            <select id="user" class="form-control" style="height: 38px" onchange="handleSelection('User', this.value)">
+                                <option value="" disabled selected>Select Employee</option>
+                                <!-- Employees will be dynamically populated here -->
+                            </select>
+                        </div>
+                        
+                        <!-- Exhibition Selection (Hidden by default) -->
+                        <div class="col-md-3" id="exhibitionSelection" style="display: none;">
+                            <label class="form-label">Select Exhibition</label>
+                            <select id="exhibition" class="form-control" style="height: 38px" onchange="handleSelection('Exhibition', this.value)">
+                                <option value="" disabled selected>Select Exhibition</option>
+                                <!-- Exhibitions will be dynamically populated here -->
+                            </select>
+                        </div>
+                        
+                        <!-- Company Selection (Hidden by default) -->
+                        <div class="col-md-3" id="companySelection" style="display: none;">
+                            <label class="form-label">Select Company</label>
+                            <select id="company" class="form-control" style="height: 38px" onchange="handleSelection('Company', this.value)">
+                                <option value="" disabled selected>Select Company</option>
+                                <!-- Companies will be dynamically populated here -->
+                            </select>
+                        </div>
+                        
+                        <!-- Customer Selection (Hidden by default) -->
+                        <div class="col-md-3" id="customerSelection" style="display: none;">
+                            <label class="form-label">Select Customer</label>
+                            <select id="customer" class="form-control" style="height: 38px" onchange="handleSelection('Customer', this.value)">
+                                <option value="" disabled selected>Select Customer</option>
+                                <!-- Customers will be dynamically populated here -->
+                            </select>
+                        </div>
+
+                        <div class="col-md-3" id="user_Selection_opt">
+                            <label class="form-label">Select Employee</label>
+                            <select id="user_opt" class="form-control" style="height: 38px" onchange="handleSelection('ALL', this.value)">
+                                <option value="" disabled selected>Select Employee</option>
+                                <!-- Employees will be dynamically populated here -->
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Assigned Products Table -->
+                    <div class="row mt-4" id="assignedProductsContainer" style="display: none;">
+                        <div class="col-12">
+                            <h5>Assigned Products</h5>
+                            <table class="table table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Serial No</th>
+                                        <th>Stock ID</th>
+                                        <th>Barcode Text</th>
+                                        <th>Product Name</th>
+                                        <th>Category</th>
+                                        <th>SubCategory</th>
+                                        <th id="mode_name">Employee Name</th>
+                                        <th>Mode</th>
+                                        <th>Product Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="assignedProductsList">
+                                    <!-- Assigned products will be dynamically added here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Listen for mode selection
+    document.getElementById("mode").addEventListener("change", function () {
+        let mode = this.value;
+
+        // Hide all dropdowns initially
+        document.getElementById("userSelection").style.display = "none";
+        document.getElementById("exhibitionSelection").style.display = "none";
+        document.getElementById("companySelection").style.display = "none";
+        document.getElementById("customerSelection").style.display = "none";
+
+        // Show the relevant dropdown based on the selected mode
+        if (mode === "Users") {
+            document.getElementById("userSelection").style.display = "block";
+            fetchEmployees(document.getElementById("user")); // Fetch and populate employees
+        } else if (mode === "Exhibition") {
+            document.getElementById("exhibitionSelection").style.display = "block";
+            fetchExhibitions(document.getElementById("exhibition")); // Fetch and populate exhibitions
+        } else if (mode === "Company") {
+            document.getElementById("companySelection").style.display = "block";
+            fetchCompanies(document.getElementById("company")); // Fetch and populate companies
+        } else if (mode === "Customers") {
+            document.getElementById("customerSelection").style.display = "block";
+            fetchCustomers(document.getElementById("customer")); // Fetch and populate customers
+        }
+    });
+
+    // Function to fetch all employees
+    function fetchEmployees(employeeDropdown) {
+        console.log("============ssssssss",employeeDropdown)
+        fetch("{% url 'get_employees' %}")  // Fetch all employees
+            .then(response => response.json())
+            .then(data => {
+                employeeDropdown.innerHTML = `<option value="" disabled selected>Select Employee</option>`; // Default option
+                data.employees.forEach(emp => {
+                    let option = `<option value="${emp.employee_id}">${emp.name} (${emp.designation})</option>`;
+                    employeeDropdown.innerHTML += option;
+                });
+                $(employeeDropdown).select2({ width: '100%' });
+                employeeDropdown.addEventListener("change", function () {
+                    sendToBackend("employee", this.value);
+                });
+            })
+            .catch(error => console.error("Error fetching employees:", error));
+    }
+
+    // Function to fetch all exhibitions
+    function fetchExhibitions(exhibitionDropdown) {
+        fetch("{% url 'get_exhibitions' %}")  // Fetch all exhibitions
+            .then(response => response.json())
+            .then(data => {
+                exhibitionDropdown.innerHTML = `<option value="" disabled selected>Select Exhibition</option>`; // Default option
+                data.exhibitions.forEach(exhibit => {
+                    let option = `<option value="${exhibit.exhibition_id}">${exhibit.exhibition_name} (${exhibit.city})</option>`;
+                    exhibitionDropdown.innerHTML += option;
+                });
+
+                // Initialize Select2 for better UI experience
+                $(exhibitionDropdown).select2({ width: '100%' });
+
+                // Send selected exhibition to backend on change
+                exhibitionDropdown.addEventListener("change", function () {
+                    sendToBackend("exhibition", this.value);
+                });
+            })
+            .catch(error => console.error("Error fetching exhibitions:", error));
+    }
+
+    // Function to fetch all companies
+    function fetchCompanies(companyDropdown) {
+        fetch("{% url 'get_companies' %}")  // Fetch all companies
+            .then(response => response.json())
+            .then(data => {
+                companyDropdown.innerHTML = `<option value="" disabled selected>Select Company</option>`; // Default option
+                data.companies.forEach(company => {
+                    let option = `<option value="${company.company_id}">${company.company_name}</option>`;
+                    companyDropdown.innerHTML += option;
+                });
+
+                // Initialize Select2 for better UI experience
+                $(companyDropdown).select2({ width: '100%' });
+
+                // Send selected company to backend on change
+                companyDropdown.addEventListener("change", function () {
+                    sendToBackend("company", this.value);
+                });
+            })
+            .catch(error => console.error("Error fetching companies:", error));
+    }
+
+    // Function to fetch all customers
+    function fetchCustomers(customerDropdown) {
+        fetch("{% url 'get_customers' %}")  // Fetch all customers
+            .then(response => response.json())
+            .then(data => {
+                customerDropdown.innerHTML = `<option value="" disabled selected>Select Customer</option>`; // Default option
+                data.customers.forEach(customer => {
+                    let option = `<option value="${customer.customer_id}">${customer.customer_name}</option>`;
+                    customerDropdown.innerHTML += option;
+                });
+
+                // Initialize Select2 for better UI experience
+                $(customerDropdown).select2({ width: '100%' });
+
+                // Send selected customer to backend on change
+                customerDropdown.addEventListener("change", function () {
+                    sendToBackend("customer", this.value);
+                });
+            })
+            .catch(error => console.error("Error fetching customers:", error));
+    }
+
+    function handleSelection(type, value) {
+        console.log("+++++++++++++++++++++++++", type, value);
+        fetch("{% url 'get_assign_data_all' %}", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": "{{ csrf_token }}",
+            },
+            body: JSON.stringify({ type: type, value: value }),
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error("Network response was not ok");
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log("Backend response:", data);
+            if (data.status === "success") {
+                const assignedProducts = data.assigned_products;
+                console.log("Assigned Products:", assignedProducts);
+                document.getElementById("assignedProductsContainer").style.display = "block";
+                const tableBody = document.getElementById("assignedProductsList");
+                tableBody.innerHTML = ""; // Clear existing rows
+                assignedProducts.forEach((product, index) => {
+                    const row = document.createElement("tr");
+                    let assignedName = "";
+                    switch (product.mode) {
+                        case "Users":
+                            assignedName = product.employee_name;
+                            break;
+                        case "Exhibition":
+                            assignedName = `${product.exhibition_name} - ${product.employee_name}`;
+                            break;
+                        case "Company":
+                            assignedName = product.company_name;
+                            break;
+                        case "Customer":
+                            assignedName = product.customer_name;
+                            break;
+                        default:
+                            assignedName = "";
+                    }
+    
+                    // Update the mode name in the UI
+                    document.getElementById("mode_name").innerHTML = product.mode + " Name";
+    
+                    // Populate the table row with product data
+                    row.innerHTML = `
+                        <td>${index + 1}</td>
+                        <td>${product.stock_id || ""}</td>
+                        <td>${product.barcode_text || ""}</td>
+                        <td>${product.product_name || ""}</td>
+                        <td>${product.product_category || ""}</td>
+                        <td>${product.product_subcategory || ""}</td>
+                        <td>${assignedName}</td>
+                        <td>${product.mode}</td>
+                        <td>
+                            <select class="form-control assign_mode-dropdown" data-assign-id="${product.assign_id}" onchange="updateProductStatus(this)">
+                                <option value="ASSIGN" ${product.product_status === 'ASSIGN' ? 'selected' : ''}>ASSIGN</option>
+                                <option value="RETURN" ${product.product_status === 'RETURN' ? 'selected' : ''}>RETURN</option>
+                                <option value="SELL" ${product.product_status === 'SELL' ? 'selected' : ''}>SELL</option>
+                                <option value="DEMO" ${product.product_status === 'DEMO' ? 'selected' : ''}>DEMO</option>
+                                <option value="INSPECTION" ${product.product_status === 'INSPECTION' ? 'selected' : ''}>INSPECTION</option>
+                                <option value="INSTOCK" ${product.product_status === 'INSTOCK' ? 'selected' : ''}>INSTOCK</option>
+                            </select>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            } else {
+                console.error("Error:", data.message);
+            }
+        })
+        .catch(error => {
+            console.error("Error sending data to backend:", error);
+        });
+    }
+
+
+    function updateProductStatus(selectElement) {
+        const selectedStatus = selectElement.value;
+        const assign_id = selectElement.getAttribute("data-assign-id");
+        
+        const row = selectElement.closest("tr");
+        const stock_ids = row.querySelector("td:nth-child(2)").innerText;
+        const productName = row.querySelector("td:nth-child(4)").innerText; // Product Name
+        const assignedTo = row.querySelector("td:nth-child(6)").innerText; // Assigned To
+        console.log("Selected Status:",stock_ids,productName,assign_id, selectedStatus,assignedTo);
+        fetch("{% url 'update_product_status' %}", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": "{{ csrf_token }}",
+            },
+            body: JSON.stringify({
+                stock_id: stock_ids,
+                product_status: selectedStatus,
+                assign_id : assign_id,
+            }),
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error("Network response was not ok");
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log("Backend response:", data);
+            if (data.status === "success") {
+                showToast("Product status updated successfully..!!" ,"Success", "success");
+            } else {
+                showToast("Failed to update product status:..!!"+ data.message ,"Error", "error");
+            }
+        })
+        .catch(error => {
+            console.error("Error updating product status:", error);
+            showToast("An error occurred while updating the product status.","Error", "error");
+        });
+    }
+
+
+    $(document).ready(function() {
+        fetchEmployees(document.getElementById("user_opt"));
+    });
+</script>
+
+<!-- end page title -->
+{% endblock %}
+{% block custom_script %}
+{% endblock %}

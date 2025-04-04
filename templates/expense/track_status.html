@@ -1,0 +1,287 @@
+{% extends 'base.html' %}
+{% block title %} Track Status | TTSPL IMS - Trisnota Technical Services Pvt. Ltd.{% endblock %}
+{% block content %}
+<style>
+    /* Ensure select2 elements have uniform height */
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    color: #444;
+    line-height: 34px;
+}
+
+.select2-container--default .select2-selection--single {
+    background-color: #fff;
+    border: 1px solid #aaa;
+    border-radius: 4px;
+    height: 38px; /* Match input height */
+}
+
+/* Style for quantity input and buttons */
+.input-group .btn {
+    height: 38px !important; /* Ensure buttons match select2 height */
+    line-height: auto;
+}
+
+.input-group input[type="number"] {
+    height: 38px !important; /* Match select2 height */
+}
+
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 34px !important;
+    position: absolute;
+    top: 1px;
+    right: 1px;
+    width: 20px;
+}
+</style>
+
+<div class="row">
+   <div class="col-12">
+      <div class="page-title-box d-sm-flex align-items-center justify-content-between bg-galaxy-transparent">
+         <h4 class="mb-sm-0">Track Status</h4>
+         <div class="page-title-right">
+            <ol class="breadcrumb m-0">
+               <li class="breadcrumb-item"><a href="#">Dashboards</a></li>
+               <li class="breadcrumb-item active">Track Status</li>
+            </ol>
+         </div>
+      </div>
+   </div>
+</div>
+<div class="row">
+   <div class="col-lg-12">
+      <div class="card">
+         <div class="card-header d-flex align-items-center">
+            <h5 class="card-title mb-0 flex-grow-1">Expense Tracking Report</h5>
+            <div>
+               <a class="btn btn-primary" href="save_expense">+ Add Expense</a>
+            </div>
+         </div>
+         <div class="card-body">
+            <div class="accordion accordion-primary mb-3" id="filterAccordion">
+                <div class="accordion-item material-shadow">
+                    <h2 class="accordion-header" id="flush-headingFilters">
+                        <button class="accordion-button collapsed d-flex align-items-center" type="button" data-bs-toggle="collapse"
+                            data-bs-target="#flush-collapseFilters" aria-expanded="false" aria-controls="flush-collapseFilters">
+                            <i class="ri-filter-3-line me-2"></i> Filters
+                        </button>
+                    </h2>
+                    <div id="flush-collapseFilters" class="accordion-collapse collapse" aria-labelledby="flush-headingFilters"
+                        data-bs-parent="#filterAccordion">
+                        <div class="accordion-body">
+                            <div class="row mb-3">
+                                <!-- Status Filter -->
+                                <div class="col-md-3">
+                                    <label class="form-label">Status</label>
+                                    <select class="form-control select2" id="status-filter">
+                                        <option value="">All Status</option>
+                                        <option value="Pending">Pending</option>
+                                        <option value="Approved">Approved</option>
+                                        <option value="Rejected">Rejected</option>
+                                        <option value="Payment Successful">Payment Successful</option>
+                                    </select>
+                                </div>
+                                
+                                <!-- Start Date Filter -->
+                                <div class="col-md-2">
+                                    <label class="form-label">Start Date</label>
+                                    <input type="date" class="form-control" id="start-date-filter">
+                                </div>
+                                
+                                <!-- End Date Filter -->
+                                <div class="col-md-2">
+                                    <label class="form-label">End Date</label>
+                                    <input type="date" class="form-control" id="end-date-filter">
+                                </div>
+                                
+                                <!-- Action Buttons -->
+                                <div class="col-md-5 d-flex align-items-end">
+                                    <button class="btn btn-primary me-2" id="apply-filters">Apply</button>
+                                    <button class="btn btn-warning me-2" id="reset-filters">Reset</button>
+                                    <button class="btn btn-danger me-2" id="generate-pdf">PDF</button>
+                                    <button class="btn btn-secondary me-2" id="generate-csv">CSV</button>
+                                    <button class="btn btn-success" id="generate-excel">Excel</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <table id="expense-table" class="table table-bordered nowrap table-striped align-middle" style="width:100%">
+                <thead>
+                    <tr>
+                        <th>Expense ID</th>
+                        <th>Employee Name</th>
+                        <th>Start Date</th>
+                        <th>End Date</th>
+                        <th>Amount claimed</th>
+                        <th>Amount Approved</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+         </div>
+      </div>
+   </div>
+</div>
+ 
+<script>
+    $(document).ready(function() {
+    // Initialize DataTable
+    var expenseTable = $('#expense-table').DataTable({
+        processing: true,
+        responsive: true,
+        serverSide: true,
+        ajax: {
+            url: "/expense_list/",
+            type: "GET",
+            data: function (d) {
+                return {
+                    status: $('#status-filter').val(),
+                    start_date: $('#start-date-filter').val(),
+                    end_date: $('#end-date-filter').val(),
+                    draw: d.draw,
+                    start: d.start,
+                    length: d.length
+                };
+            }
+        },
+        columns: [
+            {
+                data: 'expense_id',
+                render: function(data, type, row) {
+                    // Generate the PDF filename for the tooltip
+                    var employeePart = row.employee_info.split(' - ')[1] || 'employee';
+                    var employeeName = employeePart.replace(/ /g, '_');
+                    var pdfName = `expense_report_${employeeName}_${row.start_date}_to_${row.end_date}.pdf`;
+                    
+                    return `<div style="word-wrap: break-word; white-space: normal; width: 170px;">
+                        <a href="/expenses/${data}/download-pdf/" 
+                           class="expense-id-link" 
+                           title="${pdfName}"
+                           style="text-decoration: none; color: inherit;"
+                           onmouseover="this.style.textDecoration='underline'; this.style.color='#0d6efd'"
+                           onmouseout="this.style.textDecoration='none'; this.style.color='inherit'"
+                           onclick="event.preventDefault(); window.location=this.href">
+                            ${data}
+                        </a>
+                    </div>`;
+                }
+            },
+            { 
+                data: 'employee_info',
+                render: function(data, type, row) {
+                    var parts = data.split(' - ');
+                    return parts.length === 2 ? `(${parts[0]}) - ${parts[1]}` : data;
+                }
+            },
+            { 
+                data: 'start_date',
+                render: function(data) {
+                    return new Date(data).toLocaleDateString();
+                }
+            },
+            { 
+                data: 'end_date',
+                render: function(data) {
+                    return new Date(data).toLocaleDateString();
+                }
+            },
+            { 
+                data: 'total_calculation',
+                render: function(data) {
+                    return '₹' + parseFloat(data).toLocaleString('en-IN');
+                }
+            },
+            { 
+                data: 'total_approved_amount',
+                render: function(data) {
+                    const amount = data ? parseFloat(data) : 0;
+                    return '₹' + amount.toLocaleString('en-IN', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    });
+                }
+            },
+            {
+                data: 'status',
+                render: function(data) {
+                    if (!data) return '<span class="badge bg-secondary">No Status</span>';
+                    
+                    var badgeClass = 'bg-';
+                    switch (data.trim()) {
+                        case 'Approved': badgeClass += 'success'; break;
+                        case 'Rejected': badgeClass += 'danger'; break;
+                        case 'Payment Successful': badgeClass += 'primary'; break;
+                        default: badgeClass += 'warning';
+                    }
+                    return '<span class="badge ' + badgeClass + '">' + data + '</span>';
+                }
+            }
+        ],
+        order: [[2, 'desc']],
+        lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
+        pageLength: 10
+    });
+
+      // Apply filters when button is clicked
+      $('#apply-filters').click(function() {
+        expenseTable.ajax.reload();
+    });
+
+    // Reset all filters
+    $('#reset-filters').click(function() {
+        $('#status-filter').val('').trigger('change');
+        $('#start-date-filter, #end-date-filter').val('');
+        expenseTable.ajax.reload();
+    });
+
+    // Initialize Select2 for status filter
+    $('#status-filter').select2({
+        placeholder: "Select Status",
+        allowClear: true
+    });
+
+     // CSV Export
+     $('#generate-csv').click(function() {
+        const params = new URLSearchParams({
+            status: $('#status-filter').val(),
+            start_date: $('#start-date-filter').val(),
+            end_date: $('#end-date-filter').val()
+        });
+        window.location.href = `/generate_expense_csv/?${params.toString()}`;
+    });
+
+    // Excel Export
+    $('#generate-excel').click(function() {
+        const params = new URLSearchParams({
+            status: $('#status-filter').val(),
+            start_date: $('#start-date-filter').val(),
+            end_date: $('#end-date-filter').val()
+        });
+        window.location.href = `/generate_expense_excel/?${params.toString()}`;
+    });
+
+    // Add this to your existing JavaScript
+    $('#generate-pdf').click(function() {
+        const params = new URLSearchParams({
+            status: $('#status-filter').val(),
+            start_date: $('#start-date-filter').val(),
+            end_date: $('#end-date-filter').val()
+        });
+        window.location.href = `/generate_expense_pdf/?${params.toString()}`;
+    });
+
+
+});
+
+
+
+ 
+</script>
+ 
+<!-- end page title -->
+{% endblock %}
+{% block custom_script %}
+{% endblock %}

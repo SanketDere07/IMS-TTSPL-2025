@@ -93,6 +93,7 @@
                         <th>Category</th>
                         <th>Subcategory</th>
                         <th>Location</th>
+                        <th>Status</th>
                         <th>Action</th>
                     </tr>
                 </thead>
@@ -205,6 +206,22 @@ $(document).ready(function () {
             { data: 'category_name' },
             { data: 'subcategory_name' },
             { data: 'location' },
+            {
+                data: 'product_status',
+                render: function(data, type, row) {
+                    const statusColorMap = {
+                        'ASSIGN': 'bg-danger',       // Red
+                        'FIXED_ASSET': 'bg-primary', // Blue
+                        'RETURN': 'bg-warning',     // Yellow
+                        'SELL': 'bg-dark',       // Dark Gray
+                        'DEMO': 'bg-info',           // Light Blue
+                        'INSPECTION': 'bg-secondary',// Gray
+                        'INSTOCK': 'bg-success'         // Green
+                    };
+                    const badgeClass = statusColorMap[data] || 'bg-secondary'; // Default to gray if status is not found
+                    return `<span class="badge ${badgeClass}">${data}</span>`;
+                }
+            },
             {
                 data: null,
                 render: function (data, type, row) {

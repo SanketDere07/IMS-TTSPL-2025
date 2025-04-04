@@ -107,8 +107,6 @@ urlpatterns = [
     path('generate-subcategory-excel/', views.generate_subcategory_excel, name='generate_subcategory_excel'),
     path('generate-subcategory-pdf/', views.generate_subcategory_pdf, name='generate_subcategory_pdf'),
 
-    
-    
     path('box_list_page', views.box_list_page, name='box-list-page'),
     path('box_add_page', views.box_add_page, name='box-add-page'),
     
@@ -202,6 +200,7 @@ urlpatterns = [
     path('get-boxes/', views.get_boxes, name='get_boxes'),
     path('get-ranks/', views.get_ranks, name='get_ranks'),
     path('fetch-barcode/', views.fetch_barcode, name='fetch_barcode'),
+    path('stock_entry_fetch_barcode/', views.stock_entry_fetch_barcode, name='stock_entry_fetch_barcode'),
     path("delete-stock/<int:stock_id>/", views.delete_stock, name="delete_stock"),
     path('update-stock/', views.update_stock, name='update_stock'),
     path('get-existing-barcodes/', views.get_existing_barcodes, name='get_existing_barcodes'), 
@@ -217,6 +216,26 @@ urlpatterns = [
     path('get-exhibitions/', views.get_exhibitions, name='get_exhibitions'),
     path("get_companies/", views.get_companies, name="get_companies"),
     path('get-customers/', views.get_customers, name='get_customers'),
+
+
+    path("save_assigned_stock/", views.save_assigned_stock, name="save_assigned_stock"),
+    path('return_stock/', views.return_stock, name='return_stock'),
+    path("get_all_assigned_data/", views.get_all_assigned_data, name="get_all_assigned_data"),
+    path("get_assign_data_all/", views.get_assign_data_all, name="get_assign_data_all"),
+    path('update_product_status/', views.update_product_status, name='update_product_status'),
+    path('return_stock_history/', views.return_stock_history, name='return_stock_history'),
+    path('get_return_history/', views.get_return_history, name='get_return_history'),
+
+    path('api/receive_barcode/', views.receive_barcode, name='receive_barcode'),
+    path('scan_qr_image/', views.scan_qr_image, name='scan_qr_image'),
+    path('scan_via_mobile/', views.scan_via_mobile, name='scan_via_mobile'),
+    path('get_backend_data_scanned_data/', views.get_backend_data_scanned_data, name='get_backend_data_scanned_data'),
+    path('get_latest_scanned_data/', views.get_latest_scanned_data, name='get_latest_scanned_data'),
+    path('assign_exhibition/', views.assign_exhibition, name='assign_exhibition'),
+    path('return_exhibition/', views.return_exhibition, name='return_exhibition'),
+    path('assign_operation_exhibition_list/', views.assign_operation_exhibition_list, name='assign_operation_exhibition_list'),
+    path('fetch_exhibition_list/', views.fetch_exhibition_list, name='fetch_exhibition_list'),
+
 
     path('print_barcode_page', views.print_barcode_page, name='print-barcode-page'),
     path('generate-barcode-pdf/', views.generate_barcode_pdf, name='generate_barcode_pdf'),
@@ -270,10 +289,7 @@ urlpatterns = [
     path('generate-role-permission-audit-excel/', views.generate_role_permission_audit_excel, name='generate_role_permission_audit_excel'),
     path('generate-role-permission-audit-pdf/', views.generate_role_permission_audit_pdf, name='generate_role_permission_audit_pdf'),
 
-    path('master_reports_page', views.master_reports_page, name='master-reports-page'),
-    path('report-generate-employee-csv/', views.report_generate_employee_csv, name='report_generate_employee_csv'),
-    path('report-generate-employee-excel/', views.report_generate_employee_excel, name='report_generate_employee_excel'),
-    path('report-generate-employee-pdf/', views.report_generate_employee_pdf, name='report_generate_employee_pdf'),
+
 
 
     path('backup_recovery_page', views.backup_recovery_page, name='backup-recovery-page'),
@@ -285,6 +301,93 @@ urlpatterns = [
     path('get-scheduled-backups/', views.get_scheduled_backups, name='get_scheduled_backups'),
     path('download-sql/<int:backup_id>/', views.download_sql_file, name='download_sql_file'),
     path('download-txt/<int:backup_id>/', views.download_txt_file, name='download_txt_file'),
+
+
+
+    path('master_reports_page', views.master_reports_page, name='master-reports-page'),
+    path('report-generate-employee-csv/', views.report_generate_employee_csv, name='report_generate_employee_csv'),
+    path('report-generate-employee-excel/', views.report_generate_employee_excel, name='report_generate_employee_excel'),
+    path('report-generate-employee-pdf/', views.report_generate_employee_pdf, name='report_generate_employee_pdf'),
+    
+    path('get_locations_filter/', views.get_locations_filter, name='get_locations_filter'),
+    path('report-generate-location-csv/', views.report_generate_location_csv, name='report_generate_location_csv'),
+    path('report-generate-location-excel/', views.report_generate_location_excel, name='report_generate_location_excel'),
+    path('report-generate-location-pdf/', views.report_generate_location_pdf, name='report_generate_location_pdf'),
+
+    path('get-companies-filter/', views.get_companies_filter, name='get_companies_filter'),
+    path('report-generate-company-pdf/', views.report_generate_company_pdf, name='report_generate_company_pdf'),
+    path('report-generate-company-csv/', views.report_generate_company_csv, name='report_generate_company_csv'),
+    path('report-generate-company-excel/', views.report_generate_company_excel, name='report_generate_company_excel'),
+
+
+    path('get_exhibitions_filter/', views.get_exhibitions_filter, name='get_exhibitions_filter'),
+    path('get_locations_exhibition_filter/', views.get_locations_exhibition_filter, name='get_locations_exhibition_filter'),
+    path('report-generate-exhibition-pdf/', views.report_generate_exhibition_pdf, name='report_generate_exhibition_pdf'),
+    path('report-generate-exhibition-csv/', views.report_generate_exhibition_csv, name='report_generate_exhibition_csv'),
+    path('report-generate-exhibition-excel/', views.report_generate_exhibition_excel, name='report_generate_exhibition_excel'),
+    
+    path('get_customers_filter/', views.get_customers_filter, name='get_customers_filter'),
+    path('report-generate-customer-pdf/', views.report_generate_customer_pdf, name='report_generate_customer_pdf'),
+    path('report-generate-customer-csv/', views.report_generate_customer_csv, name='report_generate_customer_csv'),
+    path('report-generate-customer-excel/', views.report_generate_customer_excel, name='report_generate_customer_excel'),
+    
+    
+    path('get_suppliers_filter/', views.get_suppliers_filter, name='get_suppliers_filter'),
+    path('report-generate-supplier-pdf/', views.report_generate_supplier_pdf, name='report_generate_supplier_pdf'),
+    path('report-generate-supplier-csv/', views.report_generate_supplier_csv, name='report_generate_supplier_csv'),
+    path('report-generate-supplier-excel/', views.report_generate_supplier_excel, name='report_generate_supplier_excel'),
+    
+    path('get_products_filter/', views.get_products_filter, name='get_products_filter'),
+    path('get_categories_filter/', views.get_categories_filter, name='get_categories_filter'),
+    path('get_subcategories_filter/', views.get_subcategories_filter, name='get_subcategories_filter'),
+    path('report-generate-product-csv/', views.report_generate_product_csv, name='report_generate_product_csv'),
+    path('report-generate-product-excel/', views.report_generate_product_excel, name='report_generate_product_excel'),
+    path('report-generate-product-pdf/', views.report_generate_product_pdf, name='report_generate_product_pdf'),
+    
+    path('user_profile_page', views.user_profile_page, name='user-profile-page'),
+    path('get-user-data/<int:user_id>/', views.get_user_data, name='get_user_data'),
+    path('update-user-profile/<int:user_id>/', views.update_user_profile, name='update_user_profile'),   
+
+    path('save_expense/', views.save_expense, name='save_expense'),
+    path('get_employee_details/', views.get_employee_details, name='get_employee_details'),
+    path('track_status_page', views.track_status_page, name='track-status-page'),
+    path('expense_list/',  views.expense_list, name='expense-list'),
+    path('generate_expense_csv/', views.generate_expense_csv, name='expense-export-csv'),
+    path('generate_expense_excel/', views.generate_expense_excel, name='expense-export-excel'),
+    path('generate_expense_pdf/', views.generate_expense_pdf, name='expense-export-pdf'),
+    path('expenses/<uuid:expense_id>/download-pdf/', views.download_expense_pdf, name='download-expense-pdf'),
+
+    path('verify_process_page', views.verify_process_page, name='verify-process-page'),
+    path('view_verify_and_process_page', views.view_verify_and_process_page, name='view-verify-and-process-page'),
+    path('verify_and_process_list/',  views.verify_and_process_list, name='verify-and-process-list'),
+    path('expense/process/<uuid:expense_id>/', views.process_expense, name='process_expense'),
+    path('expense/view/<str:expense_id>/', views.view_process_expense, name='view_process_expense'),
+    path('generate_verify_csv/', views.generate_verifyprocess_csv, name='generate_verify_csv'),
+    path('generate_verify_excel/', views.generate_verifyprocess_excel, name='generate_verify_excel'),
+    path('generate_verify_pdf/', views.generate_verifyprocess_pdf, name='generate_verify_pdf'),
+
+    path('finance_process_list_page', views.finance_process_list_page, name='finance-process-list-page'),
+    path('expensefinanceprocess_list/', views.expensefinanceprocess_list, name='expensefinanceprocess_list'),
+    path('get_employee_list/', views.get_employee_list, name='get_employee_list'),
+    path('view_finance_process_page', views.view_finance_process_page, name='view-finance-process-page'),
+    path('expense/<uuid:expense_id>/finance-process/', views.expense_finance_process, name='expense_finance_process'),
+    path('expenses/<uuid:expense_id>/view-finance-process/', views.view_expense_finance_process, name='view_finance_process'),
+    path('generate_expensefinanceprocess_csv/', views.generate_expensefinanceprocess_csv, name='generate_expensefinanceprocess_csv'),
+    path('generate_expensefinanceprocess_excel/', views.generate_expensefinanceprocess_excel, name='generate_expensefinanceprocess_excel'),
+    path('generate_expensefinanceprocess_pdf/', views.generate_expensefinanceprocess_pdf, name='generate_expensefinanceprocess_pdf'),
+
+    path('get-user-statistics/', views.get_user_statistics, name='get_user_statistics'),
+    path('get-stock-statistics/', views.get_stock_statistics, name='get_stock_statistics'),
+    path('get-system-counts/', views.get_system_counts, name='get_system_counts'),
+    path('get-stock-by-location/', views.get_stock_by_location, name='get_stock_by_location'),
+    path('stock-dashboard-data/', views.stock_dashboard_data, name='stock_dashboard_data'),
+
+
+
+
+
+
+
 
 
 

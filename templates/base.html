@@ -33,6 +33,10 @@
 
     <link href="{% static 'assets/css/select2.min.css' %}" rel="stylesheet" type="text/css" />
 
+    <link href="{% static 'assets/libs/swiper/swiper-bundle.min.css' %}" rel="stylesheet" type="text/css" />
+    <link href="{% static 'assets/libs/jsvectormap/jsvectormap.min.css' %}" rel="stylesheet" type="text/css" />
+
+
 
     <!-- DataTable CSS -->
     <link rel="stylesheet" href="{% static 'assets/cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css' %}" />
@@ -42,6 +46,29 @@
 
     <!-- DataTable Buttons CSS -->
     <link rel="stylesheet" href="{% static 'assets/cdn.datatables.net/buttons/2.2.2/css/buttons.dataTables.min.css' %}" />
+    <style>
+          .logo-text {
+            font-family: 'Poppins', sans-serif;
+            color: white;
+            display: flex;
+            align-items: center; /* Vertically centers text */
+            gap: 10px; /* Space between TTSPL and IMS */
+        }
+        .logo-name {
+            font-weight: 700; /* Bold for TTSPL */
+            font-size: 28px;
+            text-transform: uppercase;
+            margin: 0;
+            color: white;
+        }
+        .logo-subtext {
+            font-weight: 400; /* Normal for IMS */
+            font-size: 28px; /* Same size as TTSPL */
+            opacity: 0.9; /* Slightly lighter */
+            margin: 0;
+        }
+    </style>
+
 
 	 <!-- JAVASCRIPT -->
 	<!-- JAVASCRIPT -->
@@ -227,216 +254,6 @@
 
                
 
-                <div class="dropdown topbar-head-dropdown ms-1 header-item">
-                    <button type="button" class="btn btn-icon btn-topbar material-shadow-none btn-ghost-secondary rounded-circle" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                        <i class='bx bx-category-alt fs-22'></i>
-                    </button>
-                    <div class="dropdown-menu dropdown-menu-lg p-0 dropdown-menu-end">
-                        <div class="p-3 border-top-0 border-start-0 border-end-0 border-dashed border">
-                            <div class="row align-items-center">
-                                <div class="col">
-                                    <h6 class="m-0 fw-semibold fs-15"> Web Apps </h6>
-                                </div>
-                                <div class="col-auto">
-                                    <a href="#!" class="btn btn-sm btn-soft-info"> View All Apps
-                                        <i class="ri-arrow-right-s-line align-middle"></i></a>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="p-2">
-                            <div class="row g-0">
-                                <div class="col">
-                                    <a class="dropdown-icon-item" href="#!">
-                                        <img src="{% static 'assets/images/brands/github.png' %}" alt="Github">
-                                        <span>GitHub</span>
-                                    </a>
-                                </div>
-                                <div class="col">
-                                    <a class="dropdown-icon-item" href="#!">
-                                        <img src="{% static 'assets/images/brands/bitbucket.png' %}" alt="bitbucket">
-                                        <span>Bitbucket</span>
-                                    </a>
-                                </div>
-                                <div class="col">
-                                    <a class="dropdown-icon-item" href="#!">
-                                        <img src="{% static 'assets/images/brands/dribbble.png' %}" alt="dribbble">
-                                        <span>Dribbble</span>
-                                    </a>
-                                </div>
-                            </div>
-
-                            <div class="row g-0">
-                                <div class="col">
-                                    <a class="dropdown-icon-item" href="#!">
-                                        <img src="{% static 'assets/images/brands/dropbox.png' %}" alt="dropbox">
-                                        <span>Dropbox</span>
-                                    </a>
-                                </div>
-                                <div class="col">
-                                    <a class="dropdown-icon-item" href="#!">
-                                        <img src="{% static 'assets/images/brands/mail_chimp.png' %}" alt="mail_chimp">
-                                        <span>Mail Chimp</span>
-                                    </a>
-                                </div>
-                                <div class="col">
-                                    <a class="dropdown-icon-item" href="#!">
-                                        <img src="{% static 'assets/images/brands/slack.png' %}" alt="slack">
-                                        <span>Slack</span>
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="dropdown topbar-head-dropdown ms-1 header-item">
-                    <button type="button" class="btn btn-icon btn-topbar material-shadow-none btn-ghost-secondary rounded-circle" id="page-header-cart-dropdown" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-haspopup="true" aria-expanded="false">
-                        <i class='bx bx-shopping-bag fs-22'></i>
-                        <span class="position-absolute topbar-badge cartitem-badge fs-10 translate-middle badge rounded-pill bg-info">5</span>
-                    </button>
-                    <div class="dropdown-menu dropdown-menu-xl dropdown-menu-end p-0 dropdown-menu-cart" aria-labelledby="page-header-cart-dropdown">
-                        <div class="p-3 border-top-0 border-start-0 border-end-0 border-dashed border">
-                            <div class="row align-items-center">
-                                <div class="col">
-                                    <h6 class="m-0 fs-16 fw-semibold"> My Cart</h6>
-                                </div>
-                                <div class="col-auto">
-                                    <span class="badge bg-warning-subtle text-warning fs-13"><span class="cartitem-badge">7</span>
-                                        items</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div data-simplebar style="max-height: 300px;">
-                            <div class="p-2">
-                                <div class="text-center empty-cart" id="empty-cart">
-                                    <div class="avatar-md mx-auto my-3">
-                                        <div class="avatar-title bg-info-subtle text-info fs-36 rounded-circle">
-                                            <i class='bx bx-cart'></i>
-                                        </div>
-                                    </div>
-                                    <h5 class="mb-3">Your Cart is Empty!</h5>
-                                    <a href="apps-ecommerce-products.html" class="btn btn-success w-md mb-3">Shop Now</a>
-                                </div>
-                                <div class="d-block dropdown-item dropdown-item-cart text-wrap px-3 py-2">
-                                    <div class="d-flex align-items-center">
-                                        <img src="{% static 'assets/images/products/img-1.png' %}"  class="me-3 rounded-circle avatar-sm p-2 bg-light" alt="user-pic">
-                                        <div class="flex-grow-1">
-                                            <h6 class="mt-0 mb-1 fs-14">
-                                                <a href="apps-ecommerce-product-details.html" class="text-reset">Branded
-                                                    T-Shirts</a>
-                                            </h6>
-                                            <p class="mb-0 fs-12 text-muted">
-                                                Quantity: <span>10 x $32</span>
-                                            </p>
-                                        </div>
-                                        <div class="px-2">
-                                            <h5 class="m-0 fw-normal">$<span class="cart-item-price">320</span></h5>
-                                        </div>
-                                        <div class="ps-2">
-                                            <button type="button" class="btn btn-icon btn-sm btn-ghost-secondary remove-item-btn"><i class="ri-close-fill fs-16"></i></button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="d-block dropdown-item dropdown-item-cart text-wrap px-3 py-2">
-                                    <div class="d-flex align-items-center">
-                                        <img src="{% static 'assets/images/products/img-2.png' %}" class="me-3 rounded-circle avatar-sm p-2 bg-light" alt="user-pic">
-                                        <div class="flex-grow-1">
-                                            <h6 class="mt-0 mb-1 fs-14">
-                                                <a href="apps-ecommerce-product-details.html" class="text-reset">Bentwood Chair</a>
-                                            </h6>
-                                            <p class="mb-0 fs-12 text-muted">
-                                                Quantity: <span>5 x $18</span>
-                                            </p>
-                                        </div>
-                                        <div class="px-2">
-                                            <h5 class="m-0 fw-normal">$<span class="cart-item-price">89</span></h5>
-                                        </div>
-                                        <div class="ps-2">
-                                            <button type="button" class="btn btn-icon btn-sm btn-ghost-secondary remove-item-btn"><i class="ri-close-fill fs-16"></i></button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="d-block dropdown-item dropdown-item-cart text-wrap px-3 py-2">
-                                    <div class="d-flex align-items-center">
-                                        <img src="{% static 'assets/images/products/img-3.png' %}" class="me-3 rounded-circle avatar-sm p-2 bg-light" alt="user-pic">
-                                        <div class="flex-grow-1">
-                                            <h6 class="mt-0 mb-1 fs-14">
-                                                <a href="apps-ecommerce-product-details.html" class="text-reset">
-                                                    Borosil Paper Cup</a>
-                                            </h6>
-                                            <p class="mb-0 fs-12 text-muted">
-                                                Quantity: <span>3 x $250</span>
-                                            </p>
-                                        </div>
-                                        <div class="px-2">
-                                            <h5 class="m-0 fw-normal">$<span class="cart-item-price">750</span></h5>
-                                        </div>
-                                        <div class="ps-2">
-                                            <button type="button" class="btn btn-icon btn-sm btn-ghost-secondary remove-item-btn"><i class="ri-close-fill fs-16"></i></button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="d-block dropdown-item dropdown-item-cart text-wrap px-3 py-2">
-                                    <div class="d-flex align-items-center">
-                                        <img src="{% static 'assets/images/products/img-6.png' %}" class="me-3 rounded-circle avatar-sm p-2 bg-light" alt="user-pic">
-                                        <div class="flex-grow-1">
-                                            <h6 class="mt-0 mb-1 fs-14">
-                                                <a href="apps-ecommerce-product-details.html" class="text-reset">Gray
-                                                    Styled T-Shirt</a>
-                                            </h6>
-                                            <p class="mb-0 fs-12 text-muted">
-                                                Quantity: <span>1 x $1250</span>
-                                            </p>
-                                        </div>
-                                        <div class="px-2">
-                                            <h5 class="m-0 fw-normal">$ <span class="cart-item-price">1250</span></h5>
-                                        </div>
-                                        <div class="ps-2">
-                                            <button type="button" class="btn btn-icon btn-sm btn-ghost-secondary remove-item-btn"><i class="ri-close-fill fs-16"></i></button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="d-block dropdown-item dropdown-item-cart text-wrap px-3 py-2">
-                                    <div class="d-flex align-items-center">
-                                        <img src="{% static 'assets/images/products/img-5.png' %}" class="me-3 rounded-circle avatar-sm p-2 bg-light" alt="user-pic">
-                                        <div class="flex-grow-1">
-                                            <h6 class="mt-0 mb-1 fs-14">
-                                                <a href="apps-ecommerce-product-details.html" class="text-reset">Stillbird Helmet</a>
-                                            </h6>
-                                            <p class="mb-0 fs-12 text-muted">
-                                                Quantity: <span>2 x $495</span>
-                                            </p>
-                                        </div>
-                                        <div class="px-2">
-                                            <h5 class="m-0 fw-normal">$<span class="cart-item-price">990</span></h5>
-                                        </div>
-                                        <div class="ps-2">
-                                            <button type="button" class="btn btn-icon btn-sm btn-ghost-secondary remove-item-btn"><i class="ri-close-fill fs-16"></i></button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="p-3 border-bottom-0 border-start-0 border-end-0 border-dashed border" id="checkout-elem">
-                            <div class="d-flex justify-content-between align-items-center pb-3">
-                                <h5 class="m-0 text-muted">Total:</h5>
-                                <div class="px-2">
-                                    <h5 class="m-0" id="cart-item-total">$1258.58</h5>
-                                </div>
-                            </div>
-
-                            <a href="apps-ecommerce-checkout.html" class="btn btn-success text-center w-100">
-                                Checkout
-                            </a>
-                        </div>
-                    </div>
-                </div>
-
                 <div class="ms-1 header-item d-none d-sm-flex">
                     <button type="button" class="btn btn-icon btn-topbar material-shadow-none btn-ghost-secondary rounded-circle" data-toggle="fullscreen">
                         <i class='bx bx-fullscreen fs-22'></i>
@@ -449,270 +266,7 @@
                     </button>
                 </div>
 
-                <div class="dropdown topbar-head-dropdown ms-1 header-item" id="notificationDropdown">
-                    <button type="button" class="btn btn-icon btn-topbar material-shadow-none btn-ghost-secondary rounded-circle" id="page-header-notifications-dropdown" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-haspopup="true" aria-expanded="false">
-                        <i class='bx bx-bell fs-22'></i>
-                        <span class="position-absolute topbar-badge fs-10 translate-middle badge rounded-pill bg-danger">3<span class="visually-hidden">unread messages</span></span>
-                    </button>
-                    <div class="dropdown-menu dropdown-menu-lg dropdown-menu-end p-0" aria-labelledby="page-header-notifications-dropdown">
-
-                        <div class="dropdown-head bg-primary bg-pattern rounded-top">
-                            <div class="p-3">
-                                <div class="row align-items-center">
-                                    <div class="col">
-                                        <h6 class="m-0 fs-16 fw-semibold text-white"> Notifications </h6>
-                                    </div>
-                                    <div class="col-auto dropdown-tabs">
-                                        <span class="badge bg-light text-body fs-13"> 4 New</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="px-2 pt-2">
-                                <ul class="nav nav-tabs dropdown-tabs nav-tabs-custom" data-dropdown-tabs="true" id="notificationItemsTab" role="tablist">
-                                    <li class="nav-item waves-effect waves-light">
-                                        <a class="nav-link active" data-bs-toggle="tab" href="#all-noti-tab" role="tab" aria-selected="true">
-                                            All (4)
-                                        </a>
-                                    </li>
-                                    <li class="nav-item waves-effect waves-light">
-                                        <a class="nav-link" data-bs-toggle="tab" href="#messages-tab" role="tab" aria-selected="false">
-                                            Messages
-                                        </a>
-                                    </li>
-                                    <li class="nav-item waves-effect waves-light">
-                                        <a class="nav-link" data-bs-toggle="tab" href="#alerts-tab" role="tab" aria-selected="false">
-                                            Alerts
-                                        </a>
-                                    </li>
-                                </ul>
-                            </div>
-
-                        </div>
-
-                        <div class="tab-content position-relative" id="notificationItemsTabContent">
-                            <div class="tab-pane fade show active py-2 ps-2" id="all-noti-tab" role="tabpanel">
-                                <div data-simplebar style="max-height: 300px;" class="pe-2">
-                                    <div class="text-reset notification-item d-block dropdown-item position-relative">
-                                        <div class="d-flex">
-                                            <div class="avatar-xs me-3 flex-shrink-0">
-                                                <span class="avatar-title bg-info-subtle text-info rounded-circle fs-16">
-                                                    <i class="bx bx-badge-check"></i>
-                                                </span>
-                                            </div>
-                                            <div class="flex-grow-1">
-                                                <a href="#!" class="stretched-link">
-                                                    <h6 class="mt-0 mb-2 lh-base">Your <b>Elite</b> author Graphic
-                                                        Optimization <span class="text-secondary">reward</span> is
-                                                        ready!
-                                                    </h6>
-                                                </a>
-                                                <p class="mb-0 fs-11 fw-medium text-uppercase text-muted">
-                                                    <span><i class="mdi mdi-clock-outline"></i> Just 30 sec ago</span>
-                                                </p>
-                                            </div>
-                                            <div class="px-2 fs-15">
-                                                <div class="form-check notification-check">
-                                                    <input class="form-check-input" type="checkbox" value="" id="all-notification-check01">
-                                                    <label class="form-check-label" for="all-notification-check01"></label>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="text-reset notification-item d-block dropdown-item position-relative">
-                                        <div class="d-flex">
-                                            <img src="{% static 'assets/images/users/avatar-2.jpg' %}" class="me-3 rounded-circle avatar-xs flex-shrink-0" alt="user-pic">
-                                            <div class="flex-grow-1">
-                                                <a href="#!" class="stretched-link">
-                                                    <h6 class="mt-0 mb-1 fs-13 fw-semibold">Angela Bernier</h6>
-                                                </a>
-                                                <div class="fs-13 text-muted">
-                                                    <p class="mb-1">Answered to your comment on the cash flow forecast's
-                                                        graph 🔔.</p>
-                                                </div>
-                                                <p class="mb-0 fs-11 fw-medium text-uppercase text-muted">
-                                                    <span><i class="mdi mdi-clock-outline"></i> 48 min ago</span>
-                                                </p>
-                                            </div>
-                                            <div class="px-2 fs-15">
-                                                <div class="form-check notification-check">
-                                                    <input class="form-check-input" type="checkbox" value="" id="all-notification-check02">
-                                                    <label class="form-check-label" for="all-notification-check02"></label>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="text-reset notification-item d-block dropdown-item position-relative">
-                                        <div class="d-flex">
-                                            <div class="avatar-xs me-3 flex-shrink-0">
-                                                <span class="avatar-title bg-danger-subtle text-danger rounded-circle fs-16">
-                                                    <i class='bx bx-message-square-dots'></i>
-                                                </span>
-                                            </div>
-                                            <div class="flex-grow-1">
-                                                <a href="#!" class="stretched-link">
-                                                    <h6 class="mt-0 mb-2 fs-13 lh-base">You have received <b class="text-success">20</b> new messages in the conversation
-                                                    </h6>
-                                                </a>
-                                                <p class="mb-0 fs-11 fw-medium text-uppercase text-muted">
-                                                    <span><i class="mdi mdi-clock-outline"></i> 2 hrs ago</span>
-                                                </p>
-                                            </div>
-                                            <div class="px-2 fs-15">
-                                                <div class="form-check notification-check">
-                                                    <input class="form-check-input" type="checkbox" value="" id="all-notification-check03">
-                                                    <label class="form-check-label" for="all-notification-check03"></label>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="text-reset notification-item d-block dropdown-item position-relative">
-                                        <div class="d-flex">
-                                            <img src="{% static 'assets/images/users/avatar-8.jpg' %}" class="me-3 rounded-circle avatar-xs flex-shrink-0" alt="user-pic">
-                                            <div class="flex-grow-1">
-                                                <a href="#!" class="stretched-link">
-                                                    <h6 class="mt-0 mb-1 fs-13 fw-semibold">Maureen Gibson</h6>
-                                                </a>
-                                                <div class="fs-13 text-muted">
-                                                    <p class="mb-1">We talked about a project on linkedin.</p>
-                                                </div>
-                                                <p class="mb-0 fs-11 fw-medium text-uppercase text-muted">
-                                                    <span><i class="mdi mdi-clock-outline"></i> 4 hrs ago</span>
-                                                </p>
-                                            </div>
-                                            <div class="px-2 fs-15">
-                                                <div class="form-check notification-check">
-                                                    <input class="form-check-input" type="checkbox" value="" id="all-notification-check04">
-                                                    <label class="form-check-label" for="all-notification-check04"></label>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="my-3 text-center view-all">
-                                        <button type="button" class="btn btn-soft-success waves-effect waves-light">View
-                                            All Notifications <i class="ri-arrow-right-line align-middle"></i></button>
-                                    </div>
-                                </div>
-
-                            </div>
-
-                            <div class="tab-pane fade py-2 ps-2" id="messages-tab" role="tabpanel" aria-labelledby="messages-tab">
-                                <div data-simplebar style="max-height: 300px;" class="pe-2">
-                                    <div class="text-reset notification-item d-block dropdown-item">
-                                        <div class="d-flex">
-                                            <img src="{% static 'assets/images/users/avatar-3.jpg' %}"  class="me-3 rounded-circle avatar-xs" alt="user-pic">
-                                            <div class="flex-grow-1">
-                                                <a href="#!" class="stretched-link">
-                                                    <h6 class="mt-0 mb-1 fs-13 fw-semibold">James Lemire</h6>
-                                                </a>
-                                                <div class="fs-13 text-muted">
-                                                    <p class="mb-1">We talked about a project on linkedin.</p>
-                                                </div>
-                                                <p class="mb-0 fs-11 fw-medium text-uppercase text-muted">
-                                                    <span><i class="mdi mdi-clock-outline"></i> 30 min ago</span>
-                                                </p>
-                                            </div>
-                                            <div class="px-2 fs-15">
-                                                <div class="form-check notification-check">
-                                                    <input class="form-check-input" type="checkbox" value="" id="messages-notification-check01">
-                                                    <label class="form-check-label" for="messages-notification-check01"></label>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="text-reset notification-item d-block dropdown-item">
-                                        <div class="d-flex">
-                                            <img src="{% static 'assets/images/users/avatar-2.jpg' %}" class="me-3 rounded-circle avatar-xs" alt="user-pic">
-                                            <div class="flex-grow-1">
-                                                <a href="#!" class="stretched-link">
-                                                    <h6 class="mt-0 mb-1 fs-13 fw-semibold">Angela Bernier</h6>
-                                                </a>
-                                                <div class="fs-13 text-muted">
-                                                    <p class="mb-1">Answered to your comment on the cash flow forecast's
-                                                        graph 🔔.</p>
-                                                </div>
-                                                <p class="mb-0 fs-11 fw-medium text-uppercase text-muted">
-                                                    <span><i class="mdi mdi-clock-outline"></i> 2 hrs ago</span>
-                                                </p>
-                                            </div>
-                                            <div class="px-2 fs-15">
-                                                <div class="form-check notification-check">
-                                                    <input class="form-check-input" type="checkbox" value="" id="messages-notification-check02">
-                                                    <label class="form-check-label" for="messages-notification-check02"></label>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="text-reset notification-item d-block dropdown-item">
-                                        <div class="d-flex">
-                                            <img src="{% static 'assets/images/users/avatar-6.jpg' %}" class="me-3 rounded-circle avatar-xs" alt="user-pic">
-                                            <div class="flex-grow-1">
-                                                <a href="#!" class="stretched-link">
-                                                    <h6 class="mt-0 mb-1 fs-13 fw-semibold">Kenneth Brown</h6>
-                                                </a>
-                                                <div class="fs-13 text-muted">
-                                                    <p class="mb-1">Mentionned you in his comment on 📃 invoice #12501.
-                                                    </p>
-                                                </div>
-                                                <p class="mb-0 fs-11 fw-medium text-uppercase text-muted">
-                                                    <span><i class="mdi mdi-clock-outline"></i> 10 hrs ago</span>
-                                                </p>
-                                            </div>
-                                            <div class="px-2 fs-15">
-                                                <div class="form-check notification-check">
-                                                    <input class="form-check-input" type="checkbox" value="" id="messages-notification-check03">
-                                                    <label class="form-check-label" for="messages-notification-check03"></label>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="text-reset notification-item d-block dropdown-item">
-                                        <div class="d-flex">
-                                            <img src="{% static 'assets/images/users/avatar-8.jpg' %}" class="me-3 rounded-circle avatar-xs" alt="user-pic">
-                                            <div class="flex-grow-1">
-                                                <a href="#!" class="stretched-link">
-                                                    <h6 class="mt-0 mb-1 fs-13 fw-semibold">Maureen Gibson</h6>
-                                                </a>
-                                                <div class="fs-13 text-muted">
-                                                    <p class="mb-1">We talked about a project on linkedin.</p>
-                                                </div>
-                                                <p class="mb-0 fs-11 fw-medium text-uppercase text-muted">
-                                                    <span><i class="mdi mdi-clock-outline"></i> 3 days ago</span>
-                                                </p>
-                                            </div>
-                                            <div class="px-2 fs-15">
-                                                <div class="form-check notification-check">
-                                                    <input class="form-check-input" type="checkbox" value="" id="messages-notification-check04">
-                                                    <label class="form-check-label" for="messages-notification-check04"></label>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="my-3 text-center view-all">
-                                        <button type="button" class="btn btn-soft-success waves-effect waves-light">View
-                                            All Messages <i class="ri-arrow-right-line align-middle"></i></button>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="tab-pane fade p-4" id="alerts-tab" role="tabpanel" aria-labelledby="alerts-tab"></div>
-
-                            <div class="notification-actions" id="notification-actions">
-                                <div class="d-flex text-muted justify-content-center">
-                                    Select <div id="select-content" class="text-body fw-semibold px-1">0</div> Result <button type="button" class="btn btn-link link-danger p-0 ms-3" data-bs-toggle="modal" data-bs-target="#removeNotificationModal">Remove</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
+            
                 <div class="dropdown ms-sm-3 header-item topbar-user">
                     <button type="button" class="btn material-shadow-none" id="page-header-user-dropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                         <span class="d-flex align-items-center">
@@ -727,13 +281,9 @@
                         <!-- item-->
                         <h6 class="dropdown-header">Welcome Anna!</h6>
                         <a class="dropdown-item" href="pages-profile.html"><i class="mdi mdi-account-circle text-muted fs-16 align-middle me-1"></i> <span class="align-middle">Profile</span></a>
-                        <a class="dropdown-item" href="apps-chat.html"><i class="mdi mdi-message-text-outline text-muted fs-16 align-middle me-1"></i> <span class="align-middle">Messages</span></a>
-                        <a class="dropdown-item" href="apps-tasks-kanban.html"><i class="mdi mdi-calendar-check-outline text-muted fs-16 align-middle me-1"></i> <span class="align-middle">Taskboard</span></a>
                         <a class="dropdown-item" href="pages-faqs.html"><i class="mdi mdi-lifebuoy text-muted fs-16 align-middle me-1"></i> <span class="align-middle">Help</span></a>
                         <div class="dropdown-divider"></div>
-                        <a class="dropdown-item" href="pages-profile.html"><i class="mdi mdi-wallet text-muted fs-16 align-middle me-1"></i> <span class="align-middle">Balance : <b>$5971.67</b></span></a>
-                        <a class="dropdown-item" href="pages-profile-settings.html"><span class="badge bg-success-subtle text-success mt-1 float-end">New</span><i class="mdi mdi-cog-outline text-muted fs-16 align-middle me-1"></i> <span class="align-middle">Settings</span></a>
-                        <a class="dropdown-item" href="auth-lockscreen-basic.html"><i class="mdi mdi-lock text-muted fs-16 align-middle me-1"></i> <span class="align-middle">Lock screen</span></a>
+                        <a class="dropdown-item" href="pages-profile-settings.html"><i class="mdi mdi-cog-outline text-muted fs-16 align-middle me-1"></i> <span class="align-middle">Settings</span></a>
                         <a class="dropdown-item" href="logout"><i class="mdi mdi-logout text-muted fs-16 align-middle me-1"></i> <span class="align-middle" data-key="t-logout">Logout</span></a>
                     </div>
                 </div>
@@ -782,10 +332,16 @@
                 <!-- Light Logo-->
                 <a href="index-2.html" class="logo logo-light">
                     <span class="logo-sm">
-                        <img src="{% static 'assets/images/logo-sm.png' %}" alt="" height="22">
+                        <div class="logo-text">
+                            <h1 class="logo-name">TTSPL</h1>
+                            <p class="logo-subtext">IMS</p>
+                        </div>
                     </span>
                     <span class="logo-lg">
-                        <img src="{% static 'assets/images/logo-light.png' %}" alt="" height="17">
+                        <div class="logo-text">
+                            <h1 class="logo-name">TTSPL</h1>
+                            <p class="logo-subtext">IMS</p>
+                        </div>
                     </span>
                 </a>
                 <button type="button" class="btn btn-sm p-0 fs-20 header-item float-end btn-vertical-sm-hover" id="vertical-hover">
@@ -844,76 +400,79 @@
                             <div class="collapse menu-dropdown" id="sidebarAdvanceUI">
                                 <ul class="nav nav-sm flex-column">
                                     <li class="nav-item">
-                                        <a href="employee_list_page" class="nav-link" data-key="t-sweet-alerts">Employee</a>
+                                        <a href="/employee_list_page" class="nav-link" data-key="t-sweet-alerts">Employee</a>
                                     </li>
                                     <li class="nav-item">
-                                        <a href="location_list_page" class="nav-link" data-key="t-nestable-list">Location</a>
+                                        <a href="/location_list_page" class="nav-link" data-key="t-nestable-list">Location</a>
                                     </li>
                                     <li class="nav-item">
-                                        <a href="company_list_page" class="nav-link" data-key="t-scrollbar">Company</a>
+                                        <a href="/company_list_page" class="nav-link" data-key="t-scrollbar">Company</a>
                                     </li>
                                     <li class="nav-item">
-                                        <a href="category_list_page" class="nav-link" data-key="t-scrollSpy">Category</a>
+                                        <a href="/category_list_page" class="nav-link" data-key="t-scrollSpy">Category</a>
                                     </li>
                                     <li class="nav-item">
-                                        <a href="subcategory_list_page" class="nav-link" data-key="t-scrollSpy">SubCategory</a>
+                                        <a href="/subcategory_list_page" class="nav-link" data-key="t-scrollSpy">SubCategory</a>
                                     </li>
                                     <li class="nav-item">
-                                        <a href="box_list_page" class="nav-link" data-key="t-animation">Box</a>
+                                        <a href="/box_list_page" class="nav-link" data-key="t-animation">Box</a>
                                     </li>
                                     <li class="nav-item">
-                                        <a href="rank_list_page" class="nav-link" data-key="t-tour">Rack</a>
+                                        <a href="/rank_list_page" class="nav-link" data-key="t-tour">Rack</a>
                                     </li>
                                     <li class="nav-item">
-                                        <a href="product_list_page" class="nav-link" data-key="t-ratings">Product</a>
+                                        <a href="/product_list_page" class="nav-link" data-key="t-ratings">Product</a>
                                     </li>
                                     <li class="nav-item">
-                                        <a href="customer_list_page" class="nav-link" data-key="t-highlight">Customer</a>
+                                        <a href="/customer_list_page" class="nav-link" data-key="t-highlight">Customer</a>
                                     </li>
                                     <li class="nav-item">
-                                        <a href="supplier_list_page" class="nav-link" data-key="t-scrollSpy">Supplier</a>
+                                        <a href="/supplier_list_page" class="nav-link" data-key="t-scrollSpy">Supplier</a>
                                     </li>
                                     <li class="nav-item">
-                                        <a href="exhibition_list_page" class="nav-link" data-key="t-scrollSpy">Exhibition</a>
+                                        <a href="/exhibition_list_page" class="nav-link" data-key="t-scrollSpy">Exhibition</a>
                                     </li>
                                 </ul>
                             </div>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link menu-link" href="#sidebarOperationsUI" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="sidebarAdvanceUI">
-                                <i class=" ri-apps-2-fill"></i> <span data-key="t-advance-ui">Operations</span>
+                                <i class=" ri-settings-2-line"></i> <span data-key="t-advance-ui">Operations</span>
                             </a>
                             <div class="collapse menu-dropdown" id="sidebarOperationsUI">
                                 <ul class="nav nav-sm flex-column">
                                     <li class="nav-item">
-                                        <a href="stock_list_page" class="nav-link" data-key="t-sweet-alerts">Stock Entry</a>
+                                        <a href="/stock_list_page" class="nav-link" data-key="t-sweet-alerts">Stock Entry</a>
                                     </li>
                                     <li class="nav-item">
-                                        <a href="stock_scan_page" class="nav-link" data-key="t-scrollbar">Scan Stock</a>
+                                        <a href="/stock_scan_page" class="nav-link" data-key="t-scrollbar">Scan Stock</a>
                                     </li>
                                     <li class="nav-item">
-                                        <a href="assign_list_page" class="nav-link" data-key="t-nestable-list">Assign</a>
+                                        <a href="/assign_list_page" class="nav-link" data-key="t-nestable-list">Assign</a>
                                     </li>
                                     <li class="nav-item">
-                                        <a href="#" class="nav-link" data-key="t-scrollbar">Process</a>
+                                        <a href="/return_stock" class="nav-link" data-key="t-scrollbar">Process</a>
                                     </li>
                                     <li class="nav-item">
-                                        <a href="print_barcode_page" class="nav-link" data-key="t-scrollbar">Print Barcode</a>
+                                        <a href="/return_stock_history" class="nav-link" data-key="t-scrollbar">Return History</a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a href="/print_barcode_page" class="nav-link" data-key="t-scrollbar">Print Barcode</a>
                                     </li>
                                 </ul>
                             </div>
                         </li>
-                         <li class="nav-item">
+                        <li class="nav-item">
                             <a class="nav-link menu-link" href="#sidebarExhibitionUI" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="sidebarAdvanceUI">
                                 <i class="ri-pencil-ruler-2-line"></i> <span data-key="t-advance-ui">Exhibition</span>
                             </a>
                             <div class="collapse menu-dropdown" id="sidebarExhibitionUI">
                                 <ul class="nav nav-sm flex-column">
                                     <li class="nav-item">
-                                        <a href="#" class="nav-link" data-key="t-sweet-alerts">Exhibition Entry</a>
+                                        <a href="/assign_operation_exhibition_list" class="nav-link" data-key="t-scrollbar">Assign Exhibition List</a>
                                     </li>
                                     <li class="nav-item">
-                                        <a href="#" class="nav-link" data-key="t-scrollbar">Return</a>
+                                        <a href="/return_exhibition" class="nav-link" data-key="t-scrollbar">Return</a>
                                     </li>
                                 </ul>
                             </div>
@@ -926,7 +485,7 @@
                             <div class="collapse menu-dropdown" id="sidebarReportsUI">
                                 <ul class="nav nav-sm flex-column">
                                     <li class="nav-item">
-                                        <a href="master_reports_page" class="nav-link" data-key="t-sweet-alerts">Master Reports</a>
+                                        <a href="/master_reports_page" class="nav-link" data-key="t-sweet-alerts">Master Reports</a>
                                     </li>
                                     <li class="nav-item">
                                         <a href="#" class="nav-link" data-key="t-scrollbar">Operations Reports</a>
@@ -941,13 +500,13 @@
                             <div class="collapse menu-dropdown" id="sidebarUsersUI">
                                 <ul class="nav nav-sm flex-column">
                                     <li class="nav-item">
-                                        <a href="user_list_page" class="nav-link" data-key="t-sweet-alerts">Manage Users</a>
+                                        <a href="/user_list_page" class="nav-link" data-key="t-sweet-alerts">Manage Users</a>
                                     </li>
                                     <li class="nav-item">
-                                        <a href="rol_permission_list_page" class="nav-link" data-key="t-scrollbar">Role & Permissions</a>
+                                        <a href="/rol_permission_list_page" class="nav-link" data-key="t-scrollbar">Role & Permissions</a>
                                     </li>
                                     <li class="nav-item">
-                                        <a href="audit_logs" class="nav-link" data-key="t-nestable-list">Audit Logs</a>
+                                        <a href="/audit_logs" class="nav-link" data-key="t-nestable-list">Audit Logs</a>
                                     </li>
                                 </ul>
                             </div>
@@ -974,16 +533,16 @@
                             <div class="collapse menu-dropdown" id="sidebarExpenseUI">
                                 <ul class="nav nav-sm flex-column">
                                     <li class="nav-item">
-                                        <a href="#" class="nav-link" data-key="t-sweet-alerts">Add Expense</a>
+                                        <a href="/save_expense" class="nav-link" data-key="t-sweet-alerts">Add Expense</a>
                                     </li>
                                     <li class="nav-item">
-                                        <a href="#" class="nav-link" data-key="t-sweet-alerts">Track Status</a>
+                                        <a href="/track_status_page" class="nav-link" data-key="t-sweet-alerts">Track Status</a>
                                     </li> 
                                     <li class="nav-item">
-                                        <a href="#" class="nav-link" data-key="t-sweet-alerts">Verify & Process</a>
+                                        <a href="/verify_process_page" class="nav-link" data-key="t-sweet-alerts">Verify & Process</a>
                                     </li>
                                     <li class="nav-item">
-                                        <a href="#" class="nav-link" data-key="t-sweet-alerts">Finance Process</a>
+                                        <a href="/finance_process_list_page" class="nav-link" data-key="t-sweet-alerts">Finance Process</a>
                                     </li>
                                 </ul>
                             </div>
@@ -1069,6 +628,62 @@
   <script src="{% static 'assets/js/select2.min.js' %}"></script>
   <script src="{% static 'assets/js/toastify-js.js' %}"></script>
 
+  <script src="{% static 'assets/libs/swiper/swiper-bundle.min.js' %}"></script>
+  <script src="{% static 'assets/js/pages/dashboard-crypto.init.js' %}"></script>
+  <script src="{% static 'assets/js/pages/plugins/lord-icon-2.1.0.js' %}"></script>
+  <script src="{% static 'assets/libs/feather-icons/feather.min.js' %}"></script>
+  <script src="{% static 'assets/libs/node-waves/waves.min.js' %}"></script>
+  <script src="{% static 'assets/libs/simplebar/simplebar.min.js' %}"></script>
+  <script src="{% static 'assets/libs/apexcharts/apexcharts.min.js' %}"></script>
+  <script src="{% static 'assets/libs/jsvectormap/jsvectormap.min.js' %}"></script>
+  <script src="{% static 'assets/libs/jsvectormap/maps/world-merc.js' %}"></script>
+
+
+  <script>
+    function showToast(message, title, type) {
+      switch (type) {
+          case 'success':
+              toastr.success(message, title, {
+                  positionClass: 'toast-top-right',
+                  closeButton: true,
+                  progressBar: true,
+                  timeOut: 3000
+              });
+              break;
+          case 'error':
+              toastr.error(message, title, {
+                  positionClass: 'toast-top-right',
+                  closeButton: true,
+                  progressBar: true,
+                  timeOut: 3000
+              });
+              break;
+          case 'info':
+              toastr.info(message, title, {
+                  positionClass: 'toast-top-right',
+                  closeButton: true,
+                  progressBar: true,
+                  timeOut: 3000
+              });
+              break;
+          case 'warning':
+              toastr.warning(message, title, {
+                  positionClass: 'toast-top-right',
+                  closeButton: true,
+                  progressBar: true,
+                  timeOut: 3000
+              });
+              break;
+          default:
+              toastr.info(message, title, {
+                  positionClass: 'toast-top-right',
+                  closeButton: true,
+                  progressBar: true,
+                  timeOut: 3000
+              });
+      }
+  }
+  </script>
 
 
 
